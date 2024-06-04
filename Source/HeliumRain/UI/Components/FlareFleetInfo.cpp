@@ -289,35 +289,35 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 
 	// Travel
 	+ SVerticalBox::Slot()
-		.Padding(Theme.SmallContentPadding)
-		.HAlign(HAlign_Left)
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
+	.Padding(Theme.SmallContentPadding)
+	.HAlign(HAlign_Left)
+	.AutoHeight()
+	[
+		SNew(SHorizontalBox)
 
-			// Sector list
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SBox)
-				.WidthOverride(8 * Theme.ButtonWidth)
+		// Sector list
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SNew(SBox)
+			.WidthOverride(8 * Theme.ButtonWidth)
 			[
 				SAssignNew(SectorSelector, SFlareDropList<UFlareSimulatedSector*>)
 				.OptionsSource(&SectorList)
-			.OnGenerateWidget(this, &SFlareFleetInfo::OnGenerateSectorComboLine)
-			.OnSelectionChanged(this, &SFlareFleetInfo::OnSectorComboLineSelectionChanged)
-			.HeaderWidth(8)
-			.ItemWidth(8)
-			[
-				SNew(SBox)
-				.Padding(Theme.ListContentPadding)
-			[
-				SNew(STextBlock)
-				.Text(this, &SFlareFleetInfo::OnGetCurrentSectorComboLine)
-			.TextStyle(&Theme.TextFont)
-			]
-		]
-	]
+				.OnGenerateWidget(this, &SFlareFleetInfo::OnGenerateSectorComboLine)
+				.OnSelectionChanged(this, &SFlareFleetInfo::OnSectorComboLineSelectionChanged)
+				.HeaderWidth(8)
+				.ItemWidth(8)
+				[
+					SNew(SBox)
+					.Padding(Theme.ListContentPadding)
+					[
+						SNew(STextBlock)
+						.Text(this, &SFlareFleetInfo::OnGetCurrentSectorComboLine)
+						.TextStyle(&Theme.TextFont)
+					]
+				]
+			]	
 		]
 		// Button
 		+ SHorizontalBox::Slot()
@@ -329,12 +329,11 @@ void SFlareFleetInfo::Construct(const FArguments& InArgs)
 			.Width(8)
 			.Text(this, &SFlareFleetInfo::GetTravelText)
 			.IsDisabled(this, &SFlareFleetInfo::IsTravelDisabled)
-			.HelpText(LOCTEXT("TravelInfoFleet", "Start travelling to the selected sector with the selected ship or fleet"))
+			.HelpText(LOCTEXT("TravelInfoFleet", "Start travelling to the selected sector with the selected fleet"))
 			.Icon(FFlareStyleSet::GetIcon("Travel"))
 			.OnClicked(this, &SFlareFleetInfo::OnTravelHereClicked)
 		]
 	]
-
 ]
 ]
 ];
@@ -544,7 +543,7 @@ FText SFlareFleetInfo::GetRepairText() const
 	int64 MaxDuration;
 
 	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
-	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TargetFleet);
 
 	if (IsRepairDisabled())
 	{
@@ -638,7 +637,7 @@ bool SFlareFleetInfo::IsRepairDisabled() const
 		int32 OwnedFS;
 		int32 AffordableFS;
 
-		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, PC->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, PC->GetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TargetFleet);
 
 		if (AffordableFS == 0)
 		{
@@ -676,7 +675,7 @@ FText SFlareFleetInfo::GetRefillText() const
 	int64 MaxDuration;
 
 	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, TargetFleet->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
-	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TargetFleet);
 
 	if (IsRefillDisabled())
 	{
@@ -771,7 +770,7 @@ bool SFlareFleetInfo::IsRefillDisabled() const
 		int32 OwnedFS;
 		int32 AffordableFS;
 
-		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, TargetFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TargetFleet);
 
 		if (AffordableFS == 0)
 		{

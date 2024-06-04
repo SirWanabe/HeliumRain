@@ -86,10 +86,10 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 					SAssignNew(RenameBox, SHorizontalBox)
 
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
 					.HAlign(HAlign_Left)
 					.VAlign(VAlign_Top)
 					.Padding(Theme.ContentPadding)
+					.MaxWidth(96)
 					[
 						SNew(STextBlock)
 						.TextStyle(&Theme.TextFont)
@@ -97,11 +97,11 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 					]
 
 					+ SHorizontalBox::Slot()
-					.AutoWidth()
+					.MaxWidth(Theme.ContentWidth)
 					.HAlign(HAlign_Left)
 					[
 						SNew(SBox)
-						.WidthOverride(0.3 * Theme.ContentWidth)
+						.WidthOverride(0.40 * Theme.ContentWidth)
 						[
 							SNew(SBorder)
 							.BorderImage(&Theme.BackgroundBrush)
@@ -113,10 +113,10 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 							]
 						]
 					]
-			
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
 					.HAlign(HAlign_Left)
+					.Padding(FMargin(87,0,0,0))
 					[
 						SNew(SFlareButton)
 						.Text(LOCTEXT("Rename", "Rename"))
@@ -125,6 +125,74 @@ void SFlareShipMenu::Construct(const FArguments& InArgs)
 						.OnClicked(this, &SFlareShipMenu::OnRename)
 						.IsDisabled(this, &SFlareShipMenu::IsRenameDisabled)
 						.Width(4)
+					]
+				]
+				// Select White List
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				[
+					SAssignNew(WhiteListSelectionBox, SBox)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.VAlign(VAlign_Top)
+							.Padding(Theme.ContentPadding)
+							.MaxWidth(96)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("WhiteListInfo", "White List"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.HAlign(HAlign_Left)
+							[
+								SNew(SBox)
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Top)
+								.Padding(FMargin(0))
+								[
+									SAssignNew(WhiteListDropBox, SFlareDropList<UFlareCompanyWhiteList*>)
+									.OptionsSource(&WhiteListOptions)
+									.OnGenerateWidget(this, &SFlareShipMenu::OnGenerateWhiteListComboLine)
+									.OnSelectionChanged(this, &SFlareShipMenu::OnWhiteListComboLineSelectionChanged)
+									.HeaderWidth(6)
+									.ItemWidth(6)
+								]
+							]
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.VAlign(VAlign_Top)
+							.AutoWidth()
+							[
+								SNew(SFlareButton)
+								.Text(LOCTEXT("SelectWhitelist", "Select"))
+								.Icon(FFlareStyleSet::GetIcon("OK"))
+								.OnClicked(this, &SFlareShipMenu::OnSelectWhiteList)
+								.IsDisabled(this, &SFlareShipMenu::IsWhiteListSelectDisabled)
+								.Width(3)
+							]
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.VAlign(VAlign_Top)
+							.AutoWidth()
+							[
+								SNew(SFlareButton)
+								.Transparent(true)
+								.Text(FText())
+								.HelpText(LOCTEXT("RemoveWhiteListHelp", "Remove this white list"))
+								.Icon(FFlareStyleSet::GetIcon("Stop"))
+								.OnClicked(this, &SFlareShipMenu::OnRemoveWhiteList)
+								.IsDisabled(this, &SFlareShipMenu::IsWhiteListRemoveDisabled)
+								.Width(1)
+							]
+						]
 					]
 				]
 
@@ -650,6 +718,7 @@ void SFlareShipMenu::Exit()
 	TargetDescription = NULL;
 	RCSDescription = NULL;
 	EngineDescription = NULL;
+	CurrentlySelectedWhiteList = NULL;
 
 	SelectedComplexStation = NAME_None;
 	SelectedComplexConnector = NAME_None;
@@ -679,9 +748,33 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		OwnedList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 		FactoryList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
 		ShipyardList->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+		WhiteListOptions.Empty();
 
 		if (TargetSpacecraft->GetCompany()->IsPlayerCompany())
 		{
+			if (TargetSpacecraft->GetCompany()->GetWhiteLists().Num() > 0)
+			{
+				WhiteListSelectionBox->SetVisibility(CanEdit ? EVisibility::Collapsed : EVisibility::Visible);
+				WhiteListOptions.Reserve(TargetSpacecraft->GetCompany()->GetWhiteLists().Num());
+				for (UFlareCompanyWhiteList* WhiteListEntry : TargetSpacecraft->GetCompany()->GetWhiteLists())
+				{
+					WhiteListOptions.Add(WhiteListEntry);
+				}
+				WhiteListDropBox->RefreshOptions();
+				if (TargetSpacecraft->GetSelectedWhiteList())
+				{
+					WhiteListDropBox->SetSelectedItem(TargetSpacecraft->GetSelectedWhiteList());
+				}
+				else
+				{
+					WhiteListDropBox->SetSelectedIndex(0);
+				}
+			}
+			else
+			{
+				WhiteListSelectionBox->SetVisibility(EVisibility::Collapsed);
+			}
+
 			if (TargetSpacecraft->IsComplex())
 			{
 				ObjectProductionBreakdown->SetVisibility(EVisibility::Visible);
@@ -735,6 +828,7 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 			AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
 			AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
 			RenameBox->SetVisibility(EVisibility::Collapsed);
+			WhiteListSelectionBox->SetVisibility(EVisibility::Collapsed);
 		}
 
 		// Get the description data
@@ -930,7 +1024,7 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 {
 	if (TargetSpacecraft)
 	{
-		if (TargetSpacecraft->IsComplex())
+		if (TargetSpacecraft->IsComplex() && !TargetSpacecraft->IsUnderConstruction())
 		{
 			TArray<UFlareFactory*>& Factories = TargetSpacecraft->GetFactories();
 			TMap<FName, uint32> ResourceCosts;
@@ -1162,6 +1256,7 @@ void SFlareShipMenu::UpdateUpgradeBox()
 			SNew(SFlareButton)
 			.Width(12)
 			.Text(GetUpgradeInfo(TargetSpacecraft))
+			.HelpText(GetUpgradeHelpInfo(TargetSpacecraft))
 			.Icon(FFlareStyleSet::GetIcon("Travel"))
 			.OnClicked(this, &SFlareShipMenu::OnUpgradeStationClicked, KeepMenuTarget)
 			.IsDisabled(this, &SFlareShipMenu::IsUpgradeStationDisabled, KeepMenuTarget)
@@ -1276,7 +1371,7 @@ void SFlareShipMenu::UpdateComplexList()
 						[
 							SNew(SFlareButton)
 							.Text(GetUpgradeInfo(ComplexElement))
-							.HelpText(LOCTEXT("UpgradeComplexStationInfo", "Upgrade this station element"))
+							.HelpText(GetUpgradeHelpInfo(ComplexElement))
 							.OnClicked(this, &SFlareShipMenu::OnUpgradeStationClicked, ComplexElement)
 							.IsDisabled(this, &SFlareShipMenu::IsUpgradeStationDisabled, ComplexElement)
 							.Width(10)
@@ -1819,6 +1914,44 @@ FText SFlareShipMenu::GetShipName() const
 	return TargetSpacecraft->GetNickName();
 }
 
+void SFlareShipMenu::OnSelectWhiteList()
+{
+	if (CurrentlySelectedWhiteList)
+	{
+		TargetSpacecraft->SelectWhiteListDefault(CurrentlySelectedWhiteList);
+		int32 CurrentlySelectedIndex = WhiteListDropBox->GetSelectedIndex();
+		WhiteListDropBox->RefreshOptions();
+		WhiteListDropBox->SetSelectedIndex(CurrentlySelectedIndex);
+	}
+}
+
+void SFlareShipMenu::OnRemoveWhiteList()
+{
+	TargetSpacecraft->SelectWhiteListDefault(nullptr);
+	int32 CurrentlySelectedIndex = WhiteListDropBox->GetSelectedIndex();
+	WhiteListDropBox->RefreshOptions();
+	WhiteListDropBox->SetSelectedIndex(CurrentlySelectedIndex);
+}
+
+bool SFlareShipMenu::IsWhiteListRemoveDisabled() const
+{
+	if (TargetSpacecraft && TargetSpacecraft->GetSelectedWhiteList())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool SFlareShipMenu::IsWhiteListSelectDisabled() const
+{
+	if (TargetSpacecraft && (!TargetSpacecraft->GetSelectedWhiteList() || TargetSpacecraft->GetSelectedWhiteList() && TargetSpacecraft->GetSelectedWhiteList() != CurrentlySelectedWhiteList))
+	{
+		return false;
+	}
+
+	return true;
+}
+
 bool SFlareShipMenu::IsRenameDisabled() const
 {
 	FString ShipNameData = ShipName->GetText().ToString();
@@ -2001,6 +2134,44 @@ FSlateColor SFlareShipMenu::GetWeaponHealthColor() const
 	return FFlareStyleSet::GetHealthColor(ComponentHealth, false);
 }
 
+TSharedRef<SWidget> SFlareShipMenu::OnGenerateWhiteListComboLine(UFlareCompanyWhiteList* Item)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
+	const FSlateBrush* WhiteListIcon = NULL;
+	if (TargetSpacecraft->GetSelectedWhiteList() == Item)
+	{
+		WhiteListIcon = FFlareStyleSet::GetIcon("New");
+	}
+
+	TSharedPtr<SWidget> Layout = SNew(SBox)
+	.Padding(Theme.ListContentPadding)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.MaxWidth(32)
+		[
+			SNew(SImage)
+			.Image(WhiteListIcon)
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Left)
+		[
+			SNew(STextBlock)
+			.Text(Item ? Item->GetWhiteListName() : LOCTEXT("NoFilterByWhiteList", "No filter"))
+			.TextStyle(&Theme.TextFont)
+		]
+	];
+	return Layout.ToSharedRef();
+}
+
+void SFlareShipMenu::OnWhiteListComboLineSelectionChanged(UFlareCompanyWhiteList* Item, ESelectInfo::Type SelectInfo)
+{
+	CurrentlySelectedWhiteList = Item;
+}
+
 TSharedRef<ITableRow> SFlareShipMenu::GeneratePartInfo(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable)
 {
 	TSharedPtr<SFlarePartInfo> Temp;
@@ -2031,6 +2202,48 @@ TSharedRef<ITableRow> SFlareShipMenu::GeneratePartInfo(TSharedPtr<FInterfaceCont
 	}
 
 	return res;
+}
+
+FText SFlareShipMenu::GetUpgradeHelpInfo(UFlareSimulatedSpacecraft* Spacecraft)
+{
+	FText HelpText;
+	if (Spacecraft)
+	{
+		TArray<FText> Reasons;
+		UFlareSimulatedSector* Sector = Spacecraft->GetCurrentSector();
+		if (Sector)
+		{
+			Sector->CanUpgradeStation(Spacecraft, Reasons);
+		}
+
+		if (Reasons.Num() > 0)
+		{
+			FString ReasonsString;
+
+			for (int ReasonsIndex = 0; ReasonsIndex < Reasons.Num(); ReasonsIndex++)
+			{
+				FText TextReason = Reasons[ReasonsIndex];
+				if (ReasonsIndex + 1 < Reasons.Num())
+				{
+					ReasonsString += FString::Printf(TEXT("\u2022%s\n"), *TextReason.ToString());
+				}
+				else
+				{
+					ReasonsString += FString::Printf(TEXT("\u2022%s"), *TextReason.ToString());
+				}
+			}
+			HelpText = FText::Format(LOCTEXT("UpgradeHelpInfoFormat", "{0}"),
+			FText::FromString(ReasonsString));
+		}
+		else
+		{
+			if (Spacecraft->IsComplexElement())
+			{
+				HelpText = FText(LOCTEXT("UpgradeComplexStationInfo", "Upgrade this station element"));
+			}
+		}
+	}
+	return HelpText;
 }
 
 FText SFlareShipMenu::GetUpgradeInfo(UFlareSimulatedSpacecraft* Spacecraft)

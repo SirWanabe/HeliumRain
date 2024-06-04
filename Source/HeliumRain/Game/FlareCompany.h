@@ -4,6 +4,7 @@
 #include "Object.h"
 #include "FlareFleet.h"
 #include "FlareGameTypes.h"
+#include "FlareCompanyWhiteList.h"
 #include "FlareSimulatedSector.h"
 #include "AI/FlareCompanyAI.h"
 #include "AI/FlareTacticManager.h"
@@ -13,8 +14,6 @@
 
 class UFlareFleet;
 class UFlareCompanyAI;
-
-
 class AFlareGame;
 class UFlareSimulatedSpacecraft;
 
@@ -45,6 +44,14 @@ public:
 	
 	/** Load a fleet from save */
 	virtual UFlareFleet* LoadFleet(const FFlareFleetSave& FleetData);
+
+	UFlareCompanyWhiteList* LoadWhiteList(const FFlareWhiteListSave& WhiteListData);
+	void DeleteCompanyWhiteList(UFlareCompanyWhiteList* DeletingWhiteList);
+
+	void SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList);
+	void SelectWhiteListDefault(FName IdentifierSearch);
+
+	UFlareCompanyWhiteList* GetWhiteList(FName IdentifierSearch);
 
 	/** Load a trade route from save */
 	virtual UFlareTradeRoute* LoadTradeRoute(const FFlareTradeRouteSave& TradeRouteData);
@@ -117,6 +124,8 @@ public:
 
 	/** Change fleet order in list */
 	void MoveFleetDown(UFlareFleet* Fleet);
+
+	virtual UFlareCompanyWhiteList* CreateCompanyWhiteList(FText WhiteListName);
 
 	/** Create a new trade route */
 	virtual UFlareTradeRoute* CreateTradeRoute(FText TradeRouteName);
@@ -264,6 +273,10 @@ protected:
 	UFlareTacticManager*                    TacticManager;
 
 	UPROPERTY()
+	TArray<UFlareCompanyWhiteList*>         CompanyWhiteLists;
+	UFlareCompanyWhiteList*					CompanySelectedWhiteList;
+
+	UPROPERTY()
 	TArray<UFlareTradeRoute*>               CompanyTradeRoutes;
 
 	UPROPERTY()
@@ -325,6 +338,11 @@ public:
 	{
 		FCHECK(CompanyDescription);
 		return CompanyDescription->Name;
+	}
+
+	inline UFlareCompanyWhiteList* GetCompanySelectedWhiteList() const
+	{
+		return CompanySelectedWhiteList;
 	}
 
 	inline FName GetShortName() const
@@ -423,6 +441,11 @@ public:
 	inline TArray<UFlareSimulatedSector*>& GetKnownSectors()
 	{
 		return KnownSectors;
+	}
+
+	inline TArray<UFlareCompanyWhiteList*>& GetWhiteLists()
+	{
+		return CompanyWhiteLists;
 	}
 
 	inline TArray<UFlareSimulatedSector*>& GetVisitedSectors()
@@ -545,4 +568,6 @@ public:
 		return CompanyData.Retaliation;
 	}
 
+	bool CanTradeWhiteListFrom(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource);
+	bool CanTradeWhiteListTo(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource);
 };

@@ -130,7 +130,7 @@ void SFlareTradeRouteInfo::Update()
 				.AutoWidth()
 				[
 					SNew(SFlareButton)
-					.Width(6)
+					.Width(7)
 					.Text(this, &SFlareTradeRouteInfo::GetTradeRouteName, TradeRoute)
 					.HelpText(FText(LOCTEXT("InspectHelp", "Edit this trade route")))
 					.OnClicked(this, &SFlareTradeRouteInfo::OnInspectTradeRouteClicked, TradeRoute)

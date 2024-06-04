@@ -701,15 +701,30 @@ uint32 UFlareFleet::GetTradingShipCount() const
 	return TradingShip;
 }
 
-int32 UFlareFleet::GetFleetCapacity() const
+int32 UFlareFleet::GetFleetCapacity(bool SkipIfStranded) const
 {
 	int32 CargoCapacity = 0;
+	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+	{
+		if (SkipIfStranded && Ship->GetDamageSystem()->IsStranded())
+		{
+			continue;
+		}
+		CargoCapacity += Ship->GetActiveCargoBay()->GetCapacity();
+	}
+
+	return CargoCapacity;
+}
+
+int32 UFlareFleet::GetFleetUsedCargoSpace() const
+{
+	int32 UsedCargoSpace = 0;
 
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
-		CargoCapacity += FleetShips[ShipIndex]->GetActiveCargoBay()->GetCapacity();
+		UsedCargoSpace += FleetShips[ShipIndex]->GetActiveCargoBay()->GetUsedCargoSpace();
 	}
-	return CargoCapacity;
+	return UsedCargoSpace;
 }
 
 int32 UFlareFleet::GetFleetFreeCargoSpace() const
@@ -723,21 +738,24 @@ int32 UFlareFleet::GetFleetFreeCargoSpace() const
 	return FreeCargoSpace;
 }
 
-int32 UFlareFleet::GetTransportCapacity()
+int32 UFlareFleet::GetFleetResourceQuantity(FFlareResourceDescription* Resource)
 {
-	int32 CompanyCapacity = 0;
-
-	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
+	int32 Quantity = 0;
+	for (UFlareSimulatedSpacecraft* Ship : GetShips())
 	{
-		if (Ship->GetDamageSystem()->IsStranded())
-		{
-			continue;
-		}
-
-		CompanyCapacity += Ship->GetActiveCargoBay()->GetCapacity();
+		Quantity += Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
 	}
+	return Quantity;
+}
 
-	return CompanyCapacity;
+int32 UFlareFleet::GetFleetFreeSpaceForResource(FFlareResourceDescription* Resource)
+{
+	int32 Quantity = 0;
+	for (UFlareSimulatedSpacecraft* Ship : GetShips())
+	{
+		Quantity += Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
+	}
+	return Quantity;
 }
 
 uint32 UFlareFleet::GetShipCount() const
@@ -787,17 +805,6 @@ TArray<UFlareSimulatedSpacecraft*>& UFlareFleet::GetShips()
 
 	return FleetShips;
 }
-
-int32 UFlareFleet::GetFleetResourceQuantity(FFlareResourceDescription* Resource)
-{
-	int32 Quantity = 0;
-	for(UFlareSimulatedSpacecraft* Ship : GetShips())
-	{
-		Quantity += Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
-	}
-	return Quantity;
-}
-
 
 int32 UFlareFleet::GetUnableToTravelShips() const
 {
@@ -913,7 +920,94 @@ FText UFlareFleet::GetTravelConfirmText()
 	return FText();
 }
 
+void UFlareFleet::SelectWhiteListDefault(FName IdentifierSearch)
+{
+	UFlareCompanyWhiteList* FoundWhiteList = FleetCompany->GetWhiteList(IdentifierSearch);
+	SelectWhiteListDefault(FoundWhiteList);
+}
 
+void UFlareFleet::SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList)
+{
+	if (NewWhiteList)
+	{
+		FleetData.DefaultWhiteListIdentifier = NewWhiteList->GetWhiteListIdentifier();
 
+		if (FleetSelectedWhiteList && FleetSelectedWhiteList != NewWhiteList)
+		{
+			FleetSelectedWhiteList->RemoveFleetFromTracker(this);
+		}
+
+		FleetSelectedWhiteList = NewWhiteList;
+		FleetSelectedWhiteList->AddFleetToTracker(this);
+	}
+	else
+	{
+		if (FleetSelectedWhiteList)
+		{
+			FleetSelectedWhiteList->RemoveFleetFromTracker(this);
+		}
+
+		FleetData.DefaultWhiteListIdentifier = FName();
+		FleetSelectedWhiteList = nullptr;
+	}
+}
+
+UFlareCompanyWhiteList* UFlareFleet::GetActiveWhitelist()
+{
+	if (GetSelectedWhiteList())
+	{
+		return GetSelectedWhiteList();
+	}
+	if (FleetCompany && FleetCompany->GetCompanySelectedWhiteList())
+	{
+		return FleetCompany->GetCompanySelectedWhiteList();
+	}
+
+	return nullptr;
+}
+
+bool UFlareFleet::CanTradeWhiteListTo(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource)
+{
+	if (!OtherSpacecraft)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetActiveWhitelist();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherSpacecraft->GetCompany());
+		if (CompanyData)
+		{
+			FText Reason;
+			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool UFlareFleet::CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource)
+{
+	if (!OtherSpacecraft)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetActiveWhitelist();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherSpacecraft->GetCompany());
+		if (CompanyData)
+		{
+			FText Reason;
+			if (!ActiveWhiteList->CanCompanyDataTradeFrom(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
 
 #undef LOCTEXT_NAMESPACE

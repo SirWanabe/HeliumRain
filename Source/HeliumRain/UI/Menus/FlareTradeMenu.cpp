@@ -1046,7 +1046,6 @@ void SFlareTradeMenu::SetTransactionInvalidDetails(bool DockingConfirmed)
 
 		if (!Reason.IsEmptyOrWhitespace())
 		{
-//			Reason = LOCTEXT("TradeInvalidDefaultError", "The buyer needs an empty slot, or one with the matching resource.\n\u2022 Input resources are never sold.\n\u2022 Output resources are never bought");
 			FormulatedText = FText::Format(LOCTEXT("TradeInvalidInfoFormat", "Can't trade {0} from {1} to {2} !\n\u2022 {3}\n"),
 			TransactionResource->Name,
 			UFlareGameTools::DisplaySpacecraftName(TransactionSourceSpacecraft),
@@ -1278,7 +1277,7 @@ void SFlareTradeMenu::OnConfirmTransaction()
 	// Actual transaction
 	if (TransactionSourceSpacecraft->GetCurrentSector() && TransactionResource)
 	{
-		if (TargetLeftSpacecraft->IsActive())
+		if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive() && TargetRightSpacecraft && TargetRightSpacecraft->IsActive())
 		{
 			AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
 			AFlareSpacecraft* PhysicalSpacecraftDock = TargetRightSpacecraft->GetActive();
@@ -1473,25 +1472,6 @@ void SFlareTradeMenu::UpdatePrice()
 		PriceBox->Hide();
 	}
 }
-/*
-		if (TransactionSourceSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany() || TransactionDestinationSpacecraft->GetCompany() != MenuManager->GetPC()->GetCompany())
-		{
-			int64 BaseResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetResourcePrice(TransactionResource, EFlareResourcePriceContext::Default);
-			int64 TransactionResourcePrice = TransactionSourceSpacecraft->GetCurrentSector()->GetTransfertResourcePrice(TransactionSourceSpacecraft, TransactionDestinationSpacecraft, TransactionResource);
-
-			int64 Fee = TransactionResourcePrice - BaseResourcePrice;
-
-			if(TransactionDestinationSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
-			{
-					UnitPrice = FText::Format(LOCTEXT("PurchaseUnitPriceFormat", "\nPurchase price: {0} credits/unit ({1} {2} {3} transport fee)"),
-						UFlareGameTools::DisplayMoney(TransactionResourcePrice),
-						UFlareGameTools::DisplayMoney(BaseResourcePrice),
-						(Fee < 0 ? LOCTEXT("Minus", "-") : LOCTEXT("Plus", "+")),
-						UFlareGameTools::DisplayMoney(FMath::Abs(Fee)));
-			}
-			else
-			{
-*/
 
 int32 SFlareTradeMenu::SetSliderQuantity(int32 Quantity)
 {
@@ -1564,7 +1544,7 @@ bool SFlareTradeMenu::IsTransactionValid(FText& Reason) const
 		}
 
 		// Cases of failure + reason
-		if (!TransactionSourceSpacecraft->CanTradeWith(TransactionDestinationSpacecraft, Reason))
+		if (!TransactionSourceSpacecraft->CanTradeWith(TransactionDestinationSpacecraft, Reason, TransactionResource))
 		{
 			return false;
 		}

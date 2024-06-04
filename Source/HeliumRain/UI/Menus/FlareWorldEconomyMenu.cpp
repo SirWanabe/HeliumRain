@@ -2191,7 +2191,6 @@ TSharedRef<SWidget> SFlareWorldEconomyMenu::OnGenerateCompanyComboLine(UFlareCom
 			.Text(Item->GetCompanyName())
 		.TextStyle(&Theme.TextFont)
 		];
-
 }
 
 FText SFlareWorldEconomyMenu::OnGetCurrentCompanyComboLine() const

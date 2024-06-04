@@ -33,6 +33,7 @@ class SFlareCompanyMenu;
 class SFlareSectorMenu;
 class SFlareTradeMenu;
 class SFlareTradeRouteMenu;
+class SFlareWhiteListMenu;
 class SFlareCreditsMenu;
 class SFlareHelpMenu;
 class SFlareEULAMenu;
@@ -227,6 +228,8 @@ protected:
 
 	/** Open the trade route menu */
 	void OpenTradeRoute();
+
+	void OpenWhitelist();
 
 	/** Open the orbital menu */
 	void OpenOrbit();
@@ -441,6 +444,7 @@ protected:
 	TSharedPtr<SFlareSectorMenu>            SectorMenu;
 	TSharedPtr<SFlareTradeMenu>             TradeMenu;
 	TSharedPtr<SFlareTradeRouteMenu>        TradeRouteMenu;
+	TSharedPtr<SFlareWhiteListMenu>         CompanyWhiteListMenu;
 	TSharedPtr<SFlareCreditsMenu>           CreditsMenu;
 	TSharedPtr<SFlareHelpMenu>	            HelpMenu;
 

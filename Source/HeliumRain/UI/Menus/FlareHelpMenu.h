@@ -62,6 +62,8 @@ protected:
 
 protected:
 
+	void SetupResourceDisplay(TSharedPtr<SVerticalBox> HudBox, TArray<FFlareResourceDescription*> ResourcesData, FText CategoryName, FText CategorySubText);
+
 	/*----------------------------------------------------
 		Protected data
 	----------------------------------------------------*/
@@ -89,4 +91,7 @@ protected:
 
 	TArray< TSharedPtr<FInterfaceContainer> >                     WeaponListData;
 	TSharedPtr< SListView< TSharedPtr<FInterfaceContainer> > >    WeaponList;
+
+	TSharedPtr<SVerticalBox>									  ResourcesBox;
+	bool														  SetupResources;
 };

@@ -40,6 +40,7 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	float BuyQuantityScoreMultiplier = 0;
 	float FullRatioBonus = 0;
 	float EmptyRatioBonus = 0;
+	bool  ToOrFrom = false;
 	bool  NeedInput = false;
 	bool  NeedOutput = false;
 	bool  Donation = Request.IsDonation;
@@ -64,17 +65,27 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 	UFlareSimulatedSpacecraft* BestStation = NULL;
 	uint32 AvailableQuantity = Request.Client->GetActiveCargoBay()->GetResourceQuantity(Request.Resource, ClientCompany);
 	uint32 FreeSpace = Request.Client->GetActiveCargoBay()->GetFreeSpaceForResource(Request.Resource, ClientCompany);
+	FText Unused;
 
 	for (int32 StationIndex = 0; StationIndex < SectorStations.Num(); StationIndex++)
 	{
 		UFlareSimulatedSpacecraft* Station = SectorStations[StationIndex];
 		//FLOGV("   Check trade for %s", *Station->GetImmatriculation().ToString());
-
-		FText Unused;
-		if(!Request.Client->CanTradeWith(Station, Unused))
+		// 
+		if (NeedOutput)
 		{
-			//FLOG(" cannot trade with");
-			continue;
+			if (!Station->CanTradeWith(Request.Client, Unused, Request.Resource))
+			{
+				continue;
+			}
+		}
+
+		else if (NeedInput)
+		{
+			if (!Request.Client->CanTradeWith(Station, Unused, Request.Resource))
+			{
+				continue;
+			}
 		}
 
 		if(!Request.AllowStorage && Station->HasCapability(EFlareSpacecraftCapability::Storage))
@@ -124,7 +135,6 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 		float EmptyRatio = 1 - FullRatio;
 		uint32 UnloadMaxQuantity  = 0;
 		uint32 LoadMaxQuantity  = 0;
-
 
 		if(!Station->IsUnderConstruction())
 		{
@@ -287,7 +297,7 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 		*TransactionPrice = 0;
 	}
 
-	if(!SourceSpacecraft->CanTradeWith(DestinationSpacecraft, Unused))
+	if(!SourceSpacecraft->CanTradeWith(DestinationSpacecraft, Unused,Resource))
 	{
 		FLOGV("Both spacecraft cannot trade: %s -> %s", *SourceSpacecraft->GetImmatriculation().ToString(), *DestinationSpacecraft->GetImmatriculation().ToString());
 		return 0;
@@ -333,7 +343,6 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 	{
 		TakenResources = SourceSpacecraft->GetActiveCargoBay()->TakeResources(Resource, QuantityToTake, DestinationSpacecraft->GetCompany());
 		GivenResources = DestinationSpacecraft->GetActiveCargoBay()->GiveResources(Resource, TakenResources, SourceSpacecraft->GetCompany());
-
 	}
 
 	// Pay
@@ -430,10 +439,9 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 
 	//FLOGV("Trade GivenResources %d", GivenResources);
 	return GivenResources;
-
 }
 
-void SectorHelper::GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& OwnedFS, int32& AvailableFS, int32& AffordableFS)
+void SectorHelper::GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& OwnedFS, int32& AvailableFS, int32& AffordableFS, UFlareSimulatedSpacecraft* ForShip, UFlareFleet* ForFleet)
 {
 	OwnedFS = 0;
 	int32 NotOwnedFS = 0;
@@ -443,11 +451,37 @@ void SectorHelper::GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, U
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
-
 		if (Spacecraft->IsHostile(Company))
 		{
 			// At war, no trade possible
 			continue;
+		}
+
+		if (ForShip)
+		{
+			FText Unused;
+			if (!ForShip->CanTradeWhiteListFrom(Spacecraft, Unused, FleetSupply) || !Spacecraft->CanTradeWhiteListTo(ForShip, Unused, FleetSupply))
+			{
+				//Ship whitelist restriction on trades
+				continue;
+			}
+		}
+		else if(ForFleet)
+		{
+			FText Unused;
+			if (!ForFleet->CanTradeWhiteListFrom(Spacecraft, FleetSupply) || !Spacecraft->CanTradeWhiteListTo(ForFleet, FleetSupply))
+			{
+				//Fleet whitelist restriction on trades
+				continue;
+			}
+		}
+		else
+		{
+			if (!Company->CanTradeWhiteListFrom(Spacecraft->GetCompany(), FleetSupply) || !Spacecraft->GetCompany()->CanTradeWhiteListTo(Company, FleetSupply))
+			{
+				//Company level whitelist restriction on trades
+				continue;
+			}
 		}
 
 		int32 AvailableQuantity = Spacecraft->GetActiveCargoBay()->GetResourceQuantity(FleetSupply, Company);
@@ -464,9 +498,7 @@ void SectorHelper::GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, U
 
 	AvailableFS = OwnedFS + NotOwnedFS;
 	int32 ResourcePrice = Sector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
-
 	int32 MaxAffordableQuantity = FMath::Max(0, int32(Company->GetMoney() / ResourcePrice));
-
 	AffordableFS = OwnedFS + FMath::Min(MaxAffordableQuantity, NotOwnedFS);
 }
 
@@ -612,7 +644,7 @@ void SectorHelper::GetRepairFleetSupplyNeeds(UFlareSimulatedSector* Sector,  TAr
 			float TechnologyBonus = 1;
 			if (Spacecraft->GetCompany()->IsTechnologyUnlocked("quick-repair"))// ? 1.5f : 1.f;
 			{
-				FFlareTechnologyDescription* QuickRepairTech = Sector->GetGame()->GetTechnologyCatalogDescription("quick-repair");//Sector->GetGame()->GetTechnologyCatalog()->Get("quick-repair");
+				FFlareTechnologyDescription* QuickRepairTech = Sector->GetGame()->GetTechnologyCatalogDescription("quick-repair");
 				if (!QuickRepairTech->RepairBonus)
 				{
 					TechnologyBonus = 1.5f;
@@ -767,7 +799,7 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	else
 	{
 		GetRepairFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
-		GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, Fleet);
 		ShipsLookingAt = Fleet->GetShips();
 	}
 
@@ -823,7 +855,7 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	}
 
 	int32 ConsumedFS = FMath::CeilToInt((float) AffordableFS - RemainingFS);
-	ConsumeFleetSupply(Sector, Company, ConsumedFS, true);
+	ConsumeFleetSupply(Sector, Company, ConsumedFS, true, Fleet);
 
 	if(ConsumedFS > 0 && Company == Sector->GetGame()->GetPC()->GetCompany())
 	{
@@ -853,7 +885,7 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	else
 	{
 		SectorHelper::GetRefillFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
-		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, Fleet);
 		ShipsLookingAt = Fleet->GetShips();
 	}
 
@@ -915,7 +947,7 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 
 	int32 ConsumedFS = FMath::CeilToInt((float) AffordableFS - RemainingFS);
 
-	ConsumeFleetSupply(Sector, Company, ConsumedFS, false);
+	ConsumeFleetSupply(Sector, Company, ConsumedFS, false, Fleet);
 
 	if(ConsumedFS > 0 && Company == Sector->GetGame()->GetPC()->GetCompany())
 	{
@@ -923,13 +955,12 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	}
 }
 
-void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair)
+void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair, UFlareFleet* ForFleet)
 {
 	// First check for owned FS
 	Sector->OnFleetSupplyConsumed(ConsumedFS);
 
 	FFlareResourceDescription* FleetSupply = Sector->GetGame()->GetScenarioTools()->FleetSupply;
-
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
@@ -961,6 +992,24 @@ void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompa
 		{
 			// At war, no trade possible
 			continue;
+		}
+
+		if (ForFleet)
+		{
+			FText Unused;
+			if (!ForFleet->CanTradeWhiteListFrom(Spacecraft, FleetSupply) || !Spacecraft->CanTradeWhiteListTo(ForFleet, FleetSupply))
+			{
+				//Fleet whitelist restriction on trades
+				continue;
+			}
+		}
+		else
+		{
+			if (!Company->CanTradeWhiteListFrom(Spacecraft->GetCompany(), FleetSupply) || !Spacecraft->GetCompany()->CanTradeWhiteListTo(Company, FleetSupply))
+			{
+				//Company level whitelist restriction on trades
+				continue;
+			}
 		}
 
 		int TakenQuantity = Spacecraft->GetActiveCargoBay()->TakeResources(FleetSupply, ConsumedFS, Company);

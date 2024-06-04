@@ -29,6 +29,10 @@ public:
 	/** Reload */
 	void Reload();
 
+	void SelectWhiteListDefault(FName IdentifierSearch);
+	void SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList);
+	UFlareCompanyWhiteList* GetActiveWhitelist();
+
 	/** Save the ship to a save file */
 	virtual FFlareSpacecraftSave* Save();
 
@@ -219,7 +223,10 @@ public:
 		Resources
 	----------------------------------------------------*/
 
-	bool CanTradeWith(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason);
+	bool CanTradeWith(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource = nullptr);
+	bool CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource);
+	bool CanTradeWhiteListTo(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource);
+	bool CanTradeWhiteListTo(UFlareFleet* OtherFleet, FFlareResourceDescription* Resource);
 
 	FFlareResourceUsage GetResourceUseType(FFlareResourceDescription* Resource);
 	void LockResources();
@@ -324,6 +331,8 @@ protected:
 
 	bool													OwnerHasStationLicense;
 
+	UFlareCompanyWhiteList*									ShipSelectedWhiteList;
+
 public:
 
     /*----------------------------------------------------
@@ -334,6 +343,11 @@ public:
 	{
 		return Game;
 	}	
+
+	inline UFlareCompanyWhiteList* GetSelectedWhiteList() const
+	{
+		return ShipSelectedWhiteList;
+	}
 
 	inline bool IsActive() const
 	{

@@ -18,6 +18,7 @@
 #define LOCTEXT_NAMESPACE "FlareTradeRouteMenu"
 #define MAX_WAIT_LIMIT 29
 #define MINIBAR_WIDTH_MULTI 0.35
+
 #define CONDITIONS_HEIGHT_BOOST 16
 
 
@@ -2446,7 +2447,7 @@ bool SFlareTradeRouteMenu::IsEditOperationDisabled(FFlareTradeRouteSectorOperati
 
 EVisibility SFlareTradeRouteMenu::GetTradeHubsButtonVisibility() const
 {
-	if (EditSelectedOperation && (EditSelectedOperation->Type == EFlareTradeRouteOperation::Load || EditSelectedOperation->Type == EFlareTradeRouteOperation::Unload || EditSelectedOperation->Type == EFlareTradeRouteOperation::Maintenance))
+	if (EditSelectedOperation && (EditSelectedOperation->Type == EFlareTradeRouteOperation::Load || EditSelectedOperation->Type == EFlareTradeRouteOperation::Unload || EditSelectedOperation->Type == EFlareTradeRouteOperation::Maintenance || EditSelectedOperation->Type == EFlareTradeRouteOperation::GotoOperation))
 	{
 		return EVisibility::Visible;
 	}
@@ -2633,24 +2634,6 @@ void SFlareTradeRouteMenu::OnResourceComboLineSelectionChanged(UFlareResourceCat
 	}
 }
 
-
-void SFlareTradeRouteMenu::OnOperationConditionsComboLineSelectionChanged(TSharedPtr<FText> Item, ESelectInfo::Type SelectInfo)
-{
-	if (EditSelectedOperation)
-	{
-		int32 OperationIndex = OperationNameList.Find(Item);
-
-		if (OperationIndex == -1)
-		{
-			OperationIndex = 0;
-		}
-
-		EFlareTradeRouteOperation::Type OperationType = OperationList[OperationIndex];
-		EditSelectedOperation->Type = OperationType;
-		OnOperationAltered();
-	}
-}
-
 void SFlareTradeRouteMenu::OnOperationComboLineSelectionChanged(TSharedPtr<FText> Item, ESelectInfo::Type SelectInfo)
 {
 	if (EditSelectedOperation)
@@ -2676,16 +2659,21 @@ void SFlareTradeRouteMenu::OnOperationAltered()
 		if (EditSelectedOperation->Type == EFlareTradeRouteOperation::Maintenance)
 		{
 			TradeWithHubsButton->SetText(FText(LOCTEXT("RepairOperation", "Try Repair")));
-			TradeWithHubsButton->SetHelpText(FText(LOCTEXT("RepairInfo", "Check this option to allow repair")));
+			TradeWithHubsButton->SetHelpText(FText(LOCTEXT("RepairInfo", "Enable this option to allow repair")));
 			DonateButton->SetText(FText(LOCTEXT("RearmOperation", "Try Rearm")));
-			DonateButton->SetHelpText(FText(LOCTEXT("RearmOperationInfo", "Check this option to allow rearming")));
+			DonateButton->SetHelpText(FText(LOCTEXT("RearmOperationInfo", "Enable this option to allow rearming")));
+		}
+		else if (EditSelectedOperation->Type == EFlareTradeRouteOperation::GotoOperation)
+		{
+			TradeWithHubsButton->SetText(FText(LOCTEXT("GotoCheckUseful", "Check useful destination")));
+			TradeWithHubsButton->SetHelpText(FText(LOCTEXT("GotoCheckUsefulInfo", "Enable this option to allow the goto operation to assess if there is a useful operation at the destination")));
 		}
 		else
 		{
 			TradeWithHubsButton->SetText(FText(LOCTEXT("IncludeHubOperation", "Trade with Hubs")));
-			TradeWithHubsButton->SetHelpText(FText(LOCTEXT("IncludeHubOperationInfo", "Check this option to allow trading with Storage Hub stations")));
+			TradeWithHubsButton->SetHelpText(FText(LOCTEXT("IncludeHubOperationInfo", "Enable this option to allow trading with Storage Hub stations")));
 			DonateButton->SetText(FText(LOCTEXT("DonateOption", "Donate")));
-			DonateButton->SetHelpText(FText(LOCTEXT("DonateOptionInfo", "Check this option to allow trade operation to be a donation")));
+			DonateButton->SetHelpText(FText(LOCTEXT("DonateOptionInfo", "Enable this option to allow trade operation to be a donation")));
 		}
 
 		if (EditSelectedOperation->Type == EFlareTradeRouteOperation::Unload || EditSelectedOperation->Type == EFlareTradeRouteOperation::Maintenance)
@@ -2939,6 +2927,14 @@ void SFlareTradeRouteMenu::UpdateConditionsToggleName()
 	}
 }
 
+void SFlareTradeRouteMenu::OnOperationConditionsComboLineSelectionChanged(TSharedPtr<FText> Item, ESelectInfo::Type SelectInfo)
+{
+	if (EditSelectedOperation)
+	{
+		OnOperationAltered();
+	}
+}
+
 void SFlareTradeRouteMenu::OnConditionsAdd()
 {
 	if (EditSelectedOperation && OperationConditionsSelector && OperationConditionsSelector->IsEnabled())
@@ -2960,7 +2956,6 @@ void SFlareTradeRouteMenu::OnConditionsAdd()
 void SFlareTradeRouteMenu::OnConditionView(FFlareTradeRouteOperationConditionSave* Condition)
 {
 }
-
 
 void SFlareTradeRouteMenu::OnConditionAlterSkipFail(FFlareTradeRouteOperationConditionSave* Condition)
 {
@@ -3065,8 +3060,7 @@ void SFlareTradeRouteMenu::OnConditionPercentageChanged(float Value, FFlareTrade
 {
 	if (EditSelectedOperation)
 	{
-		int32 NewValue = (Value * 100);
-		Condition->ConditionPercentage = NewValue;
+		Condition->ConditionPercentage = Value;
 	}
 }
 
@@ -3076,8 +3070,8 @@ FText SFlareTradeRouteMenu::GetConditionPercentageValue(FFlareTradeRouteOperatio
 
 	if (Condition)
 	{
-		Result = FText::Format(LOCTEXT("ConditionPercentage", "{0}%"),
-		Condition->ConditionPercentage);
+		int32 PercentageValue = Condition->ConditionPercentage * 100;
+		Result = FText::Format(LOCTEXT("ConditionPercentage", "{0}%"), PercentageValue);
 	}
 
 	return Result;
@@ -3255,8 +3249,7 @@ void SFlareTradeRouteMenu::RefreshConditionsMenus()
 						]
 					];
 
-					float PercentageValue = OperationCondition->ConditionPercentage;
-					ConditionPercentageSlider->SetValue(PercentageValue / 100);
+					ConditionPercentageSlider->SetValue(OperationCondition->ConditionPercentage);
 				}
 
 				// Condition Option1 AND/OR Option2

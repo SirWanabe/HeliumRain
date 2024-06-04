@@ -149,7 +149,7 @@ public:
 	int32 BuildMilitaryDiversitySizeBase;
 	int32 BuildTradeDiversitySizeBase;
 
-	int32 DaysUntilTryGetStationLicense;
+	int64 DaysUntilTryGetStationLicense;
 	int32 MaxTradeShipsBuildingPeace;
 	int32 MaxTradeShipsBuildingWar;
 	int32 MaxMilitaryShipsBuildingPeace;

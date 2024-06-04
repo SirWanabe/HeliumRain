@@ -284,6 +284,8 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	LoadInt64(Object, "PlayerLastTributeDate", &Data->PlayerLastTributeDate);
 	LoadInt32(Object, "FleetImmatriculationIndex", &Data->FleetImmatriculationIndex);
 	LoadInt32(Object, "TradeRouteImmatriculationIndex", &Data->TradeRouteImmatriculationIndex);
+	LoadInt32(Object, "WhiteListImmatriculationIndex", &Data->WhiteListImmatriculationIndex);
+	LoadFName(Object, "DefaultWhiteListIdentifier", &Data->DefaultWhiteListIdentifier);
 	LoadInt32(Object, "ResearchAmount", &Data->ResearchAmount);
 	LoadInt32(Object, "ResearchSpent", &Data->ResearchSpent);
 	LoadFloat(Object, "ResearchRatio", &Data->ResearchRatio);
@@ -395,6 +397,18 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 		}
 	}
 
+	const TArray<TSharedPtr<FJsonValue>>* WhiteLists;
+	if (Object->TryGetArrayField("WhiteLists", WhiteLists))
+	{
+		Data->WhiteLists.Reserve(WhiteLists->Num());
+		for (TSharedPtr<FJsonValue> Item : *WhiteLists)
+		{
+			FFlareWhiteListSave ChildData;
+			LoadWhiteList(Item->AsObject(), &ChildData);
+			Data->WhiteLists.Add(ChildData);
+		}
+	}
+
 	const TArray<TSharedPtr<FJsonValue>>* SectorsKnowledge;
 	if(Object->TryGetArrayField("SectorsKnowledge", SectorsKnowledge))
 	{
@@ -442,7 +456,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	LoadFName(Object, "DockedTo", &Data->DockedTo);
 	LoadInt32(Object, "DockedAt", &Data->DockedAt);
 	LoadFName(Object, "DockedAtInternally", &Data->DockedAtInternally);
-	
+	LoadFName(Object, "DefaultWhiteListIdentifier", &Data->DefaultWhiteListIdentifier);
 	LoadFloat(Object, "Heat", &Data->Heat);
 	LoadFloat(Object, "PowerOutageDelay", &Data->PowerOutageDelay);
 	LoadFloat(Object, "PowerOutageAcculumator", &Data->PowerOutageAcculumator);
@@ -783,8 +797,7 @@ void UFlareSaveReaderV1::LoadTradeOperation(const TSharedPtr<FJsonObject> Object
 void UFlareSaveReaderV1::LoadOperationCondition(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteOperationConditionSave* Data)
 {
 	Data->ConditionRequirement = LoadEnum<EFlareTradeRouteOperationConditions::Type>(Object, "Type", "EFlareTradeRouteOperationConditions");
-	LoadInt32(Object, "ConditionPercentage", (int32*)&Data->ConditionPercentage);
-
+	LoadFloat(Object, "ConditionPercentage", &Data->ConditionPercentage);
 	Data->SkipOnConditionFail = false;
 	Data->BooleanOne = false;
 	Data->BooleanTwo = false;
@@ -867,6 +880,7 @@ void UFlareSaveReaderV1::LoadFleet(const TSharedPtr<FJsonObject> Object, FFlareF
 	LoadFText(Object, "Name", &Data->Name);
 	LoadFName(Object, "Identifier", &Data->Identifier);
 	LoadFNameArray(Object, "ShipImmatriculations", &Data->ShipImmatriculations);
+	LoadFName(Object, "DefaultWhiteListIdentifier", &Data->DefaultWhiteListIdentifier);
 
 	FVector Temp;
 	if (LoadVector(Object, "FleetColor", &Temp))
@@ -896,6 +910,37 @@ void UFlareSaveReaderV1::LoadFleet(const TSharedPtr<FJsonObject> Object, FFlareF
 	LoadInt64(Object, "AutoTradeStatsMoneyBuy", &Data->AutoTradeStatsMoneyBuy);
 }
 
+
+
+void UFlareSaveReaderV1::LoadWhiteList(const TSharedPtr<FJsonObject> Object, FFlareWhiteListSave* Data)
+{
+	LoadFText(Object, "Name", &Data->Name);
+	LoadFName(Object, "Identifier", &Data->Identifier);
+
+	const TArray<TSharedPtr<FJsonValue>>* CompanyData;
+	if (Object->TryGetArrayField("CompanyData", CompanyData))
+	{
+		Data->CompanyData.Reserve(CompanyData->Num());
+		for (TSharedPtr<FJsonValue> Item : *CompanyData)
+		{
+			FFlareWhiteListCompanyDataSave ChildData;
+			LoadWhiteListCompanyData(Item->AsObject(), &ChildData);
+			Data->CompanyData.Add(ChildData);
+		}
+	}
+}
+
+void UFlareSaveReaderV1::LoadWhiteListCompanyData(const TSharedPtr<FJsonObject> Object, FFlareWhiteListCompanyDataSave* Data)
+{
+	LoadFName(Object, "Identifier", &Data->Identifier);
+
+	Data->CanTradeTo = false;
+	Data->CanTradeFrom = false;
+	Object->TryGetBoolField(TEXT("CanTradeTo"), Data->CanTradeTo);
+	Object->TryGetBoolField(TEXT("CanTradeFrom"), Data->CanTradeFrom);
+	LoadFNameArray(Object, "ResourcesTradeFrom", &Data->ResourcesTradeFrom);
+	LoadFNameArray(Object, "ResourcesTradeTo", &Data->ResourcesTradeTo);
+}
 
 void UFlareSaveReaderV1::LoadTradeRoute(const TSharedPtr<FJsonObject> Object, FFlareTradeRouteSave* Data)
 {
@@ -928,8 +973,6 @@ void UFlareSaveReaderV1::LoadTradeRoute(const TSharedPtr<FJsonObject> Object, FF
 	{
 		Data->FleetIdentifier = FleetIdentifiers[0];
 	}
-
-
 
 	const TArray<TSharedPtr<FJsonValue>>* Sectors;
 	if(Object->TryGetArrayField("Sectors", Sectors))

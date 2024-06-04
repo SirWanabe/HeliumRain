@@ -69,7 +69,7 @@ void SFlareCompanyHelpInfo::Construct(const FArguments& InArgs)
 			.WidthOverride(0.5 * Theme.ContentWidth)
 			[
 				SNew(SVerticalBox)
-				
+
 				// Name
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -80,14 +80,7 @@ void SFlareCompanyHelpInfo::Construct(const FArguments& InArgs)
 					.TextStyle(&Theme.SubTitleFont)
 				]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("CompanyBudget", "Budget Priorities\n"))
-				.TextStyle(&Theme.NameFontBold)
-				]
-
+				// Description
 				+ SVerticalBox::Slot()
 				.Padding(Theme.SmallContentPadding)
 				.HAlign(HAlign_Left)
@@ -97,8 +90,8 @@ void SFlareCompanyHelpInfo::Construct(const FArguments& InArgs)
 					.WidthOverride(0.7 * Theme.ContentWidth)
 					[
 						SNew(STextBlock)
-						.Text(this, &SFlareCompanyHelpInfo::GetCompanyBudgetPersonality)
-						.WrapTextAt(0.7 * Theme.ContentWidth)
+						.Text(this, &SFlareCompanyHelpInfo::GetCompanyDescription)
+						.WrapTextAt(0.48 * Theme.ContentWidth)
 						.TextStyle(&Theme.NameFont)
 					]
 				]
@@ -112,7 +105,15 @@ void SFlareCompanyHelpInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(SVerticalBox)
 
-			// Description
+			//Primary Budgets
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+					.Text(LOCTEXT("CompanyBudget", "Budget Priorities\n"))
+					.TextStyle(&Theme.NameFontBold)
+			]
+
 			+ SVerticalBox::Slot()
 			.Padding(Theme.SmallContentPadding)
 			.HAlign(HAlign_Left)
@@ -122,29 +123,29 @@ void SFlareCompanyHelpInfo::Construct(const FArguments& InArgs)
 				.WidthOverride(0.7 * Theme.ContentWidth)
 				[
 					SNew(STextBlock)
-					.Text(this, &SFlareCompanyHelpInfo::GetCompanyDescription)
-					.WrapTextAt(0.55 * Theme.ContentWidth)
+					.Text(this, &SFlareCompanyHelpInfo::GetCompanyBudgetPersonality)
+					.WrapTextAt(0.7 * Theme.ContentWidth)
 					.TextStyle(&Theme.NameFont)
 				]
-			]		
-			// Description
+			]
 
-		+ SVerticalBox::Slot()
+			// Other Affinities
+			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("OtherAffinities", "Other Affinities\n"))
-			.TextStyle(&Theme.NameFontBold)
+				.Text(LOCTEXT("OtherAffinities", "\nOther Affinities\n"))
+				.TextStyle(&Theme.NameFontBold)
 			]
 
-		// Data
-		+ SVerticalBox::Slot()
+			// Data
+			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(Theme.SmallContentPadding)
 			[
 				SNew(STextBlock)
 				.Text(this, &SFlareCompanyHelpInfo::GetCompanyOtherPersonality)
-			.TextStyle(&Theme.TextFont)
+				.TextStyle(&Theme.TextFont)
 			]
 		]
 			+ SHorizontalBox::Slot()
@@ -434,30 +435,29 @@ void SFlareCompanyHelpInfo::SetCompanyResourcesPersonality()
 
 		if (ResourceAffinity <= 0)
 		{
-			ResourceString += ": None";
+			ResourceString += " - None";
 		}
 		else if (ResourceAffinity > 0 && ResourceAffinity <= 0.75)
 		{
-			ResourceString += ": Low";
+			ResourceString += " - Low";
 		}
 		else if (ResourceAffinity > 0.75 && ResourceAffinity <= 1.75)
 		{
-			ResourceString += ": Moderate";
+			ResourceString += " - Moderate";
 		}
 		else if (ResourceAffinity > 1.75 && ResourceAffinity <= 3)
 		{
-			ResourceString += ": High";
+			ResourceString += " - High";
 		}
 		else if (ResourceAffinity > 3)
 		{
-			ResourceString += ": Very High";
+			ResourceString += " - Very High";
 		}
 		ResourceString += "\n";
 	}
 
-	PersonalityInfo = FText::Format(LOCTEXT("CompanyResourcesSub", "\
-{0}"),
-FText::FromString(ResourceString));
+	PersonalityInfo = FText::Format(LOCTEXT("CompanyResourcesSub", "{0}"),
+	FText::FromString(ResourceString));
 
 	CompanyResourcesPersonality = FText::Format(LOCTEXT("CompanyResourcesPersonality", "{0}"),
 	PersonalityInfo);

@@ -86,7 +86,7 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 	// Font
 	static ConstructorHelpers::FObjectFinder<UFont> BannerFontObj(TEXT("/Game/Slate/Fonts/StationFont.StationFont"));
 	BannerFont = BannerFontObj.Object;
-
+/*
 	// Sound data
 	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationInfoSoundObj(TEXT("/Game/Sound/Game/A_NotificationInfo"));
 	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationCombatSoundObj(TEXT("/Game/Sound/Game/A_NotificationCombat"));
@@ -95,7 +95,7 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 	static ConstructorHelpers::FObjectFinder<USoundCue> CrashSoundObj(TEXT("/Game/Sound/Impacts/A_Collision"));
 	static ConstructorHelpers::FObjectFinder<USoundCue> MissileWarningSoundObj(TEXT("/Game/Sound/Game/A_MissileWarning"));
 	static ConstructorHelpers::FObjectFinder<USoundCue> DockingSoundObj(TEXT("/Game/Sound/Impacts/A_Dock"));
-	
+
 	// Sound
 	NotificationInfoSound = NotificationInfoSoundObj.Object;
 	NotificationCombatSound = NotificationCombatSoundObj.Object;
@@ -104,7 +104,7 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 	CrashSound = CrashSoundObj.Object;
 	MissileWarningSound = MissileWarningSoundObj.Object;
 	DockingSound = DockingSoundObj.Object;
-
+*/
 	// Gameplay
 	LastSimulateTime = 0;
 	QuickSwitchNextOffset = 0;
@@ -657,7 +657,7 @@ void AFlarePlayerController::SpacecraftHit(EFlarePartSize::Type WeaponSize)
 
 void AFlarePlayerController::SpacecraftCrashed()
 {
-	ClientPlaySound(CrashSound);
+	ClientPlaySound(GetSoundManager()->CrashSound);
 
 	if (PlayerShip->GetDescription()->Size == EFlarePartSize::S)
 	{
@@ -671,7 +671,7 @@ void AFlarePlayerController::SpacecraftCrashed()
 
 void AFlarePlayerController::MissileFired(AFlareBomb* Bomb)
 {
-	ClientPlaySound(MissileWarningSound);
+	ClientPlaySound(GetSoundManager()->MissileWarningSound);
 	
 	Notify(LOCTEXT("MissileFiredAtPlayer", "Incoming missile !"),
 		LOCTEXT("MissileFiredAtPlayerInfo", "A missile has been fired at your ship !"),
@@ -963,12 +963,12 @@ void AFlarePlayerController::Notify(FText Title, FText Info, FName Tag, EFlareNo
 		USoundCue* NotifSound = NULL;
 		switch (Type)
 		{
-			case EFlareNotification::NT_Info:            NotifSound = NotificationInfoSound;      break;
-			case EFlareNotification::NT_Military:        NotifSound = NotificationCombatSound;    break;
+			case EFlareNotification::NT_Info:            NotifSound = GetSoundManager()->NotificationInfoSound;      break;
+			case EFlareNotification::NT_Military:        NotifSound = GetSoundManager()->NotificationCombatSound;    break;
 			case EFlareNotification::NT_MilitarySilent:  NotifSound = NULL;                       break;
-			case EFlareNotification::NT_Quest:	         NotifSound = NotificationQuestSound;     break;
-			case EFlareNotification::NT_NewQuest:        NotifSound = NotificationQuestSound;     break;
-			case EFlareNotification::NT_Economy:         NotifSound = NotificationTradingSound;   break;
+			case EFlareNotification::NT_Quest:	         NotifSound = GetSoundManager()->NotificationQuestSound;     break;
+			case EFlareNotification::NT_NewQuest:        NotifSound = GetSoundManager()->NotificationQuestSound;     break;
+			case EFlareNotification::NT_Economy:         NotifSound = GetSoundManager()->NotificationTradingSound;   break;
 		}
 
 		if (NotifSound)
@@ -1602,7 +1602,7 @@ void AFlarePlayerController::NotifyDockingComplete(AFlareSpacecraft* DockStation
 
 	if (TellUser)
 	{
-		ClientPlaySound(DockingSound);
+		ClientPlaySound(GetSoundManager()->DockingSound);
 
 		Notify(
 			LOCTEXT("DockingSuccess", "Docking successful"),

@@ -295,6 +295,7 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 		int32 InitialQuantity = Ship->GetParent()->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
 		int32 FreeSpace = Ship->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
 		TArray<AFlareSpacecraft*> LocalStations = ActiveSector->GetStations();
+		FText Unused;
 
 		while (LocalStations.Num())
 		{
@@ -322,6 +323,11 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			//station wants to buy this resource, so we could potentially sell what the ship has
 			if (Station->GetParent()->GetActiveCargoBay()->WantBuy(Resource, Ship->GetCompany()))
 			{
+				if (!Ship->GetParent()->CanTradeWith(Station->GetParent(), Unused, Resource))
+				{
+					continue;
+				}
+
 				//we already have cargo
 				if (InitialQuantity > 0)
 				{
@@ -371,6 +377,11 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 			//station wants to sell this resource, so we could potentially buy what the station has
 			if (FreeSpace > 0 && Station->GetParent()->GetActiveCargoBay()->WantSell(Resource, Ship->GetCompany()))
 			{
+				if (!Station->GetParent()->CanTradeWith(Ship->GetParent(), Unused, Resource))
+				{
+					continue;
+				}
+
 				int32 StationQuantity = Station->GetParent()->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
 				if (StationQuantity > 0)
 				{
@@ -504,8 +515,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 				int64 TechnologyBudget = GetBudget(EFlareBudget::Technology);
 				int64 TradeBudget = GetBudget(EFlareBudget::Trade);
 
-//each time a new set of wars are entered check to see if we should relocate xx% of other funds towards military funding
-
+//each time a new set of wars are entered check to see if we should relocate xx% of other funds towards military funding		
 				if (WarBudget < ((TradeBudget * Behavior->WarDeclared_TradeBudgetFactor) * Behavior->WarDeclared_TransferToMilitaryBudgetFactor))
 				{
 					RedistributeBudgetTowards(EFlareBudget::Military, EFlareBudget::Trade, Behavior->WarDeclared_TransferToMilitaryBudgetTradePercent);
@@ -791,6 +801,7 @@ bool UFlareCompanyAI::PurchaseSectorStationLicense(EFlareBudget::Type BudgetType
 	{
 		int64 Cost = Company->GetStationLicenseCost(AIData.DesiredStationLicense);
 /*
+		int64 BudgetAmount = GetBudget(BudgetType);
 		UFlareSimulatedSector* BuyingSector = GetGame()->GetGameWorld()->FindSector(AIData.DesiredStationLicense);
 		GetGame()->GetPC()->Notify(
 			LOCTEXT("TestInfo1", "Test Notification"),
@@ -801,7 +812,6 @@ bool UFlareCompanyAI::PurchaseSectorStationLicense(EFlareBudget::Type BudgetType
 			EFlareNotification::NT_Info,
 			false);
 */
-
 		if (CanSpendBudget(BudgetType,Cost) && Company->GetMoney() >= Cost)
 		{
 			SpendBudget(BudgetType, Cost);
@@ -3428,6 +3438,7 @@ void UFlareCompanyAI::UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship
 		UFlareSimulatedSector* Sector = KnownSectorsLocal[Index];
 
 		bool FoundResources = false;
+		FText Unused;
 
 		for (int32 CargoIndex = 0; CargoIndex < InputResources.Num(); CargoIndex++)
 		{
@@ -3436,6 +3447,11 @@ void UFlareCompanyAI::UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship
 			for (UFlareSimulatedSpacecraft* BuyingStation : Sector->GetSectorStations())
 			{
 				if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(Company))
+				{
+					continue;
+				}
+
+				if (!BuyingStation->CanTradeWhiteListTo(Ship, Unused, Resource) || !Ship->CanTradeWhiteListFrom(BuyingStation, Unused, Resource))
 				{
 					continue;
 				}

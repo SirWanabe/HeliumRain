@@ -119,14 +119,48 @@ void UFlareCompany::PostLoad()
 	CompanyTradeRoutes.Empty();
 	LicenseStationSectors.Empty();
 
+	// Load all white lists
+	for (int32 i = 0; i < CompanyData.WhiteLists.Num(); i++)
+	{
+		LoadWhiteList(CompanyData.WhiteLists[i]);
+	}
+
+	SelectWhiteListDefault(CompanyData.DefaultWhiteListIdentifier);
+
+	for (int i = 0; i < CompanyShips.Num(); i++)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = CompanyShips[i];
+		if (!Spacecraft->GetData().DefaultWhiteListIdentifier.IsNone())
+		{
+			Spacecraft->SelectWhiteListDefault(Spacecraft->GetData().DefaultWhiteListIdentifier);
+		}
+	}
+
 	for (int i = 0; i < CompanyStations.Num(); i++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = CompanyStations[i];
 		if (Spacecraft->IsStation())
 		{
+			if (!Spacecraft->GetData().DefaultWhiteListIdentifier.IsNone())
+			{
+				Spacecraft->SelectWhiteListDefault(Spacecraft->GetData().DefaultWhiteListIdentifier);
+			}
+
 			if (!(Spacecraft->IsComplexElement()))
 			{
 				AddOrRemoveCompanySectorStation(Spacecraft,false);
+			}
+		}
+	}
+
+	if (CompanyData.WhiteLists.Num() > 0)
+	{
+		for (int32 i = 0; i < CompanyFleets.Num(); i++)
+		{
+			UFlareFleet* Fleet = CompanyFleets[i];
+			if (!Fleet->GetData()->DefaultWhiteListIdentifier.IsNone())
+			{
+				Fleet->SelectWhiteListDefault(Fleet->GetData()->DefaultWhiteListIdentifier);
 			}
 		}
 	}
@@ -182,6 +216,7 @@ FFlareCompanySave* UFlareCompany::Save()
 {
 	CompanyData.Fleets.Empty();
 	CompanyData.TradeRoutes.Empty();
+	CompanyData.WhiteLists.Empty();
 	CompanyData.ShipData.Empty();
 	CompanyData.ChildStationData.Empty();
 	CompanyData.StationData.Empty();
@@ -211,6 +246,11 @@ FFlareCompanySave* UFlareCompany::Save()
 	for (int i = 0 ; i < CompanyTradeRoutes.Num(); i++)
 	{
 		CompanyData.TradeRoutes.Add(*CompanyTradeRoutes[i]->Save());
+	}
+
+	for (int i = 0; i < CompanyWhiteLists.Num(); i++)
+	{
+		CompanyData.WhiteLists.Add(*CompanyWhiteLists[i]->Save());
 	}
 
 	for (int i = 0 ; i < CompanyShips.Num(); i++)
@@ -353,6 +393,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 					FFlareResourceDescription* LowestResource = NULL;
 					int32 LowestResourceQuantity = 0;
 					int32 MaximumCargoSlotCapacity = Ship->GetActiveCargoBay()->GetSlotCapacity();
+					FText Unused;
 
 					for (int32 CargoIndex = 0; CargoIndex < InputResources.Num(); CargoIndex++)
 					{
@@ -362,6 +403,11 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 						for (UFlareSimulatedSpacecraft* BuyingStation : LocalSector->GetSectorStations())
 						{
 							if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(this))
+							{
+								continue;
+							}
+
+							if (!BuyingStation->CanTradeWith(Ship, Unused, Resource))
 							{
 								continue;
 							}
@@ -400,10 +446,15 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 								continue;
 							}
 
+							if (!BuyingStation->CanTradeWith(Ship, Unused, LowestResource))
+							{
+								continue;
+							}
+
 							if (BuyingStation->GetActiveCargoBay()->WantSell(LowestResource, this, true))
 							{
 								int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
-								int32 AvailableResourceSpace = MaximumCargoSlotCapacity - TakenResourceSpace;//Ship->GetActiveCargoBay()->GetFreeSpaceForResource(LowestResource, this);
+								int32 AvailableResourceSpace = MaximumCargoSlotCapacity - TakenResourceSpace;
 								int32 Stock = BuyingStation->GetActiveCargoBay()->GetResourceQuantity(LowestResource, this);
 								if (Stock > AvailableResourceSpace)
 								{
@@ -921,6 +972,121 @@ void UFlareCompany::MoveFleetDown(UFlareFleet* Fleet)
 	}
 }
 
+UFlareCompanyWhiteList* UFlareCompany::CreateCompanyWhiteList(FText WhiteListName)
+{
+	FFlareWhiteListSave WhiteListData;
+
+	WhiteListData.Identifier = FName(*(GetIdentifier().ToString() + "-" + FString::FromInt(CompanyData.WhiteListImmatriculationIndex++)));
+	WhiteListData.Name = WhiteListName;
+
+	UFlareCompanyWhiteList* NewWhiteList = LoadWhiteList(WhiteListData);
+
+	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		UFlareCompany* FoundCompany = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+		NewWhiteList->AddNewCompanyDataSave(FoundCompany->GetIdentifier());
+	}
+	return NewWhiteList;
+}
+
+UFlareCompanyWhiteList* UFlareCompany::LoadWhiteList(const FFlareWhiteListSave& WhiteListData)
+{
+	UFlareCompanyWhiteList* NewCompanyWhiteList = NULL;
+	NewCompanyWhiteList = NewObject<UFlareCompanyWhiteList>(this, UFlareCompanyWhiteList::StaticClass());
+	NewCompanyWhiteList->Load(WhiteListData, Game);
+	CompanyWhiteLists.AddUnique(NewCompanyWhiteList);
+	return NewCompanyWhiteList;
+}
+
+void UFlareCompany::DeleteCompanyWhiteList(UFlareCompanyWhiteList* DeletingWhiteList)
+{
+	CompanyWhiteLists.Remove(DeletingWhiteList);
+	if (CompanySelectedWhiteList == DeletingWhiteList)
+	{
+		CompanyData.DefaultWhiteListIdentifier = FName();
+		CompanySelectedWhiteList = nullptr;
+	}
+	DeletingWhiteList->OnDelete();
+}
+
+void UFlareCompany::SelectWhiteListDefault(FName IdentifierSearch)
+{
+	UFlareCompanyWhiteList* FoundWhiteList = GetWhiteList(IdentifierSearch);
+	SelectWhiteListDefault(FoundWhiteList);
+}
+
+void UFlareCompany::SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList)
+{
+	if (NewWhiteList)
+	{
+		CompanyData.DefaultWhiteListIdentifier = NewWhiteList->GetWhiteListIdentifier();
+		CompanySelectedWhiteList = NewWhiteList;
+	}
+	else
+	{
+		CompanyData.DefaultWhiteListIdentifier = FName();
+		CompanySelectedWhiteList = nullptr;
+	}
+}
+
+UFlareCompanyWhiteList* UFlareCompany::GetWhiteList(FName IdentifierSearch)
+{
+	for (int32 WhiteListIndex = 0; WhiteListIndex < GetWhiteLists().Num(); WhiteListIndex++)
+	{
+		UFlareCompanyWhiteList* CurrentWhiteList = GetWhiteLists()[WhiteListIndex];
+		if (CurrentWhiteList->GetWhiteListIdentifier() == IdentifierSearch)
+		{
+			return CurrentWhiteList;
+		}
+	}
+	return nullptr;
+}
+
+bool UFlareCompany::CanTradeWhiteListFrom(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource)
+{
+	if (!OtherCompany)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetCompanySelectedWhiteList();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
+		if (CompanyData)
+		{
+			FText Reason;
+			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool UFlareCompany::CanTradeWhiteListTo(UFlareCompany* OtherCompany, FFlareResourceDescription* Resource)
+{
+	if (!OtherCompany)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetCompanySelectedWhiteList();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherCompany);
+		if (CompanyData)
+		{
+			FText Reason;
+			if (!ActiveWhiteList->CanCompanyDataTradeFrom(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+
 UFlareTradeRoute* UFlareCompany::CreateTradeRoute(FText TradeRouteName)
 {
 	// Create the trade route
@@ -932,8 +1098,6 @@ UFlareTradeRoute* UFlareCompany::CreateTradeRoute(FText TradeRouteName)
 	TradeRouteData.CurrentOperationProgress = 0;
 	TradeRouteData.CurrentOperationDuration = 0;
 	TradeRouteData.IsPaused = false;
-
-
 	UFlareTradeRoute* TradeRoute = LoadTradeRoute(TradeRouteData);
 	TradeRoute->ResetStats();
 	return TradeRoute;

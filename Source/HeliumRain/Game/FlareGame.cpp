@@ -1047,6 +1047,7 @@ UFlareCompany* AFlareGame::CreateCompany(int32 CatalogIdentifier)
 	CompanyData.Money = 0;
 	CompanyData.FleetImmatriculationIndex = 0;
 	CompanyData.TradeRouteImmatriculationIndex = 0;
+	CompanyData.WhiteListImmatriculationIndex = 0;
 	CompanyData.PlayerLastPeaceDate = 0;
 	CompanyData.PlayerLastTributeDate = 0;
 	CompanyData.PlayerLastWarDate = 0;

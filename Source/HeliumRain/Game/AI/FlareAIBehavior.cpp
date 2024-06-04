@@ -813,10 +813,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		CostSafetyMarginTradeShip = 1.0f;
 
 		// Budget
-		BudgetTechnologyWeight = 0.01f;
+		BudgetTechnologyWeight = 0.05f;
 		BudgetMilitaryWeight = 0.05f;
 		BudgetStationWeight = 0.30f;
-		BudgetTradeWeight = 0.64f;
+		BudgetTradeWeight = 0.60f;
 
 		BudgetWarTechnologyWeight = 0.f;
 		BudgetWarMilitaryWeight = 0.50f;

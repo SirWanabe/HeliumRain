@@ -59,6 +59,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	if (!DamageSystem)
 	{
 		DamageSystem = NewObject<UFlareSimulatedSpacecraftDamageSystem>(this, UFlareSimulatedSpacecraftDamageSystem::StaticClass());
+	
 	}
 
 	DamageSystem->Initialize(this, &SpacecraftData);
@@ -394,6 +395,57 @@ FFlareSpacecraftSave* UFlareSimulatedSpacecraft::Save()
 	return &SpacecraftData;
 }
 
+void UFlareSimulatedSpacecraft::SelectWhiteListDefault(FName IdentifierSearch)
+{
+	UFlareCompanyWhiteList* FoundWhiteList = Company->GetWhiteList(IdentifierSearch);
+	SelectWhiteListDefault(FoundWhiteList);
+}
+
+void UFlareSimulatedSpacecraft::SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList)
+{
+
+	if (NewWhiteList)
+	{
+		SpacecraftData.DefaultWhiteListIdentifier = NewWhiteList->GetWhiteListIdentifier();
+
+		if (ShipSelectedWhiteList && ShipSelectedWhiteList != NewWhiteList)
+		{
+			ShipSelectedWhiteList->RemoveShipFromTracker(this);
+		}
+
+		ShipSelectedWhiteList = NewWhiteList;
+		ShipSelectedWhiteList->AddShipToTracker(this);
+	}
+	else
+	{
+		if (ShipSelectedWhiteList)
+		{
+			ShipSelectedWhiteList->RemoveShipFromTracker(this);
+		}
+
+		SpacecraftData.DefaultWhiteListIdentifier = FName();
+		ShipSelectedWhiteList = nullptr;
+	}
+}
+
+UFlareCompanyWhiteList* UFlareSimulatedSpacecraft::GetActiveWhitelist()
+{
+	if (ShipSelectedWhiteList)
+	{
+		return ShipSelectedWhiteList;
+	}
+	if (GetCurrentFleet() && GetCurrentFleet()->GetSelectedWhiteList())
+	{
+		return GetCurrentFleet()->GetSelectedWhiteList();
+	}
+	if (GetCompany() && GetCompany()->GetCompanySelectedWhiteList())
+	{
+		return GetCompany()->GetCompanySelectedWhiteList();
+	}
+
+	return nullptr;
+}
+
 UFlareCompany* UFlareSimulatedSpacecraft::GetCompany() const
 {
 	return Company;
@@ -558,10 +610,75 @@ void UFlareSimulatedSpacecraft::TryMigrateDrones()
 
 /*----------------------------------------------------
 	Resources
+
 ----------------------------------------------------*/
 
+bool UFlareSimulatedSpacecraft::CanTradeWhiteListTo(UFlareFleet* OtherFleet, FFlareResourceDescription* Resource)
+{
+	if (!OtherFleet)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetActiveWhitelist();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherFleet->GetFleetCompany());
+		if (CompanyData)
+		{
+			FText Reason;
+			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
 
-bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason)
+bool UFlareSimulatedSpacecraft::CanTradeWhiteListTo(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource)
+{
+	if (!OtherSpacecraft)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetActiveWhitelist();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherSpacecraft->GetCompany());
+		if (CompanyData)
+		{
+			if (!ActiveWhiteList->CanCompanyDataTradeTo(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool UFlareSimulatedSpacecraft::CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource)
+{
+	if (!OtherSpacecraft)
+	{
+		return true;
+	}
+	UFlareCompanyWhiteList* ActiveWhiteList = GetActiveWhitelist();
+	if (ActiveWhiteList)
+	{
+		FFlareWhiteListCompanyDataSave* CompanyData = ActiveWhiteList->GetCompanyDataFor(OtherSpacecraft->GetCompany());
+		if (CompanyData)
+		{
+			if (!ActiveWhiteList->CanCompanyDataTradeFrom(CompanyData, Resource, Reason))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+
+bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpacecraft, FText& Reason, FFlareResourceDescription* Resource)
 {
 	// Check if both spacecraft are in the same sector
 	if (GetCurrentSector() != OtherSpacecraft->GetCurrentSector())
@@ -573,7 +690,7 @@ bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpa
 	// Damaged
 	if (GetDamageSystem()->IsUncontrollable() || OtherSpacecraft->GetDamageSystem()->IsUncontrollable())
 	{
-		Reason = LOCTEXT("CantTradeUncontrollable", "Can't trade with incontrollable ships");
+		Reason = LOCTEXT("CantTradeUncontrollable", "Can't trade with uncontrollable ships");
 		return false;
 	}
 
@@ -613,6 +730,16 @@ bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpa
 	if (GetCompany()->GetWarState(OtherSpacecraft->GetCompany()) == EFlareHostility::Hostile)
 	{
 		Reason = LOCTEXT("CantTradeWar", "Can't trade between enemies");
+		return false;
+	}
+
+	if (!CanTradeWhiteListTo(OtherSpacecraft, Reason, Resource))
+	{
+		return false;
+	}
+
+	if (!OtherSpacecraft->CanTradeWhiteListFrom(this, Reason, Resource))
+	{
 		return false;
 	}
 

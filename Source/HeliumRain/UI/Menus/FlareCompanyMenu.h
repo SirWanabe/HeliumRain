@@ -48,8 +48,15 @@ public:
 	----------------------------------------------------*/
 
 	void OnRefillClicked();
-
 	void OnRepairClicked();
+
+	void OnNewWhiteListClicked();
+	void OnInspectWhiteListClicked(UFlareCompanyWhiteList* WhiteList);
+	void OnDeleteWhiteList(UFlareCompanyWhiteList* WhiteList);
+	void OnDeleteWhiteListConfirmed(UFlareCompanyWhiteList* WhiteList);
+
+	void RegenerateWhiteListBox();
+	void GenerateWhiteListInfo(UFlareCompanyWhiteList* WhiteList);
 
 	/** Get the repair text */
 	FText GetRepairText() const;
@@ -191,5 +198,5 @@ protected:
 	TSharedPtr<SFlareDropList<int32>>        DifficultyPicker;
 	TSharedPtr<SVerticalBox>                 CompanyLog;
 	TSharedPtr<SVerticalBox>                 CompanyAccounting;
-
+	TSharedPtr<SVerticalBox>                 CompanyWhiteListBox;
 };

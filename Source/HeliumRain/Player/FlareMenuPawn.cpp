@@ -196,6 +196,7 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	// Spawn and setup the ship
 	FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, false);
+	bool CreatedNew = false;
 	if (CurrentSpacecraft)
 	{
 		if (CurrentSpacecraft->GetDescription()->SpacecraftTemplate != Spacecraft->GetDescription()->SpacecraftTemplate)
@@ -211,20 +212,22 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	if(!CurrentSpacecraft)
 	{
+		CreatedNew = true;
 		CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
 		CurrentSpacecraft->AttachToComponent(ShipContainer, AttachRules, NAME_None);
-		// FOV scale
-		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-		float MinFOV = GetPC()->GetMinVerticalFOV();
-		float FOVScalingRatio = ((MyGameSettings->VerticalFOV - MinFOV) / (GetPC()->GetMaxVerticalFOV() - MinFOV)) / 3;
-
-		// Setup rotation and scale
-		CurrentSpacecraft->SetActorScale3D(FVector(1, 1, 1));
-		float Scale = (1 + FOVScalingRatio) * (ShipDisplaySize / CurrentSpacecraft->GetMeshScale());
-		FLOGV("AFlareMenuPawn::ShowShip : DS=%f, MS=%f, S=%f", ShipDisplaySize, CurrentSpacecraft->GetMeshScale(), Scale);
-		CurrentSpacecraft->SetActorScale3D(Scale * FVector(1, 1, 1));
-		ShipContainer->SetRelativeRotation(FRotator(0, InitialYaw, 0));
 	}
+
+	// FOV scale
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	float MinFOV = GetPC()->GetMinVerticalFOV();
+	float FOVScalingRatio = ((MyGameSettings->VerticalFOV - MinFOV) / (GetPC()->GetMaxVerticalFOV() - MinFOV)) / 3;
+
+	// Setup rotation and scale
+	CurrentSpacecraft->SetActorScale3D(FVector(1, 1, 1));
+	float Scale = (1 + FOVScalingRatio) * (ShipDisplaySize / CurrentSpacecraft->GetMeshScale());
+	FLOGV("AFlareMenuPawn::ShowShip : DS=%f, MS=%f, S=%f", ShipDisplaySize, CurrentSpacecraft->GetMeshScale(), Scale);
+	CurrentSpacecraft->SetActorScale3D(Scale * FVector(1, 1, 1));
+	ShipContainer->SetRelativeRotation(FRotator(0, InitialYaw, 0));
 
 	// Center
 	FVector Origin, Extent;
@@ -240,7 +243,10 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	// UI
 	SetIsEnabled(true);
-	CurrentSpacecraft->Load(Spacecraft);
+	if (CreatedNew)
+	{
+		CurrentSpacecraft->Load(Spacecraft);
+	}
 }
 
 void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDesc)

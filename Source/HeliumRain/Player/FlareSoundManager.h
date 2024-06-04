@@ -223,7 +223,6 @@ protected:
 	// Warning sound on sector exit
 	UPROPERTY()
 	USoundCue*                               SectorExitWarningSound;
-	 
 
 public:
 
@@ -250,6 +249,21 @@ public:
 	/** Deletion sound */
 	UPROPERTY()
 	USoundCue*                               DeleteSound;
+
+	UPROPERTY() 
+	USoundCue* NotificationInfoSound;
+	UPROPERTY() 
+	USoundCue* NotificationCombatSound;
+	UPROPERTY()
+	USoundCue* NotificationQuestSound;
+	UPROPERTY()
+	USoundCue* NotificationTradingSound;
+	UPROPERTY()
+	USoundCue* CrashSound;
+	UPROPERTY()
+	USoundCue* MissileWarningSound;
+	UPROPERTY()
+	USoundCue* DockingSound;
 
 };
 

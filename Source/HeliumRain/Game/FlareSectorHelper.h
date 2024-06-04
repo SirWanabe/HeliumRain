@@ -26,7 +26,7 @@ struct SectorHelper
 
 	static int32 Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 MaxQuantity, int64* TransactionPrice = NULL, UFlareTradeRoute* TradeRoute = nullptr, bool IsDonation = false, int32 TradeReason = 0);
 
-	static void GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& OwnedFS, int32& AvailableFS, int32& AffordableFS);
+	static void GetAvailableFleetSupplyCount(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32& OwnedFS, int32& AvailableFS, int32& AffordableFS, UFlareSimulatedSpacecraft* ForShip = nullptr, UFlareFleet* ForFleet = nullptr);
 
 	static float GetComponentMaxRepairRatio(FFlareSpacecraftComponentDescription* ComponentDescription);
 
@@ -51,7 +51,7 @@ struct SectorHelper
 
 	static void RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr);
 
-	static void ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair);
+	static void ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair, UFlareFleet* ForFleet = nullptr);
 
 	static int32 GetArmyCombatPoints(UFlareSimulatedSector* Sector, bool ReduceByDamage);
 

@@ -7,8 +7,6 @@
 #include "../../Player/FlareMenuManager.h"
 #include "../../Game/FlareGame.h"
 
-//#include "../../Player/FlarePlayerController.h"
-
 #include "../Components/FlareTechnologyInfo.h"
 #include "../../Data/FlareTechnologyCatalog.h"
 #include "../../Data/FlareSpacecraftComponentsCatalog.h"
@@ -34,6 +32,7 @@ void SFlareHelpMenu::Construct(const FArguments& InArgs)
 //	AFlarePlayerController* PC = MenuManager->GetPC();
 	Game = MenuManager->GetGame();
 	double TextWrappingBig = 1.75 * Theme.ContentWidth;
+	TArray<UFlareResourceCatalogEntry*> ResourceList = MenuManager->GetGame()->GetResourceCatalog()->Resources;
 
 	// Build structure
 	ChildSlot
@@ -364,7 +363,7 @@ To wage war, you can build various military ships to destroy enemy stations or s
 											.TextStyle(&Theme.TextFont)
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("HowToPlayPurchasingspaceshipsMain", "\
-Spaceships can be found at the shipyard, a huge station encountered in some busy sectors. Players must be at peace with the shipyard's owner to do any purchases. To do the purchase, one must go to the \"Details\" menu and click one of the buttons to order either small or large ships. Once the production price has been paid, the player must wait for their construction to end. The progress can be seen through the same menu.\n\
+Spaceships can be found at the shipyard, a huge station encountered in some busy sectors. Players must be at peace with the shipyard's owner to do any purchases. To do the purchase, one must go to the \"Buy Ship\" menu and click one of the buttons to order either small or large ships. Once the production price has been paid, the player must wait for their construction to end. The progress can be seen through the same menu.\n\
 If there is currently a ship of the same production line in production, one must wait for that task to end before their ship's production begins.\n\
 There are two other reasons a ship production might not start:\n\n\
     \u2022If the company owning the shipyard has not enough money (this happens only to ships it builds for itself, not ships ordered by a third party)\n\
@@ -410,7 +409,7 @@ Building ships becomes more straightforward once the player aquires their own sh
 										.AutoHeight()
 										[
 											SNew(STextBlock)
-											.Text(LOCTEXT("HowToPlayRedIconsTitle", "\nWhat are the meaning of the 3 red icons over ships?"))
+											.Text(LOCTEXT("HowToPlayRedIconsTitle", "\nWhat is the meaning of the 3 red icons over ships?"))
 											.TextStyle(&Theme.NameFontBold)
 										]
 
@@ -430,7 +429,7 @@ The icons indicate the status of the 3 main system on a ship: \n\n\
 										.AutoHeight()
 										[
 											SNew(STextBlock)
-											.Text(LOCTEXT("HowToPlayShipDamagedTitle", "\nMy ship are damaged, what can I do?"))
+											.Text(LOCTEXT("HowToPlayShipDamagedTitle", "\nMy ship is damaged, what can I do?"))
 											.TextStyle(&Theme.NameFontBold)
 										]
 
@@ -444,7 +443,7 @@ The icons indicate the status of the 3 main system on a ship: \n\n\
 Open the sector menu of the sector were your damaged ships are. You will find a repair button on the top right part of the menu. To repair: \n\n\
 	\u2022Make sure your are not in battle\n\
 	\u2022It must be fleet supply in the sector. If not:\n\n\
-		1. wait of another company to bring fleet supply\n\
+		1. wait for another company to bring fleet supply\n\
 		2. buy fleet supply in another sector and bring it where your damaged ship is\n\n\
 	\u2022If you don't own the fleet supply, be sure:\n\n\
 		1. to have enough money to buy it\n\
@@ -466,10 +465,10 @@ Open the sector menu of the sector were your damaged ships are. You will find a 
 											.TextStyle(&Theme.TextFont)
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("HowToPlayFindOrderedShipMain", "\
-It may be long to build a ship. You can follow the construction progress in the right part of the orbital map.\n\
+It may take many days to build a ship. You can follow the construction progress in the left part of the orbital map in the \"events\" section.\n\
 Some events may delay the completion:\n\n\
 	\u2022The shipyard have to finish the construction of the previous ship in the production line\n\
-	\u2022The shipyard can be in outage of a resource.In this case, you can bring the missing resource or wait someone else do that\n\n\
+	\u2022The shipyard can be in outage of a resource. In this case, you can bring the missing resource or wait someone else do that\n\n\
 If you don't see build ship status in orbital map, it can mean: \n\n\
 	\u2022Your ship is ready : look at the sector menu of the shipyard, or in your company menu (there should of been a notification)\n\
 	\u2022Your have been at war the owner of the shipyard, your order is lost\n\
@@ -551,11 +550,12 @@ If you don't see build ship status in orbital map, it can mean: \n\n\
 											.Text(LOCTEXT("ManualTradingMain", "\
 Manual trading goes as follows:\n\n\
 	\u2022Travel to a sector\n\
-    \u2022Dock with a station using a cargo\n\
+    \u2022Dock with a station using a cargo ship\n\
     \u2022Buy resources (or load them if the station is owned)\n\
     \u2022Optionally travel to another sector\n\
     \u2022Dock with another station with the cargo\n\
     \u2022Sell resources (or unload, if the station is owned)\n\n\
+With the \"Auto-Docking\" technology researched the above order of events are simplified; simply select the \"trade\" option on the ship or station, setup the trade deal and click \"confirm transfer\". The trade ships will then set out to do the transaction.\n\n\
 Note that in most cases, a station will only sell resources it produces and buy resources it consumes. One exception to this is the Supply outpost that buys and sells fleet supply. When selling supply, the outpost will apply a significant margin to any ship or station that used it to refill or repair.\n\
 Distant fleets do not need to dock with stations, but each trade (each single exchange) will take them a full day to complete."))
 										]
@@ -574,13 +574,16 @@ Distant fleets do not need to dock with stations, but each trade (each single ex
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("TradeRoutesMain", "\
 One may automatize this process using trade routes.\n\n\
-    1.Trade routes are created by clicking the \"Add new trade route\" button on the right side of the Orbital Menu.\n\n\
-    2.Once in the trade route creation menu, one may first draw a list of up to 4 sectors by selecting them in the drop-down menu in the center of the screen and clicking on \"Add (X / 4)\", to the right of the drop-down menu (where X is the current number of sectors in the trade route).\n\n\
-    3.Once all desired sectors have been selected this way, a small diagram appears underneath, showing each sector in order, with arrows depicting which direction the trade route will take. Sectors can be rearranged using the \"Move\" buttons under each sector's column.\n\n\
-    4.Each column includes a list of Operations to be performed in that sector. Initially, only one default operation is listed per sector. Operations are added by clicking the \" * Add\" button. Each operation can be modified by clicking the \"Edit\" button; the operation's edition tab is then shown on the left side of the screen, where the type of operation, the resource involved, and the cargos' behavior can all be set. Typically the first operation of the first sector is to Buy (first drop-down menu) a Resource A (second drop-down menu). A limit in max quantity and time can both be set as well, by clicking the corresponding buttons and setting the slider that appears under each of them upon clicking. The max quantity limit will prevent cargos from loading more than a specified amount of resources. The time limit will force the cargos to start the next operation after a specified amount of days, even if they didn't fill their cargo bays.\n\n\
-    5.If one sector has more than one operation, they can be ordered using the \"Move up\" and \"Move down\" buttons in each operation's setting panel. Their current order is shown in the sector's column in the form of a numbered list; that order is essential, as each operation will be performed one after the other.\n\n\
-    6.\"Load\" and \"Unload\" stand for operations made with one's own stations. One may set a trade route that will buy Fuel somewhere and unload it in a sector where they have an Iron Mine; and then a second trade route that will load the Iron Mine's production, and sell it to a foreign Steelworks Station. The \"Load/Buy\" operation stands for \"Load every resources available in owned stations, and if there's still room in the cargo, buy that resource to a foreign station, if there is one selling it\". Same reasoning applies for \"Unload/Sell\".\n\n\
-    7.Once an operation is set, clicking the \"Done\" button brings up options to rename the trade route, assign a fleet to it, skip the current operation manually, pause it, and reset its stats. Stats are shown there as well once a fleet has been assigned to this route. They only become informative after several cycles.\n\n\
+    1. Trade routes are created by clicking the \"Add new trade route\" button on the right side of the Orbital Menu.\n\n\
+    2. Once in the trade route creation menu, one may first draw a list of up to 5 sectors by selecting them in the drop-down menu in the center of the screen and clicking on \"Add (X / 5)\", to the right of the drop-down menu (where X is the current number of sectors in the trade route).\n\n\
+    3. Once all desired sectors have been selected this way, a small diagram appears underneath, showing each sector in order, with arrows depicting which direction the trade route will take. Sectors can be rearranged using the \"Move\" buttons under each sector's column.\n\n\
+    4. Each column includes a list of Operations to be performed in that sector. Initially, only one default operation is listed per sector. Operations are added by clicking the \" * Add\" button. Each operation can be modified by clicking the \"Edit\" button; the operation's edition tab is then shown on the left side of the screen, where the type of operation, the resource involved, and the cargos' behavior can all be set. Typically the first operation of the first sector is to Buy (first drop-down menu) a Resource A (second drop-down menu). A limit in max quantity and time can both be set as well, by clicking the corresponding buttons and setting the slider that appears under each of them upon clicking. The max quantity limit will prevent cargos from loading more than a specified amount of resources. The time limit will force the cargos to start the next operation after a specified amount of days, even if they didn't fill their cargo bays.\n\n\
+    5. If one sector has more than one operation, they can be ordered using the \"Move up\" and \"Move down\" buttons in each operation's setting panel. Their current order is shown in the sector's column in the form of a numbered list; that order is essential, as each operation will be performed one after the other.\n\n\
+    6. \"Load\" and \"Unload\" are the primary trade operations. Each of these can be configured on how much they prioritize using resources from your own assets or from foreign assets (if at all). One may set a trade route that will buy Fuel somewhere and unload it in a sector where they have an Iron Mine; and then a second trade route that will load the Iron Mine's production, and sell it to a foreign Steelworks Station. \n\n\
+	7. \"Goto Operation\" enables the ability to choose a different operation within the operations list to become the currently active operation. Useful for more complicated trade routes.\n\n\
+	8. \"Maintenance\" operation allows ships within the trade route to repair and/or rearm if they need to do so.\n\n\
+	9. Each operation in the trade route can have their own set of conditions added and then configured.\n\n\
+    10. Once an operation is set, clicking the \"Done\" button brings up options to rename the trade route, assign a fleet to it, skip the current operation manually, pause it, and reset its stats. Stats are shown there as well once a fleet has been assigned to this route. They only become informative after several cycles.\n\n\
 Assigned fleets may include military vessels for defense."))
 										]
 										+ SVerticalBox::Slot()
@@ -609,140 +612,6 @@ There are several ways to find worthwhile deals or trade routes.\n\n\
 					]
 				]
 				+ SFlareTabView::Slot()
-				.Header(LOCTEXT("ResourcesTab", "Resources"))
-				.HeaderHelp(LOCTEXT("Resourcesnfo", "View information about resources"))
-				[
-					SNew(SBox)
-					.WidthOverride(2.2 * Theme.ContentWidth)
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Fill)
-					[
-						SNew(SHorizontalBox)
-						// Info block
-						+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Left)
-						.VAlign(VAlign_Top)
-						.AutoWidth()
-						[
-							// Data
-							SNew(SVerticalBox)
-							+SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(Theme.ContentPadding)
-							[
-								SNew(SScrollBox)
-								.Style(&Theme.ScrollBoxStyle)
-								.ScrollBarStyle(&Theme.ScrollBarStyle)
-
-								+ SScrollBox::Slot()
-								.Padding(Theme.ContentPadding)
-								[
-									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									.Padding(Theme.ContentPadding)
-									.AutoWidth()
-									.HAlign(HAlign_Left)
-									.VAlign(VAlign_Top)
-									[
-										SNew(SVerticalBox)
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.Text(LOCTEXT("ResourcesTopTitle", "Resources"))
-											.TextStyle(&Theme.NameFontBold)
-										]	
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("ResourcesTopMain", "There are 14 resources in Helium Rain. They all have different uses but they are all produced and consumed in stations, except for fleet supply."))
-										]
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.Text(LOCTEXT("ResourcesRawMaterialsTitle", "\nRaw Materials"))
-											.TextStyle(&Theme.NameFontBold)
-										]	
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("ResourcesRawMaterialsMain", "\
-These resources are produced directly from the environment.\n\n\
-	\u2022Water\n\
-	\u2022Iron Oxyde\n\
-	\u2022Silica\n\
-	\u2022Methane\n\
-	\u2022Hydrogen\n\
-	\u2022Helium - 3"))
-										]
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.Text(LOCTEXT("ResourcesManufacturingTitle", "\nManufacturing Resources"))
-											.TextStyle(&Theme.NameFontBold)
-										]	
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("ResourcesManufacturingMain", "\
-These resources are produced from raw materials and can be used as construction resources or to build consumer resources. \n\n\
-	\u2022Steel\n\
-	\u2022Plastics\n\
-	\u2022Carbon"))
-										]
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.Text(LOCTEXT("ResourcesConsumerTitle", "\nConsumer Resources"))
-											.TextStyle(&Theme.NameFontBold)
-										]	
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("ResourcesConsumerMain", "\
-These resources can be bought by the population, but they may have other uses.  \n\n\
-    \u2022Food\n\
-	\u2022Fuel\n\
-	\u2022Tools\n\
-	\u2022Electronics"))
-										]
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.Text(LOCTEXT("ResourcesFleetSupplyTitle", "\nFleet Supply"))
-											.TextStyle(&Theme.NameFontBold)
-										]	
-										+ SVerticalBox::Slot()
-										.AutoHeight()
-										[
-											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("ResourcesFleetSupplyMain", "The fleet supply is a very special resource used to repair or refill spacecrafts."))
-										]
-									]
-								]
-							]
-						]
-					]
-				]
-							+ SFlareTabView::Slot()
 				.Header(LOCTEXT("TechnologyTab", "Technology"))
 				.HeaderHelp(LOCTEXT("Technologyinfo", "View information about technology"))
 				[
@@ -1241,11 +1110,10 @@ Spaceships may be civilian or military. Civilian spaceships have a cargo bay and
 							]
 						]
 					]
-									+ SFlareTabView::Slot()
+
+					+ SFlareTabView::Slot()
 				.Header(LOCTEXT("CompaniesTab", "Companies"))
 				.HeaderHelp(LOCTEXT("CompaniesInfo", "View information about the various companies"))
-/*
-*/
 				[
 					SNew(SBox)
 					.WidthOverride(2.2 * Theme.ContentWidth)
@@ -1315,6 +1183,73 @@ Companies are the factions which control the entire environment in Helium Rain. 
 						]
 					]
 				]
+
+						+ SFlareTabView::Slot()
+						.Header(LOCTEXT("ResourcesTab", "Resources"))
+						.HeaderHelp(LOCTEXT("Resourcesnfo", "View information about resources"))
+						[
+							SNew(SBox)
+								.WidthOverride(2.2 * Theme.ContentWidth)
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Fill)
+								[
+									SNew(SHorizontalBox)
+										// Info block
+										+ SHorizontalBox::Slot()
+										.HAlign(HAlign_Left)
+										.VAlign(VAlign_Top)
+										.AutoWidth()
+										[
+											// Data
+											SNew(SVerticalBox)
+												+ SVerticalBox::Slot()
+												.AutoHeight()
+												.Padding(Theme.ContentPadding)
+												[
+													SNew(SScrollBox)
+														.Style(&Theme.ScrollBoxStyle)
+														.ScrollBarStyle(&Theme.ScrollBarStyle)
+
+														+ SScrollBox::Slot()
+														.Padding(Theme.ContentPadding)
+														[
+															SNew(SHorizontalBox)
+															+ SHorizontalBox::Slot()
+															.Padding(Theme.ContentPadding)
+															.AutoWidth()
+															.HAlign(HAlign_Left)
+															.VAlign(VAlign_Top)
+															[
+																SNew(SVerticalBox)
+																+ SVerticalBox::Slot()
+																.AutoHeight()
+																[
+																	SNew(STextBlock)
+																		.Text(LOCTEXT("ResourcesTopTitle", "Resources"))
+																		.TextStyle(&Theme.NameFontBold)
+																]
+																+ SVerticalBox::Slot()
+																.AutoHeight()
+																[
+																	SNew(STextBlock)
+																	.TextStyle(&Theme.TextFont)
+																	.WrapTextAt(TextWrappingBig)
+																	.Text(FText::Format(LOCTEXT("ResourcesTopMain", "There are {0} resources in Helium Rain. They all have different uses but they are all produced and consumed in stations, except for fleet supply."),
+																	ResourceList.Num()))
+																]
+
+																+SVerticalBox::Slot()
+																.AutoHeight()
+																[
+																	SAssignNew(ResourcesBox, SVerticalBox)
+																]
+															]
+														]
+												]
+										]
+								]
+						]
+
 			]
 
 			+ SFlareTabView::Slot()
@@ -1562,7 +1497,9 @@ Companies are the factions which control the entire environment in Helium Rain. 
 					.WrapTextAt(TextWrappingBig)
 				.TextStyle(&Theme.TextFont)
 				.Text(LOCTEXT("VersionHistoryHRFM", "Created by Wanabe\n\
+https://github.com/SirWanabe/HeliumRain\n\
 \n\
+1.4.0\n\n\
 1.3.9\n\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
 (Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
@@ -1620,7 +1557,7 @@ Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry.A
 Fixed(Vanilla): AI cargo ships trying to dock in sector could not find a friendly station to dock at\n\
 Fixed(Vanilla): Damaged stations constantly heat up over time, and as such their temperature could increase to multiple thousands of Kelvin which caused them to emit extremely bright, blinding lights.As a work around the maximum temperature value for the visual effect now has an upper limit.\n\
 Fixed(Vanilla): contracts / quests can now see station complex children for completion conditions\n\
-Fixed (Vanilla): If a company declares war on a player while in the Orbital Map Menu the sector buttons would not immediately update their display to show the Red war state\n\
+Fixed(Vanilla): If a company declares war on a player while in the Orbital Map Menu the sector buttons would not immediately update their display to show the Red war state\n\
 \n\
 1.3.8\n\
 'lots of stuff'"))
@@ -2858,7 +2795,218 @@ void SFlareHelpMenu::Enter()
 		}
 		WeaponList->RequestListRefresh();
 	}
+
+	//	
+
+	if (!SetupResources)
+	{
+		TArray<UFlareResourceCatalogEntry*> ResourceList = MenuManager->GetGame()->GetResourceCatalog()->Resources;
+		TArray<FFlareResourceDescription*> ConsumerResources;
+		TArray<FFlareResourceDescription*> MaintenanceResources;
+		TArray<FFlareResourceDescription*> RawResources;
+		TArray<FFlareResourceDescription*> ManufacturingResources;
+		TArray<FFlareResourceDescription*> UncategorizedResources;
+
+		//because there's no useful categorization data by default in HR.
+		TArray<FString> HardcodedRawResources;
+		TArray<FString> HardcodedManufacturingResources;
+
+		HardcodedRawResources.Reserve(6);
+		HardcodedRawResources.Add(TEXT("Helium 3"));
+		HardcodedRawResources.Add(TEXT("Dihydrogen"));
+		HardcodedRawResources.Add(TEXT("Methane"));
+		HardcodedRawResources.Add(TEXT("Iron Oxyde"));
+		HardcodedRawResources.Add(TEXT("Silica"));
+		HardcodedRawResources.Add(TEXT("Water"));
+
+		HardcodedManufacturingResources.Reserve(3);
+		HardcodedManufacturingResources.Add(TEXT("Carbon"));
+		HardcodedManufacturingResources.Add(TEXT("Steel"));
+		HardcodedManufacturingResources.Add(TEXT("Plastics"));
+
+		for (int ResourceIndex = 0; ResourceIndex < ResourceList.Num(); ResourceIndex++)
+		{
+			UFlareResourceCatalogEntry* Resource = ResourceList[ResourceIndex];
+			if (Resource)
+			{
+				FFlareResourceDescription* Data = &Resource->Data;
+				if (Data)
+				{
+					if (Data->IsConsumerResource)
+					{
+						ConsumerResources.AddUnique(Data);
+					}
+					else if (Data->IsMaintenanceResource)
+					{
+						MaintenanceResources.AddUnique(Data);
+					}
+					else if (Data->IsRawResource || HardcodedRawResources.Find(Data->Name.ToString()) != INDEX_NONE)
+					{
+						RawResources.AddUnique(Data);
+					}
+
+					else if (Data->IsManufacturingResource || HardcodedManufacturingResources.Find(Data->Name.ToString()) != INDEX_NONE)
+					{
+						ManufacturingResources.AddUnique(Data);
+					}
+					else
+					{
+						UncategorizedResources.AddUnique(Data);
+					}
+				}
+			}
+		}
+
+		SetupResourceDisplay(ResourcesBox, ConsumerResources, FText(LOCTEXT("ConsumerResources", "Consumer Resources")), FText(LOCTEXT("ResourcesConsumerMain", "These resources can be bought by the population, but they may have other uses.")));
+		SetupResourceDisplay(ResourcesBox, RawResources, FText(LOCTEXT("RawResources", "Raw Resources")), FText(LOCTEXT("ResourcesRawMaterialsMain", "These resources are produced directly from the environment.")));
+		SetupResourceDisplay(ResourcesBox, ManufacturingResources, FText(LOCTEXT("ManufacturingResources", "Manufacturing Resources")), FText(LOCTEXT("ResourcesManufacturingMain", "These resources are produced from raw materials and can be used as construction resources or to build consumer resources.")));
+		SetupResourceDisplay(ResourcesBox, MaintenanceResources, FText(LOCTEXT("MaintenanceResources", "Maintenance Resources")), FText(LOCTEXT("ResourcesFleetSupplyMain", "These resources are used to repair or refill spacecrafts.")));
+		SetupResourceDisplay(ResourcesBox, UncategorizedResources, FText(LOCTEXT("UncategorizedResources", "Uncategorized Resources")), FText());
+		SetupResources = true;
+	}
 }
+void SFlareHelpMenu::SetupResourceDisplay(TSharedPtr<SVerticalBox> HudBox, TArray<FFlareResourceDescription*> ResourcesData, FText CategoryName, FText CategorySubText)
+{
+	if (ResourcesData.Num() > 0)
+	{
+		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		double TextWrappingResourceInfo = 1.25 * Theme.ContentWidth;
+
+		if (!CategoryName.IsEmpty())
+		{
+			HudBox->AddSlot()
+			.AutoHeight()
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(FText::Format(LOCTEXT("ResourceCategoryTitle", "\n{0}"),
+					CategoryName))
+					.TextStyle(&Theme.NameFontBold)
+				]
+			];
+			if (!CategorySubText.IsEmpty())
+			{
+				HudBox->AddSlot()
+				.AutoHeight()
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::Format(LOCTEXT("ResourceCategorySubText", "\n{0}\n"),
+						CategorySubText))
+						.TextStyle(&Theme.TextFont)
+						.WrapTextAt(TextWrappingResourceInfo)
+					]
+				];
+			}
+		}
+
+		for (int ResourceIndex = 0; ResourceIndex < ResourcesData.Num(); ResourceIndex++)
+		{
+			FFlareResourceDescription* ResourceData = ResourcesData[ResourceIndex];
+			HudBox->AddSlot()
+			.AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.HAlign(HAlign_Left)
+				.AutoWidth()
+				.Padding(1,4)
+				[
+					SNew(SBorder)
+					.Padding(FMargin(0))
+					.BorderImage(&ResourceData->Icon)
+					[
+						SNew(SBox)
+						.WidthOverride(Theme.ResourceWidth)
+						.HeightOverride(Theme.ResourceHeight)
+						[
+							SNew(SVerticalBox)
+							// Resource name
+							+ SVerticalBox::Slot()
+							.Padding(Theme.SmallContentPadding)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.TextFont)
+								.Text(ResourceData->Acronym)
+							]
+
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Center)
+							.HAlign(HAlign_Left)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.SmallFont)
+								.Text(FText::Format(LOCTEXT("ResourcePriceInfoInsideBoxCentre", "{0}-{1}"),
+								FText::AsNumber(ResourceData->MinPrice / 100),
+								FText::AsNumber(ResourceData->MaxPrice / 100)
+								))
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Bottom)
+							.HAlign(HAlign_Right)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.SmallFont)
+								.Text(FText::Format(LOCTEXT("ResourcePriceInfoInsideBoxBottom", "{0}"),
+								FText::AsNumber(ResourceData->TransportFee / 100)
+								))
+							]
+						]
+					]
+				]
+
+				+ SHorizontalBox::Slot()
+				[
+					SNew(SBox)
+					.HeightOverride(Theme.ResourceHeight)
+					.Padding(FMargin(1,4))
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.VAlign(VAlign_Top)
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(STextBlock)
+							.TextStyle(&Theme.SmallFont)
+							.WrapTextAt(TextWrappingResourceInfo)
+							.Text(ResourceData->Description)
+						]
+	
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.VAlign(VAlign_Bottom)
+						.HAlign(HAlign_Left)
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(STextBlock)
+							.TextStyle(&Theme.SmallFont)
+							.Text(FText::Format(LOCTEXT("ResourcePriceInfo", "\n\n\u2022{0} - Price {1}-{2}.CR. Transport fee {3}.CR"),
+							ResourceData->Name,
+							FText::AsNumber(ResourceData->MinPrice / 100),
+							FText::AsNumber(ResourceData->MaxPrice / 100),
+							FText::AsNumber(ResourceData->TransportFee / 100)
+							))
+						]
+					]
+				]
+			];
+		}
+	}
+}
+
+
 
 TSharedRef<ITableRow> SFlareHelpMenu::OnGenerateSpacecraftLine(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable, bool OrderIsShipValue)
 {
@@ -2869,19 +3017,19 @@ TSharedRef<ITableRow> SFlareHelpMenu::OnGenerateSpacecraftLine(TSharedPtr<FInter
 
 	// Structure
 	return SNew(SFlareListItem, OwnerTable)
-		.Width(Width)
-		.Height(2)
-		.Content()
-		[
-			SNew(SFlareSpaceCraftOverlayInfo)
-			.MenuManager(MenuManager)
-			.Desc(Desc)
-			.VerboseInformation(true)
-			.OrderIsShip(OrderIsShipValue)
-			.TargetShipyard(NULL)
-			.TargetSkirmish(NULL)
-			.TargetSector(NULL)
-		];
+	.Width(Width)
+	.Height(2)
+	.Content()
+	[
+		SNew(SFlareSpaceCraftOverlayInfo)
+		.MenuManager(MenuManager)
+		.Desc(Desc)
+		.VerboseInformation(true)
+		.OrderIsShip(OrderIsShipValue)
+		.TargetShipyard(NULL)
+		.TargetSkirmish(NULL)
+		.TargetSector(NULL)
+	];
 }
 
 TSharedRef<ITableRow> SFlareHelpMenu::OnGenerateCompanyLine(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable)

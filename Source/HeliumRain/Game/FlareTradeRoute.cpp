@@ -211,17 +211,15 @@ bool UFlareTradeRoute::ProcessCurrentOperation(FFlareTradeRouteSectorOperationSa
 		{
 			if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::PercentOfTimes)
 			{
-				if (FMath::FRand() >= ((float)Condition.ConditionPercentage / 100))
+				if (FMath::FRand() <= Condition.ConditionPercentage)
 				{
 					return Condition.SkipOnConditionFail;
 				}
 			}
 			else if (Condition.ConditionRequirement == EFlareTradeRouteOperationConditions::LoadPercentage)
 			{
-				int32 FreeCargoSpace = TradeRouteFleet->GetFleetFreeCargoSpace();
-				int32 MaxmimumCargoSpace = TradeRouteFleet->GetFleetCapacity();
-
-				if ((FreeCargoSpace / MaxmimumCargoSpace) < ((float)Condition.ConditionPercentage / 100))
+				float PercentageCargo = (float)TradeRouteFleet->GetFleetUsedCargoSpace() / (float)TradeRouteFleet->GetFleetCapacity();
+				if (PercentageCargo <= Condition.ConditionPercentage)
 				{
 					return Condition.SkipOnConditionFail;
 				}
@@ -310,6 +308,20 @@ bool UFlareTradeRoute::ProcessGotoOperation(FFlareTradeRouteSectorOperationSave*
 			FFlareTradeRouteSectorSave& SectorOrders = TradeRouteData.Sectors[Operation->GotoSectorIndex];
 			if (Operation->GotoOperationIndex < SectorOrders.Operations.Num())
 			{
+				//Check useful enabled for goto order
+				if (Operation->CanTradeWithStorages)
+				{
+					UFlareSimulatedSector* Sector = Game->GetGameWorld()->FindSector(SectorOrders.SectorIdentifier);
+					if (Sector)
+					{
+						if (!IsUsefulSector(Sector, Operation->GotoOperationIndex))
+						{
+							//Sector isn't useful, skip
+							return true;
+						}
+					}
+				}
+
 				UFlareSimulatedSector* SimulatedSector = Game->GetGameWorld()->FindSector(TradeRouteData.Sectors[Operation->GotoSectorIndex].SectorIdentifier);
 				SetTargetSector(SimulatedSector);
 				TradeRouteData.CurrentOperationIndex = Operation->GotoOperationIndex;
@@ -325,7 +337,6 @@ bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave*
 {
 
 	FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation->ResourceIdentifier);
-
 	TArray<UFlareSimulatedSpacecraft*> UsefulShips;
 
 	TArray<UFlareSimulatedSpacecraft*>&  RouteShips = TradeRouteFleet->GetShips();
@@ -860,11 +871,11 @@ void UFlareTradeRoute::AddOperationCondition(FFlareTradeRouteSectorOperationSave
 
 		if (ConditionType == EFlareTradeRouteOperationConditions::PercentOfTimes)
 		{
-			NewOperationCondition.ConditionPercentage = 50;
+			NewOperationCondition.ConditionPercentage = 0.50f;
 		}
 		else if (ConditionType == EFlareTradeRouteOperationConditions::LoadPercentage)
 		{
-			NewOperationCondition.ConditionPercentage = 50;
+			NewOperationCondition.ConditionPercentage = 0.50f;
 			NewOperationCondition.SkipOnConditionFail = true;
 		}
 		else if (ConditionType == EFlareTradeRouteOperationConditions::RequiresMaintenance)
@@ -1207,12 +1218,11 @@ UFlareSimulatedSector* UFlareTradeRoute::GetNextTradeSector(UFlareSimulatedSecto
 	return Game->GetGameWorld()->FindSector(TradeRouteData.Sectors[NextSectorId].SectorIdentifier);
 }
 
-bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
+bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector, int StartingOperationIndex)
 {
 	FFlareTradeRouteSectorSave* SectorOrder = GetSectorOrders(Sector);
 
 	auto IsUseful = [](FFlareResourceUsage Usage, EFlareTradeRouteOperation::Type OperationType, bool Owned, float LoadUnloadPriority, float BuySellPriority)
-
 	{
 		if (Owned && (LoadUnloadPriority < 1.f))
 		{
@@ -1244,17 +1254,18 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 		return false;
 	};
 
-	for(FFlareTradeRouteSectorOperationSave& Operation : SectorOrder->Operations)
+	for (int OperationIndex = StartingOperationIndex; OperationIndex < SectorOrder->Operations.Num(); OperationIndex++)
 	{
-		if (Operation.Type == EFlareTradeRouteOperation::GotoOperation)
+		FFlareTradeRouteSectorOperationSave* Operation = &SectorOrder->Operations[OperationIndex];
+		if (Operation->Type == EFlareTradeRouteOperation::GotoOperation)
 		{
-			if (Operation.GotoSectorIndex != -1 && Operation.GotoOperationIndex != -1)
+			if (Operation->GotoSectorIndex != -1 && Operation->GotoOperationIndex != -1)
 			{
-				return true;
+				return false;
 			}
 			continue;
 		}
-		else if (Operation.Type == EFlareTradeRouteOperation::Maintenance)
+		else if (Operation->Type == EFlareTradeRouteOperation::Maintenance)
 		{
 			int32 AvailableFS;
 			int32 OwnedFS;
@@ -1262,13 +1273,13 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 			bool CheckedAvailableFleetSupplyCount = false;
 
 			// Repair
-			if (Operation.CanTradeWithStorages)
+			if (Operation->CanTradeWithStorages)
 			{
 				if (TradeRouteFleet->FleetNeedsRepair())
 				{
 					if (!CheckedAvailableFleetSupplyCount)
 					{
-						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TradeRouteFleet);
 						CheckedAvailableFleetSupplyCount = true;
 					}
 					if (AffordableFS > 0)
@@ -1278,13 +1289,13 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 				}
 			}
 			// Rearm
-			if (Operation.CanDonate)
+			if (Operation->CanDonate)
 			{
 				if (TradeRouteFleet->FleetNeedsRefill())
 				{
 					if (!CheckedAvailableFleetSupplyCount)
 					{
-						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+						SectorHelper::GetAvailableFleetSupplyCount(Sector, TradeRouteFleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, TradeRouteFleet);
 						CheckedAvailableFleetSupplyCount = true;
 					}
 					if (AffordableFS > 0)
@@ -1293,37 +1304,46 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector)
 					}
 				}
 			}
-
 			continue;
 		}
 
 		//LOAD/UNLOAD Operation checks below
-		FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation.ResourceIdentifier);
-		bool UnloadOperation = (Operation.Type == EFlareTradeRouteOperation::Unload);
+		FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation->ResourceIdentifier);
+		bool UnloadOperation = (Operation->Type == EFlareTradeRouteOperation::Unload);
+		bool LoadOperation = (Operation->Type == EFlareTradeRouteOperation::Load);
 
-		int32 ResourceCount = TradeRouteFleet->GetFleetResourceQuantity(Resource);
-		if(UnloadOperation && ResourceCount == 0)
+		if(UnloadOperation)
 		{
-			// Cannot be usefull because nothing to exchange
-			continue;
+			int32 ResourceCount = TradeRouteFleet->GetFleetResourceQuantity(Resource);
+			if (ResourceCount == 0)
+			{
+				// Cannot be useful because nothing to exchange
+				continue;
+			}
 		}
-
+		if (LoadOperation)
+		{
+			int32 FleetFreeSpaceForResource = TradeRouteFleet->GetFleetFreeSpaceForResource(Resource);
+			if (FleetFreeSpaceForResource == 0)
+			{
+				// Cannot be useful because no more free space
+				continue;
+			}
+		}
 
 		// Find if there is a station to exchange
 		for(UFlareSimulatedSpacecraft* Station : Sector->GetSectorStations())
 		{
-
 			if (Station->IsHostile(TradeRouteCompany))
 			{
 				continue;
 			}
 
 			FFlareResourceUsage Usage = Station->GetResourceUseType(Resource);
-			if(IsUseful(Usage, Operation.Type, TradeRouteCompany == Station->GetCompany(), Operation.LoadUnloadPriority,Operation.BuySellPriority))
+			if(IsUseful(Usage, Operation->Type, TradeRouteCompany == Station->GetCompany(), Operation->LoadUnloadPriority,Operation->BuySellPriority))
 			{
 				return true;
 			}
-
 		}
 	}
 

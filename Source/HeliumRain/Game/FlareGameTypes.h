@@ -3,6 +3,7 @@
 #include "../Flare.h"
 #include "FlareFleet.h"
 #include "FlareTradeRoute.h"
+#include "FlareCompanyWhiteList.h"
 #include "../Spacecrafts/FlareSpacecraftTypes.h"
 #include "FlareGameTypes.generated.h"
 
@@ -391,11 +392,21 @@ struct FFlareCompanySave
 	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FFlareTradeRouteSave> TradeRoutes;
 
+	/** Company white lists */
+	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FFlareWhiteListSave> WhiteLists;
+
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 FleetImmatriculationIndex;
 
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 TradeRouteImmatriculationIndex;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 WhiteListImmatriculationIndex;
+
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName DefaultWhiteListIdentifier;
 
 	/** List of known or visited sectors */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -673,7 +684,7 @@ struct FFlareCompanyAIDescription
 
 	/** Default: 365*/
 	UPROPERTY(EditAnywhere, Category = Company)
-	int32 DaysUntilTryGetStationLicense;
+	int64 DaysUntilTryGetStationLicense;
 
 	/** Chance faction will ignore its diversity ratio and try to build a better military ship. Default: 0.05*/
 	UPROPERTY(EditAnywhere, Category = Company)

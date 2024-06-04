@@ -65,6 +65,14 @@ UFlareSoundManager::UFlareSoundManager(const class FObjectInitializer& PCIP)
 	static ConstructorHelpers::FObjectFinder<USoundCue> TickSoundObj(TEXT("/Game/Sound/Game/A_LightTick.A_LightTick"));
 	static ConstructorHelpers::FObjectFinder<USoundCue> BellSoundObj(TEXT("/Game/Sound/Game/A_Bell.A_Bell"));
 	static ConstructorHelpers::FObjectFinder<USoundCue> DeleteSoundObj(TEXT("/Game/Sound/Game/A_Delete.A_Delete"));
+	// Sound data
+	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationInfoSoundObj(TEXT("/Game/Sound/Game/A_NotificationInfo"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationCombatSoundObj(TEXT("/Game/Sound/Game/A_NotificationCombat"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationQuestSoundObj(TEXT("/Game/Sound/Game/A_NotificationQuest"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> NotificationTradingSoundObj(TEXT("/Game/Sound/Game/A_NotificationEconomy"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> CrashSoundObj(TEXT("/Game/Sound/Impacts/A_Collision"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> MissileWarningSoundObj(TEXT("/Game/Sound/Game/A_MissileWarning"));
+	static ConstructorHelpers::FObjectFinder<USoundCue> DockingSoundObj(TEXT("/Game/Sound/Impacts/A_Dock"));
 
 	// Sound class
 	MasterSoundClass = MasterClassObj.Object;
@@ -97,7 +105,16 @@ UFlareSoundManager::UFlareSoundManager(const class FObjectInitializer& PCIP)
 	HealthWarningHeavySound = HealthWarningHeavySoundObj.Object;
 	CollisionWarningSound = CollisionWarningSoundObj.Object;
 	SectorExitWarningSound = SectorExitWarningSoundObj.Object;
-	
+	// Noficiations
+	NotificationInfoSound = NotificationInfoSoundObj.Object;
+	NotificationCombatSound = NotificationCombatSoundObj.Object;
+	NotificationQuestSound = NotificationQuestSoundObj.Object;
+	NotificationTradingSound = NotificationTradingSoundObj.Object;
+	CrashSound = CrashSoundObj.Object;
+	MissileWarningSound = MissileWarningSoundObj.Object;
+	DockingSound = DockingSoundObj.Object;
+
+
 	// Music sound
 	MusicPlayer.Sound = PCIP.CreateDefaultSubobject<UAudioComponent>(this, TEXT("MusicSound"));
 	MusicPlayer.Sound->bAutoActivate = false;

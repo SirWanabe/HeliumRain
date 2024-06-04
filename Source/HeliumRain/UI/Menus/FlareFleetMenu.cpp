@@ -63,9 +63,11 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 
 				+ SScrollBox::Slot()
 				[
-					SNew(SVerticalBox)
-
-					// Fleet details
+					SNew(SBox)
+					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+					[
+						SNew(SVerticalBox)
+						// Fleet details
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.VAlign(VAlign_Top)
@@ -73,89 +75,86 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						[
 							SNew(STextBlock)
 							.TextStyle(&Theme.SubTitleFont)
-						.Text(LOCTEXT("ManageFleet", "Fleet details"))
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+							.Text(LOCTEXT("ManageFleet", "Fleet details"))
 						]
 
-					// Fleet tools
-					+ SVerticalBox::Slot()
+						// Fleet tools
+						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.Padding(Theme.ContentPadding)
 						[
 							SNew(SHorizontalBox)
-
 							// Name field
-						+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Fill)
-						.VAlign(VAlign_Center)
-						.Padding(Theme.SmallContentPadding)
-						[
-							SAssignNew(EditFleetName, SEditableText)
-							.AllowContextMenu(false)
-						.Style(&Theme.TextInputStyle)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						]
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Center)
+							.Padding(Theme.SmallContentPadding)
+							[
+								SAssignNew(EditFleetName, SEditableText)
+								.AllowContextMenu(false)
+								.Style(&Theme.TextInputStyle)
+							]
 
-					// Confirm name
-					+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Right)
-						.Padding(Theme.SmallContentPadding)
-						.AutoWidth()
-						[
-							SNew(SFlareButton)
-							.Width(4)
-						.Icon(FFlareStyleSet::GetIcon("OK"))
-						.Text(LOCTEXT("Rename", "Rename"))
-						.HelpText(this, &SFlareFleetMenu::GetRenameHintText)
-						.OnClicked(this, &SFlareFleetMenu::OnRenameFleet)
-						.IsDisabled(this, &SFlareFleetMenu::IsRenameDisabled)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						]
+							// Confirm name
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Right)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
+								SNew(SFlareButton)
+								.Width(4)
+								.Icon(FFlareStyleSet::GetIcon("OK"))
+								.Text(LOCTEXT("Rename", "Rename"))
+								.HelpText(this, &SFlareFleetMenu::GetRenameHintText)
+								.OnClicked(this, &SFlareFleetMenu::OnRenameFleet)
+								.IsDisabled(this, &SFlareFleetMenu::IsRenameDisabled)
+							]
 
-					// Finish
-					+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Right)
-						.Padding(Theme.SmallContentPadding)
-						.AutoWidth()
-						[
-							SNew(SFlareButton)
-							.Width(4)
-						.Icon(FFlareStyleSet::GetIcon("Stop"))
-						.Text(LOCTEXT("DoneEditing", "Back"))
-						.HelpText(LOCTEXT("DoneEditingInfo", "Finish editing this fleet"))
-						.OnClicked(this, &SFlareFleetMenu::OnEditFinished)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						]
-					]
+							// Finish
+							+ SHorizontalBox::Slot()
+								.HAlign(HAlign_Right)
+								.Padding(Theme.SmallContentPadding)
+								.AutoWidth()
+								[
+									SNew(SFlareButton)
+									.Width(4)
+									.Icon(FFlareStyleSet::GetIcon("Stop"))
+									.Text(LOCTEXT("DoneEditing", "Back"))
+									.HelpText(LOCTEXT("DoneEditingInfo", "Finish editing this fleet"))
+									.OnClicked(this, &SFlareFleetMenu::OnEditFinished)
+								]
+							]
 
-					// Color box
-					+ SVerticalBox::Slot()
+						// Color box
+						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.Padding(Theme.ContentPadding)
 						[
 							SNew(SOverlay)
-
 							+ SOverlay::Slot()
-						.Padding(FMargin(4.0f, 0.0f))
-						[
-							SNew(SComplexGradient)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-							.GradientColors(HueGradientColors)
-							.Orientation(Orient_Vertical)
-						]
+							.Padding(FMargin(4.0f, 0.0f))
+							[
+								SNew(SComplexGradient)
+								.GradientColors(HueGradientColors)
+								.Orientation(Orient_Vertical)
+							]
+							+ SOverlay::Slot()
+							[
+								SNew(SSlider)
+								.IndentHandle(false)
+								.Orientation(Orient_Horizontal)
 
-					+ SOverlay::Slot()
-						[
-							SNew(SSlider)
-							.IndentHandle(false)
-						.Orientation(Orient_Horizontal)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.SliderBarColor(FLinearColor::Transparent)
-						.Value(this, &SFlareFleetMenu::GetColorSpinBoxValue)
-						.OnValueChanged(this, &SFlareFleetMenu::OnColorSpinBoxValueChanged)
+								.SliderBarColor(FLinearColor::Transparent)
+								.Value(this, &SFlareFleetMenu::GetColorSpinBoxValue)
+								.OnValueChanged(this, &SFlareFleetMenu::OnColorSpinBoxValueChanged)
+							]
 						]
 					]
+				]
 
+				+ SScrollBox::Slot()
+				[
+					SNew(SVerticalBox)
 					// Fleet list
 					+ SVerticalBox::Slot()
 					[
@@ -166,15 +165,6 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
 						.OnItemUnSelected(this, &SFlareFleetMenu::OnFleetUnSelected)
 					]
-/*
-					// Fleet list 2
-					+ SVerticalBox::Slot()
-					[
-						SAssignNew(OtherFleetList, SFlareList)
-						.MenuManager(MenuManager)
-						.OnItemSelected(this, &SFlareFleetMenu::OnFleetSelected)
-					]
-*/
 				]
 			]
 
@@ -189,136 +179,205 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 				.AutoHeight()
 				.Padding(Theme.TitlePadding)
 				[
-					SNew(STextBlock)
-					.TextStyle(&Theme.SubTitleFont)
-					.Text(LOCTEXT("ManageShips", "Fleet composition"))
+					SNew(SBox)
 					.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-				]
-
-				// Add & remove
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.ContentPadding)
-				[
-					SNew(SHorizontalBox)
-
-					// Add
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Left)
-					.Padding(Theme.SmallContentPadding)
-					.AutoWidth()
 					[
-						SNew(SFlareButton)
-						.Width(4)
-						.Icon(FFlareStyleSet::GetIcon("MoveRight"))
-						.Text(LOCTEXT("AddToFleet", "Merge fleet"))
-						.HelpText(this, &SFlareFleetMenu::GetAddHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsAddDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnAddToFleet)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-					]
-
-					// Remove
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Left)
-					.Padding(Theme.SmallContentPadding)
-					.AutoWidth()
-					[
-						SAssignNew(RemoveShipButton,SFlareButton)
-						.Width(5)
-						.Icon(FFlareStyleSet::GetIcon("MoveLeft"))
-						.Text(LOCTEXT("RemoveFromFleet", "Remove ship"))
-						.HelpText(this, &SFlareFleetMenu::GetRemoveHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsRemoveDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnRemoveFromFleet)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-					]
-
-					+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Left)
-						.Padding(Theme.SmallContentPadding)
-						.AutoWidth()
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(Theme.TitlePadding)
 						[
-							// Inspect trade route
-							SAssignNew(TradeRouteButton, SFlareButton)
-							.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
-							.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
-							.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
-							.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-							.Width(4)
+							SNew(STextBlock)
+							.TextStyle(&Theme.SubTitleFont)
+							.Text(LOCTEXT("ManageShips", "Fleet composition"))
 						]
-					+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Left)
-						.Padding(Theme.SmallContentPadding)
-						.AutoWidth()
+						// Add & remove
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
 						[
-							// Auto Trade Button
-							SAssignNew(AutoTradeButton, SFlareButton)
-							.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
-							.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
-							.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
-							.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
-							.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
+							SNew(SHorizontalBox)
+							// Add
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
+								SNew(SFlareButton)
+								.Width(4)
+								.Icon(FFlareStyleSet::GetIcon("MoveRight"))
+								.Text(LOCTEXT("AddToFleet", "Merge fleet"))
+								.HelpText(this, &SFlareFleetMenu::GetAddHintText)
+								.IsDisabled(this, &SFlareFleetMenu::IsAddDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnAddToFleet)
+							]
+
+							// Remove
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
+								SAssignNew(RemoveShipButton,SFlareButton)
+								.Width(5)
+								.Icon(FFlareStyleSet::GetIcon("MoveLeft"))
+								.Text(LOCTEXT("RemoveFromFleet", "Remove ship"))
+								.HelpText(this, &SFlareFleetMenu::GetRemoveHintText)
+								.IsDisabled(this, &SFlareFleetMenu::IsRemoveDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnRemoveFromFleet)
+							]
+
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
+								// Inspect trade route
+								SAssignNew(TradeRouteButton, SFlareButton)
+								.Text(LOCTEXT("TradeRoute", "TRADE ROUTE"))
+								.HelpText(this, &SFlareFleetMenu::GetInspectTradeRouteHintText)
+								.IsDisabled(this, &SFlareFleetMenu::IsInspectTradeRouteDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
+								.Width(4)
+							]
+							+ SHorizontalBox::Slot()
+								.HAlign(HAlign_Left)
+								.Padding(Theme.SmallContentPadding)
+								.AutoWidth()
+								[
+									// Auto Trade Button
+									SAssignNew(AutoTradeButton, SFlareButton)
+									.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
+									.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
+									.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
+									.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+									.Toggle(true)
+									.Width(4)
+								]
+							]
+							// Inspect trade route
+
+						// Hide Travel
+						+SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
+								// Hide Travel Button
+								SAssignNew(HideTravelButton, SFlareButton)
+								.Text(LOCTEXT("HideTravel", "HIDE-TRAVEL"))
+						
+							.HelpText(this, &SFlareFleetMenu::GetToggleHideTravelHintText)
+							.IsDisabled(this, &SFlareFleetMenu::IsToggleHideTravelDisabled)
+							.OnClicked(this, &SFlareFleetMenu::OnToggleHideTravel)
 							.Toggle(true)
 							.Width(4)
+							]
 						]
-					]
-					// Inspect trade route
 
-				// Hide Travel
-				+SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Left)
-						.Padding(Theme.SmallContentPadding)
-						.AutoWidth()
+						// Select White List
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
 						[
-							// Auto Trade Button
-							SAssignNew(HideTravelButton, SFlareButton)
-							.Text(LOCTEXT("HideTravel", "HIDE-TRAVEL"))
-						
-						.HelpText(this, &SFlareFleetMenu::GetToggleHideTravelHintText)
-						.IsDisabled(this, &SFlareFleetMenu::IsToggleHideTravelDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnToggleHideTravel)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Toggle(true)
-						.Width(4)
+							SAssignNew(WhiteListSelectionBox, SBox)
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.HAlign(HAlign_Left)
+									.VAlign(VAlign_Top)
+									.Padding(Theme.ContentPadding)
+									.MaxWidth(96)
+									[
+										SNew(STextBlock)
+										.TextStyle(&Theme.TextFont)
+										.Text(LOCTEXT("WhiteListInfo", "White List"))
+									]
+									+ SHorizontalBox::Slot()
+									.AutoWidth()
+									.HAlign(HAlign_Left)
+									[
+										SNew(SBox)
+										.HAlign(HAlign_Left)
+										.VAlign(VAlign_Top)
+										.Padding(FMargin(0))
+										[
+											SAssignNew(WhiteListDropBox, SFlareDropList<UFlareCompanyWhiteList*>)
+											.OptionsSource(&WhiteListOptions)
+											.OnGenerateWidget(this, &SFlareFleetMenu::OnGenerateWhiteListComboLine)
+											.OnSelectionChanged(this, &SFlareFleetMenu::OnWhiteListComboLineSelectionChanged)
+											.HeaderWidth(6)
+											.ItemWidth(6)
+										]
+									]
+									+ SHorizontalBox::Slot()
+									.HAlign(HAlign_Left)
+									.VAlign(VAlign_Top)
+									.AutoWidth()
+									[
+										SNew(SFlareButton)
+										.Text(LOCTEXT("SelectWhitelist", "Select"))
+										.Icon(FFlareStyleSet::GetIcon("OK"))
+										.OnClicked(this, &SFlareFleetMenu::OnSelectWhiteList)
+										.IsDisabled(this, &SFlareFleetMenu::IsWhiteListSelectDisabled)
+										.Width(3)
+									]
+									+ SHorizontalBox::Slot()
+									.HAlign(HAlign_Left)
+									.VAlign(VAlign_Top)
+									.AutoWidth()
+									[
+										SNew(SFlareButton)
+										.Transparent(true)
+										.Text(FText())
+										.HelpText(LOCTEXT("RemoveWhiteListHelp", "Remove this white list"))
+										.Icon(FFlareStyleSet::GetIcon("Stop"))
+										.OnClicked(this, &SFlareFleetMenu::OnRemoveWhiteList)
+										.IsDisabled(this, &SFlareFleetMenu::IsWhiteListRemoveDisabled)
+										.Width(1)
+									]
+								]
+							]
 						]
-					]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.ContentPadding)
-				[
-					SNew(SHorizontalBox)
-					// Refill
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(RefillButton, SFlareButton)
-						.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
-						.IsDisabled(this, &SFlareFleetMenu::IsRefillDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnRefillClicked)
-						.Text(this, &SFlareFleetMenu::GetRefillText)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Width(8)
-					]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SHorizontalBox)
+							// Refill
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SAssignNew(RefillButton, SFlareButton)
+								.HelpText(LOCTEXT("RefillInfoFleet", "Refill all ships in this fleet so that they have the necessary fuel, ammo and resources to fight."))
+								.IsDisabled(this, &SFlareFleetMenu::IsRefillDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnRefillClicked)
+								.Text(this, &SFlareFleetMenu::GetRefillText)
+								.Width(8)
+							]
 
-					// Repair
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[
-						SAssignNew(RepairButton, SFlareButton)
-						.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
-						.IsDisabled(this, &SFlareFleetMenu::IsRepairDisabled)
-						.OnClicked(this, &SFlareFleetMenu::OnRepairClicked)
-						.Text(this, &SFlareFleetMenu::GetRepairText)
-						.Visibility(this, &SFlareFleetMenu::GetEditVisibility)
-						.Width(8)
+							// Repair
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SAssignNew(RepairButton, SFlareButton)
+								.HelpText(LOCTEXT("RepairInfoFleet", "Repair all ships in this fleet."))
+								.IsDisabled(this, &SFlareFleetMenu::IsRepairDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnRepairClicked)
+								.Text(this, &SFlareFleetMenu::GetRepairText)
+								.Width(8)
+							]
+						]
 					]
 				]
 
@@ -365,6 +424,7 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 	FleetToAdd = NULL;
 	ShipToRemove = NULL;
 	FleetToEdit = TargetFleet;
+	WhiteListOptions.Empty();
 
 	// We are in edit mode
 	if (FleetToEdit)
@@ -375,11 +435,41 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 		MenuManager->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("fleet-edited").PutName("fleet", FleetToEdit->GetIdentifier()));
 		AutoTradeButton->SetActive(FleetToEdit->IsAutoTrading());
 		HideTravelButton->SetActive(FleetToEdit->IsHiddenTravel());
+
+		WhiteListOptions.Reserve(FleetToEdit->GetFleetCompany()->GetWhiteLists().Num());
+		for (UFlareCompanyWhiteList* WhiteListEntry : FleetToEdit->GetFleetCompany()->GetWhiteLists())
+		{
+			WhiteListOptions.Add(WhiteListEntry);
+		}
+
+		if (WhiteListOptions.Num() > 0)
+		{
+			WhiteListSelectionBox->SetVisibility(EVisibility::Visible);
+		}
+		else
+		{
+			WhiteListSelectionBox->SetVisibility(EVisibility::Collapsed);
+		}
+
+		WhiteListDropBox->RefreshOptions();
+
+		if (WhiteListOptions.Num() > 0)
+		{
+			if (FleetToEdit->GetSelectedWhiteList())
+			{
+				WhiteListDropBox->SetSelectedItem(FleetToEdit->GetSelectedWhiteList());
+			}
+			else
+			{
+				WhiteListDropBox->SetSelectedIndex(0);
+			}
+		}
 	}
 
 	// We are in preview mode
 	else
 	{
+		WhiteListSelectionBox->SetVisibility(EVisibility::Collapsed);
 		FleetList->SetTitle(LOCTEXT("AllFleetsListTitle", "Fleets"));
 		ShipList->SetUseCompactDisplay(false);
 		AutoTradeButton->SetActive(false);
@@ -615,7 +705,7 @@ FText SFlareFleetMenu::GetRepairText() const
 	int64 MaxDuration;
 
 	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
-	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, FleetToEdit);
 
 	if (IsRepairDisabled())
 	{
@@ -709,7 +799,7 @@ bool SFlareFleetMenu::IsRepairDisabled() const
 		int32 OwnedFS;
 		int32 AffordableFS;
 
-		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, MenuManager->GetPC()->GetCompany(), OwnedFS, AvailableFS, AffordableFS,nullptr, FleetToEdit);
 
 		if (AffordableFS == 0) {
 			return true;
@@ -746,7 +836,7 @@ FText SFlareFleetMenu::GetRefillText() const
 	int64 MaxDuration;
 
 	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, FleetToEdit->GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
-	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, FleetToEdit);
 
 	if (IsRefillDisabled())
 	{
@@ -841,7 +931,7 @@ bool SFlareFleetMenu::IsRefillDisabled() const
 		int32 OwnedFS;
 		int32 AffordableFS;
 
-		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS);
+		SectorHelper::GetAvailableFleetSupplyCount(TargetSector, FleetToEdit->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, FleetToEdit);
 
 		if (AffordableFS == 0) {
 			return true;
@@ -1158,6 +1248,81 @@ void SFlareFleetMenu::SFlareFleetMenu::OnColorSpinBoxValueChanged(float NewValue
 {
 	FLinearColor Color = FLinearColor(360.0f * NewValue, 1.0f, 1.0f, 1.0f).HSVToLinearRGB();
 	FleetToEdit->SetFleetColor(Color);
+}
+
+void SFlareFleetMenu::OnSelectWhiteList()
+{
+	if (CurrentlySelectedWhiteList)
+	{
+		FleetToEdit->SelectWhiteListDefault(CurrentlySelectedWhiteList);
+		int32 CurrentlySelectedIndex = WhiteListDropBox->GetSelectedIndex();
+		WhiteListDropBox->RefreshOptions();
+		WhiteListDropBox->SetSelectedIndex(CurrentlySelectedIndex);
+	}
+}
+
+void SFlareFleetMenu::OnRemoveWhiteList()
+{
+	FleetToEdit->SelectWhiteListDefault(nullptr);
+	int32 CurrentlySelectedIndex = WhiteListDropBox->GetSelectedIndex();
+	WhiteListDropBox->RefreshOptions();
+	WhiteListDropBox->SetSelectedIndex(CurrentlySelectedIndex);
+}
+
+bool SFlareFleetMenu::IsWhiteListRemoveDisabled() const
+{
+	if (FleetToEdit && FleetToEdit->GetSelectedWhiteList())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool SFlareFleetMenu::IsWhiteListSelectDisabled() const
+{
+	if (FleetToEdit && (!FleetToEdit->GetSelectedWhiteList() || FleetToEdit->GetSelectedWhiteList() && FleetToEdit->GetSelectedWhiteList() != CurrentlySelectedWhiteList))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+TSharedRef<SWidget> SFlareFleetMenu::OnGenerateWhiteListComboLine(UFlareCompanyWhiteList* Item)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	const FSlateBrush* WhiteListIcon = NULL;
+	if (FleetToEdit->GetSelectedWhiteList() == Item)
+	{
+		WhiteListIcon = FFlareStyleSet::GetIcon("New");
+	}
+
+	TSharedPtr<SWidget> Layout = SNew(SBox)
+	.Padding(Theme.ListContentPadding)
+	[
+		SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.MaxWidth(32)
+			[
+				SNew(SImage)
+				.Image(WhiteListIcon)
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Left)
+			[
+				SNew(STextBlock)
+				.Text(Item ? Item->GetWhiteListName() : LOCTEXT("NoFilterByWhiteList", "No filter"))
+				.TextStyle(&Theme.TextFont)
+			]
+	];
+	return Layout.ToSharedRef();
+}
+
+void SFlareFleetMenu::OnWhiteListComboLineSelectionChanged(UFlareCompanyWhiteList* Item, ESelectInfo::Type SelectInfo)
+{
+	CurrentlySelectedWhiteList = Item;
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -1001,19 +1001,21 @@ FText SFlareSpaceCraftOverlayInfo::GetProductionText() const
 	// Station-building
 	else
 	{
-		//		FCHECK(TargetSector);
-
-				// Add resources
+		// Add resources
 		FString ResourcesString;
 		for (int ResourceIndex = 0; ResourceIndex < Desc->CycleCost.InputResources.Num(); ResourceIndex++)
 		{
 			FFlareFactoryResource* FactoryResource = &Desc->CycleCost.InputResources[ResourceIndex];
-			if (ResourcesString.Len())
+			if (FactoryResource)
 			{
-				ResourcesString += ", ";
-			}
+				if (ResourcesString.Len())
+				{
+					ResourcesString += ", ";
+				}
 
-			ResourcesString += FString::Printf(TEXT("%u %s"), FactoryResource->Quantity, *FactoryResource->Resource->Data.Name.ToString()); // FString needed here
+//			FString FormattedQuantity = FString::FormatAsNumber(FactoryResource->Quantity);
+				ResourcesString += FString::Printf(TEXT("%u %s"), FactoryResource->Quantity, *FactoryResource->Resource->Data.Name.ToString()); // FString needed here
+			}
 		}
 
 		// Constraints

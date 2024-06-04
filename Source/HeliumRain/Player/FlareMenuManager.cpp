@@ -22,6 +22,7 @@
 #include "../UI/Menus/FlareSectorMenu.h"
 #include "../UI/Menus/FlareTradeMenu.h"
 #include "../UI/Menus/FlareTradeRouteMenu.h"
+#include "../UI/Menus/FlareWhiteListMenu.h"
 #include "../UI/Menus/FlareCreditsMenu.h"
 #include "../UI/Menus/FlareHelpMenu.h"
 #include "../UI/Menus/FlareEULAMenu.h"
@@ -88,6 +89,7 @@ void AFlareMenuManager::SetupMenu()
 		SAssignNew(SectorMenu, SFlareSectorMenu).MenuManager(this);
 		SAssignNew(TradeMenu, SFlareTradeMenu).MenuManager(this);
 		SAssignNew(TradeRouteMenu, SFlareTradeRouteMenu).MenuManager(this);
+		SAssignNew(CompanyWhiteListMenu, SFlareWhiteListMenu).MenuManager(this);
 		SAssignNew(OrbitMenu, SFlareOrbitalMenu).MenuManager(this);
 		SAssignNew(LeaderboardMenu, SFlareLeaderboardMenu).MenuManager(this);
 		SAssignNew(ResourcePricesMenu, SFlareResourcePricesMenu).MenuManager(this);
@@ -129,6 +131,7 @@ void AFlareMenuManager::SetupMenu()
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(SectorMenu.ToSharedRef()),         50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(TradeMenu.ToSharedRef()),          50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(TradeRouteMenu.ToSharedRef()),     50);
+		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(CompanyWhiteListMenu.ToSharedRef()), 50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(OrbitMenu.ToSharedRef()),          50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(LeaderboardMenu.ToSharedRef()),    50);
 		GEngine->GameViewport->AddViewportWidgetContent(SNew(SWeakWidget).PossiblyNullContent(ResourcePricesMenu.ToSharedRef()), 50);
@@ -162,6 +165,7 @@ void AFlareMenuManager::SetupMenu()
 		SectorMenu->Setup();
 		TradeMenu->Setup();
 		TradeRouteMenu->Setup();
+		CompanyWhiteListMenu->Setup();
 		OrbitMenu->Setup();
 		LeaderboardMenu->Setup();
 		ResourcePricesMenu->Setup();
@@ -614,6 +618,7 @@ void AFlareMenuManager::ResetMenu()
 	SectorMenu->Exit();
 	TradeMenu->Exit();
 	TradeRouteMenu->Exit();
+	CompanyWhiteListMenu->Exit();
 	OrbitMenu->Exit();
 	LeaderboardMenu->Exit();
 	ResourcePricesMenu->Exit();
@@ -689,6 +694,7 @@ void AFlareMenuManager::ProcessNextMenu()
 		case EFlareMenu::MENU_Station:            InspectShip(false);          break;
 		case EFlareMenu::MENU_ShipConfig:         InspectShip(true);           break;
 		case EFlareMenu::MENU_Sector:             OpenSector();                break;
+		case EFlareMenu::MENU_WhiteList:          OpenWhitelist();             break;
 		case EFlareMenu::MENU_Trade:              OpenTrade();                 break;
 		case EFlareMenu::MENU_TradeRoute:         OpenTradeRoute();            break;
 		case EFlareMenu::MENU_Orbit:              OpenOrbit();                 break;
@@ -1059,6 +1065,14 @@ void AFlareMenuManager::OpenStoryMenu()
 	StoryMenu->Enter();
 }
 
+void AFlareMenuManager::OpenWhitelist()
+{
+	OnEnterMenu(false);
+	UFlareCompany* Company = (NextMenu.Value.Company) ? NextMenu.Value.Company : GetPC()->GetCompany();
+	FCHECK(Company);
+	CompanyWhiteListMenu->Enter(NextMenu.Value.WhiteList,Company);
+}
+
 void AFlareMenuManager::InspectCompany()
 {
 	OnEnterMenu(false);
@@ -1346,6 +1360,7 @@ const FSlateBrush* AFlareMenuManager::GetMenuIcon(EFlareMenu::Type MenuType)
 		case EFlareMenu::MENU_Sector:         Path = "Sector";       break;
 		case EFlareMenu::MENU_Trade:          Path = "Trade";        break;
 		case EFlareMenu::MENU_TradeRoute:     Path = "Trade";        break;
+		case EFlareMenu::MENU_WhiteList:      Path = "Company";      break;
 		case EFlareMenu::MENU_Orbit:          Path = "Orbit";        break;
 		case EFlareMenu::MENU_Help:		      Path = "Help";		 break;
 		case EFlareMenu::MENU_Settings:       Path = "Settings";     break;

@@ -62,38 +62,88 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 			.Header(LOCTEXT("CompanyMainTab", "Company"))
 			.HeaderHelp(LOCTEXT("CompanyMainTabHelp", "General information about your company"))
 			[
-				SNew(SVerticalBox)
-
-				// Company info
-				+ SVerticalBox::Slot()
-				.Padding(Theme.ContentPadding)
-				.AutoHeight()
+				SNew(SBox)
+				.WidthOverride(Theme.ContentWidth)
+				.HAlign(HAlign_Left)
 				[
-					SNew(SBox)
-					.WidthOverride(0.8 * Theme.ContentWidth)
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.Padding(Theme.ContentPadding)
+					.AutoWidth()
+					.HAlign(HAlign_Left)
 					[
-						SAssignNew(CompanyInfo, SFlareCompanyInfo)
-						.Player(PC)
-//						.Company(PC->GetCompany())
+						SNew(SVerticalBox)
+						// Company info
+						+ SVerticalBox::Slot()
+						.Padding(Theme.ContentPadding)
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.Padding(Theme.ContentPadding)
+							.AutoWidth()
+							.HAlign(HAlign_Left)
+							[
+								SNew(SBox)
+								.WidthOverride(0.6 * Theme.ContentWidth)
+								[
+									SAssignNew(CompanyInfo, SFlareCompanyInfo)
+									.Player(PC)
+								]
+							]
+						]
+
+						// TR info
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SAssignNew(TradeRouteInfo, SFlareTradeRouteInfo)
+							.MenuManager(MenuManager)
+						]
+
+						// Auto Fleet info
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SAssignNew(AutomatedFleetsInfo, SFlareAutomatedFleetsInfo)
+							.MenuManager(MenuManager)
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Top)
+					.Padding(Theme.SmallContentPadding)
+					[
+						// Company whitelists
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.Padding(Theme.ContentPadding)
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							[
+								SNew(SFlareButton)
+								.Width(6)
+								.Text(LOCTEXT("AddNewWhiteList", "Create new company whitelist"))
+								.HelpText(LOCTEXT("WhiteListInfo", "Create a white-list which you can then utilize to restrict trading to only the companies contained within"))
+								.Icon(FFlareStyleSet::GetIcon("New"))
+								.OnClicked(this, &SFlareCompanyMenu::OnNewWhiteListClicked)
+							]
+						]
+
+						+ SVerticalBox::Slot()
+						.Padding(Theme.ContentPadding)
+						.AutoHeight()
+						[
+							SAssignNew(CompanyWhiteListBox, SVerticalBox)
+						]
 					]
 				]
-
-				// TR info
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SAssignNew(TradeRouteInfo, SFlareTradeRouteInfo)
-					.MenuManager(MenuManager)
-				]
-
-				// Auto Fleet info
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SAssignNew(AutomatedFleetsInfo, SFlareAutomatedFleetsInfo)
-					.MenuManager(MenuManager)
-				]
-
 			]
 
 			// Property block
@@ -695,6 +745,7 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 	CompanySelector->RefreshOptions();
 	ShipList->RefreshList();
 	ShipList->SetVisibility(EVisibility::Visible);
+	RegenerateWhiteListBox();
 }
 
 void SFlareCompanyMenu::Exit()
@@ -723,6 +774,7 @@ void SFlareCompanyMenu::Exit()
 	CurrentCompanyFilter = NULL;
 
 	Company = NULL;
+	CompanyWhiteListBox->ClearChildren();
 	SetVisibility(EVisibility::Collapsed);
 }
 
@@ -730,6 +782,92 @@ void SFlareCompanyMenu::Exit()
 /*----------------------------------------------------
 	Content helpers
 ----------------------------------------------------*/
+
+void SFlareCompanyMenu::RegenerateWhiteListBox()
+{
+	CompanyWhiteListBox->ClearChildren();
+	for (int32 WhiteListIndex = 0; WhiteListIndex < Company->GetWhiteLists().Num(); WhiteListIndex++)
+	{
+		UFlareCompanyWhiteList* CurrentWhiteList = Company->GetWhiteLists()[WhiteListIndex];
+		GenerateWhiteListInfo(CurrentWhiteList);
+	}	
+}
+
+void SFlareCompanyMenu::GenerateWhiteListInfo(UFlareCompanyWhiteList* WhiteList)
+{
+	if (WhiteList)
+	{
+		const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+		FText WhiteListName = FText::Format(LOCTEXT("WhiteListNameFormat", "{0}"), WhiteList->GetWhiteListName());
+
+		const FSlateBrush* WhiteListIcon = NULL;
+		if (Company->GetCompanySelectedWhiteList() == WhiteList)
+		{
+			WhiteListIcon = FFlareStyleSet::GetIcon("New");
+		}
+
+		CompanyWhiteListBox->AddSlot()
+		.AutoHeight()
+		.Padding(FMargin(0))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.HAlign(HAlign_Left)
+			.Padding(Theme.SmallContentPadding)
+			[
+				SNew(SFlareButton)
+				.Width(6)
+				.Text(WhiteListName)
+				.HelpText(LOCTEXT("WhiteListInfo", "Edit this white list"))
+				.Icon(WhiteListIcon)
+				.OnClicked(this, &SFlareCompanyMenu::OnInspectWhiteListClicked,WhiteList)
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.HAlign(HAlign_Left)
+			.Padding(Theme.SmallContentPadding)
+			[
+				SNew(SFlareButton)
+				.Transparent(true)
+				.Text(FText())
+				.HelpText(LOCTEXT("RemoveWhiteListHelp", "Remove this white list"))
+				.Icon(FFlareStyleSet::GetIcon("Stop"))
+				.OnClicked(this, &SFlareCompanyMenu::OnDeleteWhiteList, WhiteList)
+				.Width(1)
+			]
+		];
+	}
+}
+
+void SFlareCompanyMenu::OnNewWhiteListClicked()
+{
+	UFlareCompanyWhiteList* WhiteList = Company->CreateCompanyWhiteList(FText(LOCTEXT("UntitledWhiteList", "Untitled Whitelist")));
+	FCHECK(WhiteList);
+	GenerateWhiteListInfo(WhiteList);
+}
+
+void SFlareCompanyMenu::OnDeleteWhiteList(UFlareCompanyWhiteList* WhiteList)
+{
+	MenuManager->Confirm(LOCTEXT("AreYouSure", "ARE YOU SURE ?"),
+	LOCTEXT("ConfirmDeleteWL", "Do you really want to remove this white list ?"),
+	FSimpleDelegate::CreateSP(this, &SFlareCompanyMenu::OnDeleteWhiteListConfirmed, WhiteList));
+}
+
+void SFlareCompanyMenu::OnDeleteWhiteListConfirmed(UFlareCompanyWhiteList* WhiteList)
+{
+	FCHECK(WhiteList);
+	Company->DeleteCompanyWhiteList(WhiteList);
+	RegenerateWhiteListBox();
+}
+
+void SFlareCompanyMenu::OnInspectWhiteListClicked(UFlareCompanyWhiteList* WhiteList)
+{
+	FFlareMenuParameterData Data;
+	Data.WhiteList = WhiteList;
+	Data.Company = Company;
+	MenuManager->OpenMenu(EFlareMenu::MENU_WhiteList, Data);
+}
 
 void SFlareCompanyMenu::OnRepairClicked()
 {
@@ -1541,7 +1679,6 @@ TSharedRef<SWidget> SFlareCompanyMenu::OnGenerateCompanyComboLine(UFlareCompany*
 void SFlareCompanyMenu::OnCompanyComboLineSelectionChanged(UFlareCompany* Item, ESelectInfo::Type SelectInfo)
 {
 	CurrentCompanyFilter = Item;
-
 	ShowCompanyLog(Company);
 }
 

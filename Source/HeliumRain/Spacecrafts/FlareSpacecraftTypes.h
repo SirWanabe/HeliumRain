@@ -1035,6 +1035,10 @@ struct FFlareSpacecraftSave
 	/** Ships that are our subordinates (IE for carriers)*/
 	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FName> OwnedShipNames;
+
+	/* Whitelist Identifier*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName DefaultWhiteListIdentifier;
 };
 
 struct SpacecraftHelper

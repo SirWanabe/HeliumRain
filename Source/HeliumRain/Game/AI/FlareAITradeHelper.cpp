@@ -1408,6 +1408,12 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 				continue;
 			}
 
+			if(Company->IsPlayerCompany() && OtherCompany->IsPlayerCompany())
+			{
+				// Player don't always want to repair
+				continue;
+			}
+
 			int32 NeededFS;
 			int32 TotalNeededFS;
 			int64 MaxDuration;
@@ -1418,12 +1424,6 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 
 			SectorHelper::GetRepairFleetSupplyNeeds(Sector, OtherCompany, NeededFS, TotalNeededFS, MaxDuration, true);
 			NeededFSSum += TotalNeededFS;
-
-			if(Company->IsPlayerCompany() && OtherCompany->IsPlayerCompany())
-			{
-				// Player don't always want to repair
-				continue;
-			}
 
 			if(OtherCompany == Company)
 			{
@@ -1453,7 +1453,6 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 
 #define TRADING_MIN_NEED_QUANTITY 50
 
-//inline static bool NeedComparatorComparator(const AITradeNeed& n1, const AITradeNeed& n2)
 inline static int32 NeedComparatorComparator(const AITradeNeed& n1, const AITradeNeed& n2)
 {
 	if(n1.HighPriority == n2.HighPriority)
@@ -1653,7 +1652,8 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 				{
 					if(Station->GetActiveCargoBay()->WantBuy(Resource, nullptr) && !Station->HasCapability(EFlareSpacecraftCapability::Storage))
 					{
-						if(Resource == World->GetGame()->GetScenarioTools()->FleetSupply)
+//						if(Resource == World->GetGame()->GetScenarioTools()->FleetSupply)
+						if(Resource->IsMaintenanceResource)
 						{
 							MaintenanceSource = true;
 						}
@@ -1734,12 +1734,10 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 			for(UFlareResourceCatalogEntry* ResourceEntry : World->GetGame()->GetResourceCatalog()->Resources)
 			{
 				FFlareResourceDescription* Resource = &ResourceEntry->Data;
-				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
-//				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, nullptr);
+				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, nullptr);
 				if(Quantity > 0)
 				{
 					bool Traveling = Ship->GetCurrentFleet()->IsTraveling();
-
 					AITradeSource Source;
 					Source.Resource = Resource;
 					Source.Quantity = Quantity;
@@ -1847,14 +1845,15 @@ void AITradeHelper::ComputeGlobalTrading(UFlareWorld* World, AITradeNeeds& Needs
 bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney)
 {
 	bool MaintenanceSource = false;
-	AITradeSource* Source = FindBestSource(Sources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
+//	AITradeSource* Source = FindBestSource(Sources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
+	AITradeSource* Source = FindBestSource(Sources, Need, CompaniesMoney);
 
 	if(Source == nullptr && Need.Maintenance)
 	{
-		Source = FindBestSource(MaintenanceSources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
+//		Source = FindBestSource(MaintenanceSources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
+		Source = FindBestSource(MaintenanceSources, Need, CompaniesMoney);
 		MaintenanceSource = true;
 	}
-
 
 	if(Source == nullptr)
 	{
@@ -1938,8 +1937,10 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 	}
 	else
 	{
-		AIIdleShip* IdleShip = FindBestShip(IdleShips, Source->Sector, Source->Company, Need.Company, Need.Quantity);
-		//FLOGV("Station IdleShip=%p", IdleShip);
+		AIIdleShip* IdleShip = FindBestShip(IdleShips, *Source, Need);
+		//FindBestShip(IdleShips, Source->Sector, Source->Company, Need.Company, Need.Quantity);
+
+//FLOGV("Station IdleShip=%p", IdleShip);
 		if(IdleShip == nullptr)
 		{
 #if DEBUG_NEW_AI_TRADING
@@ -1972,7 +1973,7 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 					  *Need.Resource->Name.ToString()
 					  );
 #endif
-				// Not enougt money
+				// Not enough money
 				return false;
 			}
 		}
@@ -2052,9 +2053,10 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 	}
 }
 
-AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareResourceDescription* Resource, UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 NeededQuantity, size_t FunctionIndex, AICompaniesMoney& CompaniesMoney)
+AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNeed& Need, AICompaniesMoney& CompaniesMoney)
+//AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareResourceDescription* Resource, UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 NeededQuantity, size_t FunctionIndex, AICompaniesMoney& CompaniesMoney)
 {
-	static std::function<AITradeSource* (AITradeSourcesByResource&, UFlareSimulatedSector*, UFlareCompany*, int32, AICompaniesMoney&)> Functions[SourceFunctionCount];
+	static std::function<AITradeSource* (AITradeSourcesByResource&, UFlareSimulatedSector*, UFlareCompany*, int32, UFlareSimulatedSpacecraft*, FFlareResourceDescription*, AICompaniesMoney&)> Functions[SourceFunctionCount];
 	static bool FunctionsInit = false;
 
 	//FLOGV("FindBestSource nbSource=%d FunctionIndex=%d", Sources.SourceCount, FunctionIndex);
@@ -2082,14 +2084,14 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 		// Owned local cargo
 		int32 InitFunctionIndex = 0;
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2101,6 +2103,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2127,14 +2135,14 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned incoming cargo
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2151,6 +2159,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2177,14 +2191,14 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned cargo in moon
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2201,6 +2215,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2227,14 +2247,14 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned incoming in moon
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2251,6 +2271,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2277,12 +2303,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned cargo in world
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceCompany = iSourcesByResource.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2299,6 +2325,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2325,12 +2357,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned incoming in world
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceCompany = iSourcesByResource.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2347,6 +2379,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2376,7 +2414,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 		// Other company sources
 		// Local cargo
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
@@ -2389,7 +2427,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2400,7 +2438,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2408,6 +2446,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2434,7 +2478,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Incoming cargo
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
@@ -2447,7 +2491,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2458,7 +2502,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2470,6 +2514,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2496,7 +2546,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Cargo in moon
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
@@ -2509,7 +2559,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2520,7 +2570,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2532,6 +2582,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2558,7 +2614,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Incoming in moon
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
@@ -2571,7 +2627,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2582,7 +2638,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2594,6 +2650,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2620,7 +2682,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Cargo in world
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceCompany = iSourcesByResource.GetSources();
 
@@ -2631,7 +2693,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2642,7 +2704,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2654,6 +2716,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(Source->Traveling)
 				{
 					// Not local
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2680,7 +2748,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Incoming in world
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceCompany = iSourcesByResource.GetSources();
 
@@ -2691,7 +2759,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				// No money to buy to other company
 				return BestSource;
 			}
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceCompany)
 			{
 				if(Source->Ship == nullptr)
@@ -2702,7 +2770,7 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 				if(iCompany->GetWarState(Source->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
@@ -2714,6 +2782,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 				if(!Source->Traveling)
 				{
 					// Not traveling
+					continue;
+				}
+
+				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2741,19 +2815,25 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 
 
 		// Owned local station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2780,19 +2860,25 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned moon station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2819,17 +2905,23 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Owned world station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = iSourcesByResource.GetSourcePerCompany(iCompany);
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2856,19 +2948,25 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Local station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerSector(iSector);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSources();
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2895,19 +2993,25 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// Moon station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			AITradeSourcesByResourceLocation& SourcesByResourceSector = iSourcesByResource.GetSourcesPerMoon(iSector->GetOrbitParameters()->CelestialBodyIdentifier);
 
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = SourcesByResourceSector.GetSources();
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2934,17 +3038,23 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		};
 
 		// World station
-		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, AICompaniesMoney& iCompaniesMoney)
+		Functions[InitFunctionIndex++] = [](AITradeSourcesByResource& iSourcesByResource, UFlareSimulatedSector* iSector, UFlareCompany* iCompany, int32 iNeededQuantity, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, AICompaniesMoney& iCompaniesMoney)
 		{
 			TArray<AITradeSource *>& SourcesByResourceSectorCompany = iSourcesByResource.GetSources();
 
 			AITradeSource* BestSource = nullptr;
-
+			FText Unused;
 			for(AITradeSource* Source : SourcesByResourceSectorCompany)
 			{
 				if(Source->Station == nullptr)
 				{
 					// Not station, skip
+					continue;
+				}
+
+				if ((!Source->Station->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Station, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -2973,13 +3083,14 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareReso
 		FCHECK(SourceFunctionCount == InitFunctionIndex);
 	}
 
-	AITradeSourcesByResource& SourcesByResource = Sources.GetSourcesPerResource(Resource);
-	return Functions[FunctionIndex](SourcesByResource, Sector, Company, NeededQuantity, CompaniesMoney);
+	AITradeSourcesByResource& SourcesByResource = Sources.GetSourcesPerResource(Need.Resource);
+	return Functions[Need.SourceFunctionIndex](SourcesByResource, Need.Sector, Need.Company, Need.Quantity, Need.Station, Need.Resource, CompaniesMoney);
 }
 
-AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimulatedSector* Sector, UFlareCompany* SourceCompany, UFlareCompany* NeedCompany, int32 NeedQuantity)
+AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSource& Source, AITradeNeed& Need)
+//FindBestShip(AITradeIdleShips& IdleShips, UFlareSimulatedSector* Sector, UFlareCompany* SourceCompany, UFlareCompany* NeedCompany, int32 NeedQuantity)
 {
-	static std::function<AIIdleShip* (AITradeIdleShips&, UFlareSimulatedSector*, UFlareCompany*, UFlareCompany*, int32)> Functions[IdleShipFunctionCount];
+	static std::function<AIIdleShip* (AITradeIdleShips&, UFlareSimulatedSector*, UFlareCompany*, UFlareCompany*, UFlareSimulatedSpacecraft*, FFlareResourceDescription*, int32)> Functions[IdleShipFunctionCount];
 
 	static bool FunctionsInit = false;
 
@@ -2998,25 +3109,29 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 		// Owned local ship
 		int32 FunctionIndex = 0;
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
-				// Cannot trade itself as ennemy of the source
+				// Cannot trade itself as enemy of the source
 				return nullptr;
 			}
 
 			AITradeIdleShipsByLocation& IdleShipsBySector = iIdleShips.GetShipsPerSector(iSector);
-
 			TArray<AIIdleShip*>& IdleShipsBySectorCompany = IdleShipsBySector.GetShipsPerCompany(iNeedCompany);
 
-
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3043,7 +3158,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Owned incoming ship
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
@@ -3057,7 +3172,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(!IdleShip->Traveling)
@@ -3067,6 +3182,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Stranded)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3092,7 +3213,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Owned ship in same moon
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
@@ -3106,7 +3227,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(IdleShip->Traveling)
@@ -3116,6 +3237,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Stranded)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3142,7 +3269,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Owned travelling ship in same moon
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
@@ -3156,7 +3283,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(!IdleShip->Traveling)
@@ -3166,6 +3293,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Stranded)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3192,7 +3325,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Owned ship in world
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
@@ -3205,7 +3338,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsByCompany)
 			{
 				if(IdleShip->Traveling)
@@ -3215,6 +3348,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Stranded)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3241,7 +3380,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Owned travelling ship in world
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			if(iNeedCompany->GetWarState(iSourceCompany) == EFlareHostility::Hostile)
 			{
@@ -3254,7 +3393,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsByCompany)
 			{
 				if(!IdleShip->Traveling)
@@ -3264,6 +3403,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Stranded)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3292,7 +3437,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		// Others companies
 
 		// Local ship
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			AITradeIdleShipsByLocation& IdleShipsBySector = iIdleShips.GetShipsPerSector(iSector);
 
@@ -3301,23 +3446,29 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 			AIIdleShip* BestShip = nullptr;
 
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
 				if(iNeedCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the need
+					// Cannot trade itself as enemy of the need
 					continue;
 				}
 
 				if(IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3344,7 +3495,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Incoming ship
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			AITradeIdleShipsByLocation& IdleShipsBySector = iIdleShips.GetShipsPerSector(iSector);
 
@@ -3352,8 +3503,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
@@ -3375,6 +3525,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(!IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3401,7 +3557,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Ship in same moon
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			AITradeIdleShipsByLocation& IdleShipsByMoon = iIdleShips.GetShipsPerSector(iSector);
 
@@ -3410,20 +3566,18 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 			AIIdleShip* BestShip = nullptr;
 
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
-
-
 				if(iNeedCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the need
+					// Cannot trade itself as enemy of the need
 					continue;
 				}
 
@@ -3434,6 +3588,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3460,7 +3620,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Travelling ship in same moon
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			AITradeIdleShipsByLocation& IdleShipsByMoon = iIdleShips.GetShipsPerSector(iSector);
 
@@ -3468,8 +3628,7 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 
 			AIIdleShip* BestShip = nullptr;
-
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsBySectorCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
@@ -3491,6 +3650,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(!IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3517,13 +3682,13 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Ship in world
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			TArray<AIIdleShip*>& IdleShipsByCompany = iIdleShips.GetShips();
 
 
 			AIIdleShip* BestShip = nullptr;
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsByCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
@@ -3545,6 +3710,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 				if(IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3571,30 +3742,35 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 		};
 
 		// Travelling ship in world
-		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, int32 iNeededQuantity) ->AIIdleShip*
+		Functions[FunctionIndex++] = [](AITradeIdleShips& iIdleShips, UFlareSimulatedSector* iSector, UFlareCompany* iSourceCompany, UFlareCompany* iNeedCompany, UFlareSimulatedSpacecraft* iNeedStation, FFlareResourceDescription* iNeedResource, int32 iNeededQuantity) ->AIIdleShip*
 		{
 			TArray<AIIdleShip*>& IdleShipsByCompany = iIdleShips.GetShips();
 
 
 			AIIdleShip* BestShip = nullptr;
-
-
+			FText Unused;
 			for(AIIdleShip* IdleShip : IdleShipsByCompany)
 			{
 				if(iSourceCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the source
+					// Cannot trade itself as enemy of the source
 					continue;
 				}
 
 				if(iNeedCompany->GetWarState(IdleShip->Company) == EFlareHostility::Hostile)
 				{
-					// Cannot trade itself as ennemy of the need
+					// Cannot trade itself as enemy of the need
 					continue;
 				}
 
 				if(!IdleShip->Traveling)
 				{
+					continue;
+				}
+
+				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
+				{
+					// White list restricted
 					continue;
 				}
 
@@ -3625,7 +3801,8 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, UFlareSimul
 
 	for(auto& Function : Functions)
 	{
-		AIIdleShip* Ship = Function(IdleShips, Sector, SourceCompany, NeedCompany, NeedQuantity);
+//		AIIdleShip* Ship = Function(IdleShips, Sector, SourceCompany, NeedCompany, NeedQuantity);
+		AIIdleShip* Ship = Function(IdleShips, Source.Sector, Source.Company, Need.Company, Need.Station, Need.Resource, Need.Quantity);
 		if(Ship != nullptr)
 		{
 			return Ship;

@@ -13,6 +13,7 @@ class AFlareBomb;
 class UFlareCompany;
 class UFlareTravel;
 class UFlareTradeRoute;
+class UFlareCompanyWhiteList;
 struct FFlareSpacecraftSave;
 
 /** Fleet save data */
@@ -64,6 +65,10 @@ struct FFlareFleetSave
 	/** Amount of money spent since last stats reset */
 	UPROPERTY(EditAnywhere, Category = Save)
 	int64 AutoTradeStatsMoneyBuy;
+
+	/* Whitelist Identifier*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName DefaultWhiteListIdentifier;
 };
 
 UCLASS()
@@ -167,6 +172,13 @@ public:
 	int32 GetRefillDuration() const;
 	FText GetTravelConfirmText();
 
+	void SelectWhiteListDefault(FName IdentifierSearch);
+	void SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList);
+
+	UFlareCompanyWhiteList* GetActiveWhitelist();
+	bool CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource);
+	bool CanTradeWhiteListTo(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource);
+
 protected:
 
 	TArray<UFlareSimulatedSpacecraft*>     FleetShips;
@@ -182,6 +194,8 @@ protected:
 	TArray<AFlareBomb*>					   IncomingBombs;
 	int32								   UnableToTravelShips;
 
+	UFlareCompanyWhiteList*				   FleetSelectedWhiteList;
+
 public:
 	/*----------------------------------------------------
 		Getters
@@ -196,6 +210,11 @@ public:
 	AFlareGame* GetGame() const
 	{
 		return Game;
+	}
+
+	inline UFlareCompanyWhiteList* GetSelectedWhiteList() const
+	{
+		return FleetSelectedWhiteList;
 	}
 
 	FText GetFleetName() const;
@@ -266,9 +285,11 @@ public:
 		return CurrentTradeRoute;
 	}
 
-	int32 GetFleetCapacity() const;
-
+	int32 GetFleetCapacity(bool SkipIfStranded = false) const;
+	int32 GetFleetUsedCargoSpace() const;
 	int32 GetFleetFreeCargoSpace() const;
+	int32 GetFleetResourceQuantity(FFlareResourceDescription* Resource);
+	int32 GetFleetFreeSpaceForResource(FFlareResourceDescription* Resource);
 
 	int32 GetCombatPoints(bool ReduceByDamage) const;
 
@@ -276,8 +297,4 @@ public:
 	bool IsRefilling() const;
 	bool FleetNeedsRepair() const;
 	bool FleetNeedsRefill() const;
-
-	int32 GetTransportCapacity();
-
-	int32 GetFleetResourceQuantity(FFlareResourceDescription* Resource);
 };

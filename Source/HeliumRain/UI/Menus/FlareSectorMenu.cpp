@@ -1540,6 +1540,8 @@ void SFlareSectorMenu::OnBuildStationClicked()
 	else
 	{
 		PC->GetCompany()->BuyStationLicense(TargetSector);
+		MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->NotificationTradingSound);
+
 	}
 }
 

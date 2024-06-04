@@ -41,6 +41,7 @@ namespace EFlareMenu
 		MENU_Sector,
 		MENU_Trade,
 		MENU_TradeRoute,
+		MENU_WhiteList,
 		MENU_Orbit,
 		MENU_Leaderboard,
 		MENU_ResourcePrices,
@@ -70,6 +71,7 @@ struct FFlareMenuParameterData
 		, Fleet(NULL)
 		, Quest(NULL)
 		, Route(NULL)
+		, WhiteList(NULL)
 		, Sector(NULL)
 		, Spacecraft(NULL)
 		, Travel(NULL)
@@ -95,10 +97,11 @@ struct FFlareMenuParameterData
 	class UFlareFleet*                          Fleet;
 	class UFlareQuest*                          Quest;
 	class UFlareTradeRoute*                     Route;
+	class UFlareCompanyWhiteList*				WhiteList;
 	class UFlareSimulatedSector*                Sector;
 	class UFlareSimulatedSpacecraft*            Spacecraft;
 	class UFlareTravel*                         Travel;
-	class UFlareSkirmishManager*               Skirmish;
+	class UFlareSkirmishManager*                Skirmish;
 	struct FFlareResourceDescription*           Resource;
 	struct FFlareCompanyDescription*            CompanyDescription;
 

@@ -159,6 +159,9 @@ protected:
 	/** Toggle automatic construction */
 	void OnToggleAllowAutoConstruction();
 
+	void OnSelectWhiteList();
+	void OnRemoveWhiteList();
+
 	/*----------------------------------------------------
 		Content callbacks
 	----------------------------------------------------*/
@@ -168,6 +171,8 @@ protected:
 
 	/** Can we validate new details */
 	bool IsRenameDisabled() const;
+	bool IsWhiteListSelectDisabled() const;
+	bool IsWhiteListRemoveDisabled() const;
 
 	/** Title icon callback */
 	const FSlateBrush* GetTitleIcon() const;
@@ -213,9 +218,12 @@ protected:
 
 	/** Part list generator */
 	TSharedRef<ITableRow> GeneratePartInfo(TSharedPtr<FInterfaceContainer> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	TSharedRef<SWidget> OnGenerateWhiteListComboLine(UFlareCompanyWhiteList* Item);
+	void OnWhiteListComboLineSelectionChanged(UFlareCompanyWhiteList* Item, ESelectInfo::Type SelectInfo);
 
 	/** Get upgrade info */
 	static FText GetUpgradeInfo(UFlareSimulatedSpacecraft* Spacecraft);
+	static FText GetUpgradeHelpInfo(UFlareSimulatedSpacecraft* Spacecraft);
 
 	bool IsUpgradeStationDisabled(UFlareSimulatedSpacecraft* Spacecraft) const;
 
@@ -276,6 +284,11 @@ protected:
 	TSharedPtr<SHorizontalBox>                      WeaponButtonBox;
 	TSharedPtr<SHorizontalBox>                      RenameBox;
 	TSharedPtr<SEditableText>                       ShipName;
+
+	TSharedPtr<SBox>									WhiteListSelectionBox;
+	TSharedPtr<SFlareDropList<UFlareCompanyWhiteList*>> WhiteListDropBox;
+	TArray<UFlareCompanyWhiteList*>						WhiteListOptions;
+	UFlareCompanyWhiteList*								CurrentlySelectedWhiteList;
 
 	// Spacecraft data
 	UFlareSimulatedSpacecraft*                      TargetSpacecraft;

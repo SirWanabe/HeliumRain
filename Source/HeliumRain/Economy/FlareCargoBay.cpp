@@ -773,6 +773,7 @@ bool UFlareCargoBay::CheckRestriction(const FFlareCargo* Cargo, UFlareCompany* C
 			return false;
 		}
 	}
+
 	return true;
 }
 

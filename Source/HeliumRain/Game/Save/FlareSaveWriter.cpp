@@ -248,6 +248,8 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetStringField("PlayerLastTributeDate", FormatInt64(Data->PlayerLastTributeDate));
 	JsonObject->SetStringField("FleetImmatriculationIndex", FormatInt32(Data->FleetImmatriculationIndex));
 	JsonObject->SetStringField("TradeRouteImmatriculationIndex", FormatInt32(Data->TradeRouteImmatriculationIndex));
+	JsonObject->SetStringField("WhiteListImmatriculationIndex", FormatInt32(Data->WhiteListImmatriculationIndex));
+	JsonObject->SetStringField("DefaultWhiteListIdentifier", Data->DefaultWhiteListIdentifier.ToString());
 	JsonObject->SetStringField("ResearchAmount", FormatInt32(Data->ResearchAmount));
 	JsonObject->SetStringField("ResearchSpent", FormatInt32(Data->ResearchSpent));
 	JsonObject->SetObjectField("AI", SaveCompanyAI(&Data->AI));
@@ -329,6 +331,13 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	}
 	JsonObject->SetArrayField("TradeRoutes", TradeRoutes);
 
+	TArray< TSharedPtr<FJsonValue> > WhiteLists;
+	TradeRoutes.Reserve(Data->WhiteLists.Num());
+	for (int i = 0; i < Data->WhiteLists.Num(); i++)
+	{
+		WhiteLists.Add(MakeShareable(new FJsonValueObject(SaveWhiteList(&Data->WhiteLists[i]))));
+	}
+	JsonObject->SetArrayField("WhiteLists", WhiteLists);
 
 	TArray< TSharedPtr<FJsonValue> > SectorsKnowledge;
 	SectorsKnowledge.Reserve(Data->SectorsKnowledge.Num());
@@ -372,6 +381,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetStringField("DockedTo", Data->DockedTo.ToString());
 	JsonObject->SetStringField("DockedAt", FormatInt32(Data->DockedAt));
 	JsonObject->SetStringField("DockedAtInternally", Data->DockedAtInternally.ToString());
+	JsonObject->SetStringField("DefaultWhiteListIdentifier", Data->DefaultWhiteListIdentifier.ToString());
 	SaveFloat(JsonObject,"DockedAngle", Data->DockedAngle);
 	SaveFloat(JsonObject,"Heat", Data->Heat);
 	SaveFloat(JsonObject,"PowerOutageDelay", Data->PowerOutageDelay);
@@ -617,7 +627,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveOperationCondition(FFlareTradeRout
 {
 	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
 	JsonObject->SetStringField("Type", FormatEnum<EFlareTradeRouteOperationConditions::Type>("EFlareTradeRouteOperationConditions", Data->ConditionRequirement));
-	JsonObject->SetStringField("ConditionPercentage", FormatInt32(Data->ConditionPercentage));
+	SaveFloat(JsonObject, "ConditionPercentage", Data->ConditionPercentage);
 	JsonObject->SetBoolField("SkipOnConditionFail", Data->SkipOnConditionFail);
 	JsonObject->SetBoolField("BooleanOne", Data->BooleanOne);
 	JsonObject->SetBoolField("BooleanTwo", Data->BooleanTwo);
@@ -698,6 +708,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFleet(FFlareFleetSave* Data)
 
 	JsonObject->SetStringField("Name", Data->Name.ToString());
 	JsonObject->SetStringField("Identifier", Data->Identifier.ToString());
+	JsonObject->SetStringField("DefaultWhiteListIdentifier", Data->DefaultWhiteListIdentifier.ToString());
 
 	TArray< TSharedPtr<FJsonValue> > ShipImmatriculations;
 	ShipImmatriculations.Reserve(Data->ShipImmatriculations.Num());
@@ -716,6 +727,47 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFleet(FFlareFleetSave* Data)
 	JsonObject->SetStringField("AutoTradeStatsMoneySell", FormatInt64(Data->AutoTradeStatsMoneySell));
 	JsonObject->SetStringField("AutoTradeStatsMoneyBuy", FormatInt64(Data->AutoTradeStatsMoneyBuy));
 
+	return JsonObject;
+}
+
+TSharedRef<FJsonObject> UFlareSaveWriter::SaveWhiteList(FFlareWhiteListSave* Data)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField("Name", Data->Name.ToString());
+	JsonObject->SetStringField("Identifier", Data->Identifier.ToString());
+	TArray< TSharedPtr<FJsonValue> > CompanyData;
+	CompanyData.Reserve(Data->CompanyData.Num());
+	for (int i = 0; i < Data->CompanyData.Num(); i++)
+	{
+		CompanyData.Add(MakeShareable(new FJsonValueObject(SaveWhiteListCompanyData(&Data->CompanyData[i]))));
+	}
+
+	JsonObject->SetArrayField("CompanyData", CompanyData);
+	return JsonObject;
+}
+
+TSharedRef<FJsonObject> UFlareSaveWriter::SaveWhiteListCompanyData(FFlareWhiteListCompanyDataSave* Data)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField("Identifier", Data->Identifier.ToString());
+	JsonObject->SetBoolField("CanTradeTo", Data->CanTradeTo);
+	JsonObject->SetBoolField("CanTradeFrom", Data->CanTradeFrom);
+
+	TArray< TSharedPtr<FJsonValue> > ResourcesTradeFrom;
+	ResourcesTradeFrom.Reserve(Data->ResourcesTradeFrom.Num());
+	for (int i = 0; i < Data->ResourcesTradeFrom.Num(); i++)
+	{
+		ResourcesTradeFrom.Add(MakeShareable(new FJsonValueString(Data->ResourcesTradeFrom[i].ToString())));
+	}
+	JsonObject->SetArrayField("ResourcesTradeFrom", ResourcesTradeFrom);
+
+	TArray< TSharedPtr<FJsonValue> > ResourcesTradeTo;
+	ResourcesTradeTo.Reserve(Data->ResourcesTradeTo.Num());
+	for (int i = 0; i < Data->ResourcesTradeTo.Num(); i++)
+	{
+		ResourcesTradeTo.Add(MakeShareable(new FJsonValueString(Data->ResourcesTradeTo[i].ToString())));
+	}
+	JsonObject->SetArrayField("ResourcesTradeTo", ResourcesTradeTo);
 	return JsonObject;
 }
 

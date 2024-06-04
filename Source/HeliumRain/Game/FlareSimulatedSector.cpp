@@ -827,8 +827,20 @@ bool UFlareSimulatedSector::CanUpgradeStation(UFlareSimulatedSpacecraft* Station
 	if (Company->GetMoney() < Station->GetStationUpgradeFee())
 	{
 		OutReasons.Add(FText::Format(LOCTEXT("BuildRequiresMoney", "Not enough credits ({0} / {1})"),
-			FText::AsNumber(UFlareGameTools::DisplayMoney(Company->GetMoney())),
-			FText::AsNumber(UFlareGameTools::DisplayMoney(Station->GetStationUpgradeFee()))));
+		FText::AsNumber(UFlareGameTools::DisplayMoney(Company->GetMoney())),
+		FText::AsNumber(UFlareGameTools::DisplayMoney(Station->GetStationUpgradeFee()))));
+		Result = false;
+	}
+
+	if (!Company->IsSectorStationLicenseUnlocked(Station->GetCurrentSector()->GetIdentifier()))
+	{
+		OutReasons.Add(LOCTEXT("BuildNoLicense", "Can't upgrade stations without the local station building license"));
+		Result = false;
+	}
+
+	if (!Company->IsTechnologyUnlockedStation(Station->GetDescription()))
+	{
+		OutReasons.Add(LOCTEXT("BuildNoTechnology", "Can't upgrade stations without the corresponding technology"));
 		Result = false;
 	}
 
@@ -838,8 +850,6 @@ bool UFlareSimulatedSector::CanUpgradeStation(UFlareSimulatedSpacecraft* Station
 bool UFlareSimulatedSector::UpgradeStation(UFlareSimulatedSpacecraft* Station)
 {
 	UFlareCompany* Company = Station->GetCompany();
-
-
 	TArray<FText> Reasons;
 	if (!CanUpgradeStation(Station, Reasons))
 	{
@@ -861,7 +871,6 @@ bool UFlareSimulatedSector::UpgradeStation(UFlareSimulatedSpacecraft* Station)
 	GetPeople()->Pay(ProductionCost);
 
 	Station->Upgrade();
-
 	return true;
 }
 

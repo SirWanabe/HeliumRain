@@ -89,6 +89,8 @@ protected:
 	TSharedRef<FJsonObject> SaveShipyardOrderQueue(FFlareShipyardOrderSave* Data);
 
 	TSharedRef<FJsonObject> SaveFleet(FFlareFleetSave* Data);
+	TSharedRef<FJsonObject> SaveWhiteList(FFlareWhiteListSave* Data);
+	TSharedRef<FJsonObject> SaveWhiteListCompanyData(FFlareWhiteListCompanyDataSave* Data);
 	TSharedRef<FJsonObject> SaveTradeRoute(FFlareTradeRouteSave* Data);
 	TSharedRef<FJsonObject> SaveTradeRouteSector(FFlareTradeRouteSectorSave* Data);
 	TSharedRef<FJsonObject> SaveSectorKnowledge(FFlareCompanySectorKnowledge* Data);

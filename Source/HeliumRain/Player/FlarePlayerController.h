@@ -416,7 +416,7 @@ protected:
 	/** Camera shakes */
 	UPROPERTY()
 	UFlareCameraShakeCatalog*                CameraShakeCatalog;
-
+/*
 	// Sounds
 	UPROPERTY() USoundCue*                   NotificationInfoSound;
 	UPROPERTY() USoundCue*                   NotificationCombatSound;
@@ -425,7 +425,7 @@ protected:
 	UPROPERTY() USoundCue*                   CrashSound;
 	UPROPERTY() USoundCue*                   MissileWarningSound;
 	UPROPERTY() USoundCue*                   DockingSound;
-
+*/
 	// Sound manager
 	UPROPERTY()
 	UFlareSoundManager*                      SoundManager;

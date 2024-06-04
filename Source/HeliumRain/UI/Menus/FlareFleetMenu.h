@@ -152,6 +152,14 @@ protected:
 
 	/** Toggle Hide Travel*/
 	void OnToggleHideTravel();
+
+	void OnSelectWhiteList();
+	void OnRemoveWhiteList();
+	bool IsWhiteListSelectDisabled() const;
+	bool IsWhiteListRemoveDisabled() const;
+	TSharedRef<SWidget> OnGenerateWhiteListComboLine(UFlareCompanyWhiteList* Item);
+	void OnWhiteListComboLineSelectionChanged(UFlareCompanyWhiteList* Item, ESelectInfo::Type SelectInfo);
+
 protected:
 
 	/*----------------------------------------------------
@@ -170,7 +178,6 @@ protected:
 	// Menu components
 	TSharedPtr<SFlareList>                          ShipList;
 	TSharedPtr<SFlareList>                          FleetList;
-//	TSharedPtr<SFlareList>                          OtherFleetList;
 	TSharedPtr<SEditableText>                       EditFleetName;
 
 	TSharedPtr<SFlareButton>						RemoveShipButton;
@@ -179,6 +186,11 @@ protected:
 	TSharedPtr<SFlareButton>						HideTravelButton;
 	TSharedPtr<SFlareButton>					    RefillButton;
 	TSharedPtr<SFlareButton>					    RepairButton;
+
+	TSharedPtr<SBox>									WhiteListSelectionBox;
+	TSharedPtr<SFlareDropList<UFlareCompanyWhiteList*>> WhiteListDropBox;
+	TArray<UFlareCompanyWhiteList*>						WhiteListOptions;
+	UFlareCompanyWhiteList*								CurrentlySelectedWhiteList;
 
 public:
 	UFlareFleet* GetFleetEditing() const

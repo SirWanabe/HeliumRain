@@ -324,5 +324,4 @@ protected:
 	TSharedPtr<SHorizontalBox>                         EditSuggestedSalesBox;
 	TArray<TFlareResourceDeal>                         CurrentlyBoughtResources;
 	TArray<TFlareResourceDeal>                         CurrentlySoldResources;
-
 };

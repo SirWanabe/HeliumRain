@@ -35,7 +35,7 @@ namespace EFlareTradeRouteOperationConditions
 	};
 }
 
-/** Trade route sector data */
+/** Trade route conditions data */
 USTRUCT()
 struct FFlareTradeRouteOperationConditionSave
 {
@@ -45,7 +45,7 @@ struct FFlareTradeRouteOperationConditionSave
 	TEnumAsByte<EFlareTradeRouteOperationConditions::Type> ConditionRequirement;
 
 	UPROPERTY(EditAnywhere, Category = Save)
-	int32 ConditionPercentage;
+	float ConditionPercentage;
 
 	UPROPERTY(EditAnywhere, Category = Save)
 	bool SkipOnConditionFail;
@@ -348,7 +348,7 @@ public:
 
 	UFlareSimulatedSector* GetNextTradeSector(UFlareSimulatedSector* Sector);
 
-	bool IsUsefulSector(UFlareSimulatedSector* Sector);
+	bool IsUsefulSector(UFlareSimulatedSector* Sector, int StartingOperationIndex = 0);
 
     bool IsVisiting(UFlareSimulatedSector *Sector);
 
