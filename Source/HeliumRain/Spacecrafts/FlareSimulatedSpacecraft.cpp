@@ -60,6 +60,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	{
 		DamageSystem = NewObject<UFlareSimulatedSpacecraftDamageSystem>(this, UFlareSimulatedSpacecraftDamageSystem::StaticClass());
 	}
+
 	DamageSystem->Initialize(this, &SpacecraftData);
 
 	// Initialize weapons system
