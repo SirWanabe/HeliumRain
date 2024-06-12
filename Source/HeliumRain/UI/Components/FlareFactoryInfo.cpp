@@ -307,6 +307,10 @@ EVisibility SFlareFactoryInfo::GetStartProductionVisibility() const
 		{
 			return EVisibility::Collapsed;
 		}
+		else if (TargetFactory->GetDescription()->CantTurnOff)
+		{
+			return EVisibility::Collapsed;
+		}
 
 		return (!TargetFactory->IsActive() ? EVisibility::Visible : EVisibility::Collapsed);
 	}

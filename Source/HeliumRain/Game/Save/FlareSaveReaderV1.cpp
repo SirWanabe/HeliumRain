@@ -654,6 +654,8 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 			Data->CapturePoints.Add(Company, Points);
 		}
 	}
+
+	LoadInt32(Object, "SaveVersion", &Data->SaveVersion);
 }
 
 

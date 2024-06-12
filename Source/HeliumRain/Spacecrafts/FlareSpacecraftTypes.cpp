@@ -137,10 +137,19 @@ bool FFlareSpacecraftDescription::IsShipyard() const
 	return false;
 }
 
-
 bool FFlareSpacecraftDescription::IsMilitary() const
 {
+	return (!IsNotMilitary && (GunSlots.Num() > 0 || TurretSlots.Num() > 0));
+}
+
+bool FFlareSpacecraftDescription::IsMilitaryArmed() const
+{
 	return GunSlots.Num() > 0 || TurretSlots.Num() > 0;
+}
+
+bool FFlareSpacecraftDescription::CheckIsNotMilitary() const
+{
+	return IsNotMilitary;
 }
 
 bool FFlareSpacecraftDescription::IsResearch() const
@@ -150,6 +159,20 @@ bool FFlareSpacecraftDescription::IsResearch() const
 		FFlareFactoryDescription* FactoryDescription = &Factories[FactoryIndex]->Data;
 
 		if(FactoryDescription->IsResearch())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool FFlareSpacecraftDescription::IsTelescope() const
+{
+	for (int32 FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
+	{
+		FFlareFactoryDescription* FactoryDescription = &Factories[FactoryIndex]->Data;
+
+		if (FactoryDescription->IsTelescope())
 		{
 			return true;
 		}

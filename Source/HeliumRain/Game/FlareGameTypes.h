@@ -480,15 +480,27 @@ struct FFlareCompanyStartingShips
 	UPROPERTY(EditAnywhere, Category = Company)
 	int32 Quantity = 1;
 
-	/** If this is a station what level is it? */
-	UPROPERTY(EditAnywhere, Category = Company)
-	uint32 Level = 1;
-	UPROPERTY(EditAnywhere, Category = Company)
-	bool IsStation = false;
-
 	/** For starting scenarios, is this the player ship? At least one entry must be set to "true"*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	bool IsPlayerShip = false;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	bool IsStation = false;
+	/** If this is a station what level is it? */
+	UPROPERTY(EditAnywhere, Category = Company)
+	uint32 Level = 1;
+	/** Starting resource level for station. Value of 1 represents 100%*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float StartVarianceMinInputs = 0.25;
+	/** Starting resource level for station. Value of 1 represents 100%*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float StartVarianceMaxInputs = 0.75;
+	/** Starting resource level for station. Value of 1 represents 100%*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float StartVarianceMinOutputs = 0.25;
+	/** Starting resource level for station. Value of 1 represents 100%*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float StartVarianceMaxOutputs = 0.75;
 };
 
 USTRUCT()

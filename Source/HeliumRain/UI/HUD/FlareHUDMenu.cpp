@@ -235,11 +235,11 @@ void SFlareHUDMenu::OnPlayerShipChanged()
 
 	// Is this a civilian ship ?
 	UFlareSimulatedSpacecraft* PlayerShip = MenuManager->GetPC()->GetPlayerShip();
-	WeaponStatus->SetVisibility(PlayerShip->IsMilitary() ? EVisibility::Visible : EVisibility::Hidden);
+	WeaponStatus->SetVisibility(PlayerShip->IsMilitaryArmed() ? EVisibility::Visible : EVisibility::Hidden);
 	WeaponContainer->ClearChildren();
 
 	// Update weapon list
-	if (PlayerShip && PlayerShip->IsMilitary())
+	if (PlayerShip && PlayerShip->IsMilitaryArmed())
 	{
 		TArray<FFlareWeaponGroup*>& WeaponGroupList = PlayerShip->GetActive()->GetWeaponsSystem()->GetWeaponGroupList();
 

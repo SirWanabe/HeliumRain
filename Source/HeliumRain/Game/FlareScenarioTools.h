@@ -72,7 +72,7 @@ public:
 	UFlareSimulatedSpacecraft* CreateShips(FName ShipClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count);
 
 	/** Create a station and fill its input */
-	void CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level = 1, FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), bool RandomLocation = false);
+	void CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level = 1, FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), bool RandomLocation = false, float VarianceMinInputs = 0.25, float VarianceMaxInputs = 0.75, float VarianceMinOutputs = 0.25, float VarianceMaxOutputs = 0.75);
 
 	/** Setup the Blue Heart capital station */
 	void CreateBlueHeart(double StationLevelBonus = 0);

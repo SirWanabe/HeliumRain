@@ -132,6 +132,7 @@ namespace EFlareResourceRestriction
 		Nobody, // Nobody can trade with this slot
 	};
 }
+
 /** Ship component turret save data */
 USTRUCT()
 struct FFlareSpacecraftComponentTurretSave
@@ -611,6 +612,10 @@ struct FFlareFactoryDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool AutoStart;
 
+	/** Enable to stop the ability to turn this production off*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool CantTurnOff;
+
 	/** Cycle cost & yields */
 	UPROPERTY(EditAnywhere, Category = Content)
 	FFlareProductionData CycleCost;
@@ -748,6 +753,9 @@ struct FFlareSpacecraftDescription
 	/** Optionally set a default Engine */
 	UPROPERTY(EditAnywhere, Category = Content) FName DefaultEngine;
 
+	/** Enable this if you want a ship with turrets to be generally treated as a non-military ship */
+	UPROPERTY(EditAnywhere, Category = Save) bool IsNotMilitary;
+
 	/** Enable this if you want a ship with engines to be considered a station */
 	UPROPERTY(EditAnywhere, Category = Save) bool IsAStation;
 
@@ -835,7 +843,9 @@ struct FFlareSpacecraftDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 StationConnectorCount;
 
-
+	/** Save version for ship/station. If SaveVersion is higher than save value the ship will try to refresh components on load to prevent crashing*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	int32 SaveVersion;
 
 	int32 GetCapacity() const;
 
@@ -848,9 +858,11 @@ struct FFlareSpacecraftDescription
 	bool IsShipyard() const;
 
 	bool IsMilitary() const;
+	bool IsMilitaryArmed() const;
+	bool CheckIsNotMilitary() const;
 
 	bool IsResearch() const;
-
+	bool IsTelescope() const;
 	static const FSlateBrush* GetIcon(FFlareSpacecraftDescription* Characteristic);
 };
 /** Spacecraft save data */
@@ -859,117 +871,117 @@ struct FFlareSpacecraftSave
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Destroyed state */
-		UPROPERTY(EditAnywhere, Category = Save)
-		bool IsDestroyed;
+	/** Destroyed state */
+	UPROPERTY(EditAnywhere, Category = Save)
+	bool IsDestroyed;
 
 	/** Destroyed state */
 	UPROPERTY(EditAnywhere, Category = Save)
-		bool IsUnderConstruction;
+	bool IsUnderConstruction;
 
 	/** Ship location */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FVector Location;
+	FVector Location;
 
 	/** Ship rotation */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FRotator Rotation;
+	FRotator Rotation;
 
 	/** The spawn mode of the ship. */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TEnumAsByte<EFlareSpawnMode::Type> SpawnMode;
+	TEnumAsByte<EFlareSpawnMode::Type> SpawnMode;
 
 	/** Ship linear velocity */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FVector LinearVelocity;
+	FVector LinearVelocity;
 
 	/** Ship angular velocity */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FVector AngularVelocity;
+	FVector AngularVelocity;
 
 	/** Ship angular velocity */
 	UPROPERTY(EditAnywhere, Category = Save)
-		bool WantUndockInternalShips;
+	bool WantUndockInternalShips;
 
 	/** Ship immatriculation. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName Immatriculation;
+	FName Immatriculation;
 
 	/** Ship nickname. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FText NickName;
+	FText NickName;
 
 	/** Ship catalog identifier */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName Identifier;
+	FName Identifier;
 
 	/** Ship company identifier */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName CompanyIdentifier;
+	FName CompanyIdentifier;
 
 	/** Components list */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TArray<FFlareSpacecraftComponentSave> Components;
+	TArray<FFlareSpacecraftComponentSave> Components;
 
 	/** We are docked at this station */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName DockedTo;
+	FName DockedTo;
 
 	/** We are docked at this location, internally */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName DockedAtInternally;
+	FName DockedAtInternally;
 
 	/** We are docked at this specific dock */
 	UPROPERTY(EditAnywhere, Category = Save)
-		int32 DockedAt;
+	int32 DockedAt;
 
 	/** We are docked at this specific dock */
 	UPROPERTY(EditAnywhere, Category = Save)
-		float DockedAngle;
+	float DockedAngle;
 
 	/** Accululated heat in KJ */
 	UPROPERTY(EditAnywhere, Category = Save)
-		float Heat;
+	float Heat;
 
 	/** Duration until the end of the power outage, in seconds */
 	UPROPERTY(EditAnywhere, Category = Save)
-		float PowerOutageDelay;
+	float PowerOutageDelay;
 
 	/** Pending power outage downtime, in seconds */
 	UPROPERTY(EditAnywhere, Category = Save)
-		float PowerOutageAcculumator;
+	float PowerOutageAcculumator;
 
 	/** Pilot */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FFlareShipPilotSave Pilot;
+	FFlareShipPilotSave Pilot;
 
 	/** Production Cargo bay content */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TArray<FFlareCargoSave> ProductionCargoBay;
+	TArray<FFlareCargoSave> ProductionCargoBay;
 
 	/** Construction Cargo bay content */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TArray<FFlareCargoSave> ConstructionCargoBay;
+	TArray<FFlareCargoSave> ConstructionCargoBay;
 
 	/** Factory states */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TArray<FFlareFactorySave> FactoryStates;
+	TArray<FFlareFactorySave> FactoryStates;
 
 	/** Asteroid we're stuck to */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FFlareAsteroidSave AsteroidData;
+	FFlareAsteroidSave AsteroidData;
 
 	/** Factory states */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TArray<FName> SalesExcludedResources;
+	TArray<FName> SalesExcludedResources;
 
 	/** Current state identifier */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName DynamicComponentStateIdentifier;
+	FName DynamicComponentStateIdentifier;
 
 	/** Current state progress */
 	UPROPERTY(EditAnywhere, Category = Save)
-		float DynamicComponentStateProgress;
+	float DynamicComponentStateProgress;
 
 	/** Station current level */
 	int32 Level;
@@ -1039,6 +1051,10 @@ struct FFlareSpacecraftSave
 	/* Whitelist Identifier*/
 	UPROPERTY(EditAnywhere, Category = Save)
 	FName DefaultWhiteListIdentifier;
+
+	/** Save version for ship/station. If changed will attempt to refresh components on load to prevent crashing*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	int32 SaveVersion;
 };
 
 struct SpacecraftHelper

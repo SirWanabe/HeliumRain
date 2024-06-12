@@ -471,7 +471,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 				{
 					if (CurrentShips.IsStation == true)
 					{
-						CreateStations(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity, CurrentShips.Level + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+						CreateStations(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity, CurrentShips.Level + StationLevelBonus, SpawnParameters, RandomizeStationLocations,CurrentShips.StartVarianceMinInputs,CurrentShips.StartVarianceMaxInputs,CurrentShips.StartVarianceMinOutputs,CurrentShips.StartVarianceMaxOutputs);
 					}
 					else
 					{
@@ -522,7 +522,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	}
 	//for testing
 	*/
-
 	// Give technology
 	IonLane->UnlockTechnology("stations", false, true);
 	IonLane->UnlockTechnology("chemicals", false, true);
@@ -628,7 +627,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 
 	// Blue Heart
 	CreateBlueHeart(StationLevelBonus);
-	CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+//	CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 
 	// The Farm
@@ -670,13 +669,14 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	SetupKnownSectors(Pirates);
 
 	// Create hubs
-	CreateStations(StationHub, IonLane, Crossroads, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHub, IonLane, Crossroads, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHub, IonLane, TheForge, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+	CreateStations(StationHub, IonLane, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHub, IonLane, Lighthouse, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHub, IonLane, BlueHeart, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationHub, IonLane, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, TheForge, 2, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	CreateStations(StationHub, IonLane, TheSpire, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
-	
+	CreateStations(StationHub, IonLane, NightsHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
+
 	// Create outposts
 	CreateStations(StationOutpost, AxisSupplies, TheDepths, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
 	CreateStations(StationOutpost, AxisSupplies, MinersHome, 1, 1 + StationLevelBonus, SpawnParameters, RandomizeStationLocations);
@@ -774,8 +774,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, TheForge, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheSpire, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
-		CreateStations("station-shipyard", GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations);
-
+		CreateStations("station-shipyard", GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations,0.50,1.0,0.50,1);
 		CreateShips(ShipOmen, AxisSupplies, BlueHeart, 1);
 		CreateShips(ShipOmen, Quantalium, Crossroads, 2);
 		CreateShips(ShipOmen, BrokenMoon, Colossus, 2);
@@ -1034,7 +1033,7 @@ TArray<UFlareSimulatedSector*> UFlareScenarioTools::GetRandomAllowedSectors(FNam
 	return AllowedSectors;
 }
 
-void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level, FFlareStationSpawnParameters SpawnParameters, bool RandomLocation)
+void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level, FFlareStationSpawnParameters SpawnParameters, bool RandomLocation, float VarianceMinInputs, float VarianceMaxInputs, float VarianceMinOutputs, float VarianceMaxOutputs)
 {
 	if (Sector && Company)
 	{
@@ -1042,6 +1041,20 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 
 		for (uint32 Index = 0; Index < Count; Index++)
 		{
+			FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
+			if (!Desc)
+			{
+				Desc = Game->GetSpacecraftCatalog()->Get(FName(*("station-" + StationClass.ToString())));
+				if (!Desc)
+				{
+					continue;
+				}
+			}
+
+			if (Level > Desc->MaxLevel)
+			{
+				Level = Desc->MaxLevel;
+			}
 
 			if (RandomLocation)
 			{
@@ -1056,47 +1069,43 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				}
 			}
 
-			UFlareSimulatedSpacecraft* Station = Sector->CreateStation(StationClass, Company, false, SpawnParameters);
-
+			UFlareSimulatedSpacecraft* Station = Sector->CreateStation(StationClass, Company, false, SpawnParameters, Level);
 			if (!Station)
 			{
 				continue;
 			}
 
-			if (Level <= Station->GetDescription()->MaxLevel)
-			{
-				Station->GetData().Level = Level;
-			}
-			else
-			{
-				Station->GetData().Level = Station->GetDescription()->MaxLevel;
-			}
-
 			if (Station->GetFactories().Num() > 0)
 			{
-				UFlareFactory* ActiveFactory = Station->GetFactories()[0];
-				float VarianceMin = 0.25;
-				float VarianceMax = 0.75;
-				if (Station->IsShipyard())
+				TArray<FName> InputIDS;
+				TArray<FName> OutputIDS;
+				for (UFlareFactory* ActiveFactory : Station->GetFactories())
 				{
-					VarianceMin = 0.50;
-					VarianceMax = 1.00;
-				}
+					// Give input resources
+					for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.InputResources.Num(); ResourceIndex++)
+					{
+						const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.InputResources[ResourceIndex];
+						if (InputIDS.Find(Resource->Resource->Data.Identifier) != INDEX_NONE)
+						{
+							continue;
+						}
+						float StartRatio = FMath::FRandRange(VarianceMinInputs, VarianceMaxInputs);
+						Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
+						InputIDS.Add(Resource->Resource->Data.Identifier);
+					}
 
-				// Give input resources
-				for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.InputResources.Num(); ResourceIndex++)
-				{
-					const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.InputResources[ResourceIndex];
-					float StartRatio = FMath::FRandRange(VarianceMin, VarianceMax);
-					Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
-				}
-
-				// Give output resources
-				for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.OutputResources.Num(); ResourceIndex++)
-				{
-					const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.OutputResources[ResourceIndex];
-					float StartRatio = FMath::FRandRange(VarianceMin, VarianceMax);
-					Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
+					// Give output resources
+					for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.OutputResources.Num(); ResourceIndex++)
+					{
+						const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.OutputResources[ResourceIndex];
+						if (OutputIDS.Find(Resource->Resource->Data.Identifier) != INDEX_NONE)
+						{
+							continue;
+						}
+						float StartRatio = FMath::FRandRange(VarianceMinOutputs, VarianceMaxOutputs);
+						Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
+						OutputIDS.Add(Resource->Resource->Data.Identifier);
+					}
 				}
 			}
 
@@ -1138,7 +1147,7 @@ void UFlareScenarioTools::CreateBlueHeart(double StationLevelBonus)
 		// BH Shipyard
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0);
 		StationParams.Rotation = FRotator::ZeroRotator;
-		CreateStations("station-bh-shipyard", NemaHeavyWorks, BlueHeart, 1, 1, StationParams);
+		CreateStations("station-bh-shipyard", NemaHeavyWorks, BlueHeart, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// BH Arsenal
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(30, UpVector);
@@ -1161,7 +1170,7 @@ void UFlareScenarioTools::CreateBlueHeart(double StationLevelBonus)
 		CreateStations("station-bh-habitation", UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, StationParams);
 
 		FFlareStationSpawnParameters DummyStationParams;
-		CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + StationLevelBonus, DummyStationParams);
+		CreateStations(StationCarbonRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
 		CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 2 + StationLevelBonus, DummyStationParams);
 	}
 }
@@ -1181,7 +1190,7 @@ void UFlareScenarioTools::CreateBoneyard(double StationLevelBonus)
 		// BY Shipyard
 		StationParams.Location = BaseLocation + FVector(CoreLength, 0, 0);
 		StationParams.Rotation = FRotator::ZeroRotator;
-		CreateStations("station-by-shipyard", Pirates, Boneyard, 1, 1, StationParams);
+		CreateStations("station-by-shipyard", Pirates, Boneyard, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// BY Arsenal
 		StationParams.Location = BaseLocation + FVector(BoneLength, 0, BoneHeight).RotateAngleAxis(120, FrontVector);
@@ -1218,7 +1227,7 @@ void UFlareScenarioTools::CreateNightsHome(double StationLevelBonus)
 		// NH Shipyard
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(180, UpVector);
 		StationParams.Rotation = FRotator::MakeFromEuler(FVector(0, 0, 180));
-		CreateStations("station-nh-shipyard", GhostWorksShipyards, NightsHome, 1, 1, StationParams);
+		CreateStations("station-nh-shipyard", GhostWorksShipyards, NightsHome, 1, 1, StationParams,false,0.50,1,0.50,1);
 
 		// NH Habitation
 		StationParams.Location = BaseLocation + FVector(StationRadius, 0, 0).RotateAngleAxis(135, UpVector);

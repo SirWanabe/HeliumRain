@@ -469,6 +469,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 
 		WorldStats = WorldHelper::ComputeWorldResourceStats(Game, true);
 		Shipyards = GetGame()->GetGameWorld()->GetShipyardsFor(Company);
+		UndiscoveredSectors = Company->GetUndiscoveredSectors();
 		CreateWorldResourceVariations();
 
 		if (!AIData.CalculatedDefaultBudget)
@@ -2330,6 +2331,13 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 							continue;
 						}
 					}
+/*
+					if (Company->GetCompanyTelescopes().Num() >= 1 && Station->GetDescription()->IsTelescope())
+					{
+						continue;
+					}
+*/
+
 					if(Company->CanStartCapture(Station))
 					{
 						Target.CapturingStation = true;
@@ -2716,6 +2724,12 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						continue;
 					}
 				}
+/*
+				if (Company->GetCompanyTelescopes().Num() >= 1 && Station->GetDescription()->IsTelescope())
+				{
+					continue;
+				}
+*/
 				Company->StartCapture(Station);
 			}
 
@@ -4463,6 +4477,13 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 
 		float StationPrice = ComputeStationPrice(Sector, StationDescription, Station);
 		Score *= 1.f + 1/StationPrice;
+		if (StationDescription->IsTelescope())
+		{
+			if (Company->GetCompanyTelescopes().Num() >= 1 || UndiscoveredSectors.Num() < 1)
+			{
+				Score = 0;
+			}
+		}
 	}
 	else if (FactoryDescription && FactoryDescription->IsShipyard())
 	{
@@ -4511,6 +4532,7 @@ float UFlareCompanyAI::ComputeConstructionScoreForStation(UFlareSimulatedSector*
 
 		float StationPrice = ComputeStationPrice(Sector, StationDescription, Station);
 		Score *= 1.f + 1/StationPrice;
+		
 
 		//FLOGV("Score=%f for %s in %s", Score, *StationDescription->Identifier.ToString(), *Sector->GetIdentifier().ToString());
 

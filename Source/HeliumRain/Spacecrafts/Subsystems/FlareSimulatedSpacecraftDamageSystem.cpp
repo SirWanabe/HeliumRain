@@ -131,7 +131,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsUncontrollable() const
 
 bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed() const
 {
-	if(!Spacecraft->IsMilitary())
+	if(!Spacecraft->IsMilitaryArmed())
 	{
 		return true;
 	}

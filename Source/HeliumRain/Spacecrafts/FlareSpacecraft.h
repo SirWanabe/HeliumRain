@@ -520,6 +520,16 @@ public:
 		return Parent->IsMilitary();
 	}
 
+	inline bool IsMilitaryArmed()
+	{
+		return Parent->IsMilitaryArmed();
+	}
+
+	inline bool IsNotMilitary()
+	{
+		return Parent->IsNotMilitary();
+	}
+
 	inline bool IsCapableCarrier()
 	{
 		return Parent->IsCapableCarrier();

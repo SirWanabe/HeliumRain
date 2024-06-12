@@ -682,20 +682,24 @@ TArray<UFlareSimulatedSector*> UFlareFactory::GetTelescopeTargetList()
 
 void UFlareFactory::NotifyNoMoreSector()
 {
+	UFlareCompany* Company = Parent->GetCompany();
+	AFlarePlayerController* PC = Parent->GetGame()->GetPC();
+	if (Company == PC->GetCompany())
+	{
+		UFlareSimulatedSector* CurrentSector = Parent->GetCurrentSector();
 
-	UFlareSimulatedSector* CurrentSector = Parent->GetCurrentSector();
-
-	FFlareMenuParameterData Data;
+		FFlareMenuParameterData Data;
 		Data.Sector = CurrentSector;
 
-	Game->GetPC()->Notify(
-			LOCTEXT("NoMoreDiscovery", "All sectors found"),
-			LOCTEXT("NoMoreDiscoveryFormat", "Your astronomers have mapped the entire sky, and reached the limits of their telescopes. All sectors have been discovered."),
-			"no-more-discovery",
-			EFlareNotification::NT_Info,
-			false,
-			EFlareMenu::MENU_Sector,
-			Data);
+		Game->GetPC()->Notify(
+		LOCTEXT("NoMoreDiscovery", "All sectors found"),
+		LOCTEXT("NoMoreDiscoveryFormat", "Your astronomers have mapped the entire sky, and reached the limits of their telescopes. All sectors have been discovered."),
+		"no-more-discovery",
+		EFlareNotification::NT_Info,
+		false,
+		EFlareMenu::MENU_Sector,
+		Data);
+	}
 }
 
 void UFlareFactory::PerformDiscoverSectorAction(const FFlareFactoryAction* Action)
@@ -729,19 +733,23 @@ void UFlareFactory::PerformDiscoverSectorAction(const FFlareFactoryAction* Actio
 			{
 				NotifyNoMoreSector();
 			}
+			Stop();
 		}
 		else
 		{
 			Company->DiscoverSector(TargetSector);
+			if (Candidates.Num() <= 1)
+			{
+				Stop();
+			}
 		}
 	}
 	else
 	{
 		NotifyNoMoreSector();
 		FLOG("UFlareFactory::PerformDiscoverSectorAction : could not find a sector !");
+		Stop();
 	}
-
-	Stop();
 }
 
 void UFlareFactory::PerformGainResearchAction(const FFlareFactoryAction* Action)

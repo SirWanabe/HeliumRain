@@ -59,9 +59,6 @@ protected:
 	EVisibility GetBottomTextVisibility() const;
 
 	/** Get the text to display */
-	FText GetSectorTitle() const;
-
-	/** Get the text to display */
 	FText GetSectorText() const;
 
 	/** Brush callback */
@@ -91,21 +88,28 @@ protected:
 	UFlareCompany*                 PlayerCompany;
 
 	// Slate data
-	TSharedPtr<STextBlock>         TextBlock;
-	TSharedPtr<SBorder>			   BackgroundBorder;
-	TSharedPtr<SImage>			   ButtonImage;
-	TSharedPtr<SHorizontalBox>     CurrentBox;
-	TSharedPtr<SHorizontalBox>     FleetBoxOne;
-	TSharedPtr<SHorizontalBox>     FleetBoxTwo;
-	TSharedPtr<SHorizontalBox>     FleetBoxThree;
-	int32							NeutralShips;
-	int32							NeutralStations;
-	int32							OwnedShips;
-	int32							OwnedStations;
-	int32							EnemyShips;
-	int32							EnemyStations;
-	int32							CurrentCount;
-	int32							TotalCount;
+	TSharedPtr<STextBlock>			 SectorTitle;
+	TSharedPtr<STextBlock>			 SectorText;
+	TSharedPtr<SBorder>			     BackgroundBorder;
+	TSharedPtr<SImage>			     ButtonImage;
+	TSharedPtr<SHorizontalBox>       CurrentBox;
+	TSharedPtr<SHorizontalBox>       FleetBoxOne;
+	TSharedPtr<SHorizontalBox>       FleetBoxTwo;
+	TSharedPtr<SHorizontalBox>       FleetBoxThree;
+	int32							 NeutralShips;
+	int32							 NeutralStations;
+	int32							 OwnedShips;
+	int32							 OwnedStations;
+	int32							 EnemyShips;
+	int32							 EnemyStations;
+	int32							 CurrentCount;
+	int32							 TotalCount;
+	TArray<UFlareFleet*>			 TrackedFleets;
+	TArray<UFlareFleet*>			 TrackedTravellingFleets;
+	TArray<TSharedPtr<SVerticalBox>> TrackedFleetBoxes;
+	TArray<TSharedPtr<STextBlock>>   TrackedFleetDateBoxes;
+
+	
 
 public:
 	void	RefreshButton();

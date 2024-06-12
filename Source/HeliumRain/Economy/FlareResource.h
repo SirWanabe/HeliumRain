@@ -34,10 +34,10 @@ struct FFlareResourceDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	int64 MinPrice;
 
-	/** Min resource price */
+	/** Max resource price */
 	UPROPERTY(EditAnywhere, Category = Content)
 	int64 MaxPrice;
-	/** Min resource price */
+	/** Transport fee */
 	UPROPERTY(EditAnywhere, Category = Content)
 	int64 TransportFee;
 
@@ -45,7 +45,7 @@ struct FFlareResourceDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsRawResource;
 
-	/** Is maintenance resource */
+	/** Is manufacturing resource */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsManufacturingResource;
 

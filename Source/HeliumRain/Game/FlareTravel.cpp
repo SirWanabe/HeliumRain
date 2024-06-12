@@ -636,7 +636,7 @@ bool UFlareTravel::IsPlayerHostile()
 	bool HasMilitaryShip = false;
 	for (UFlareSimulatedSpacecraft* Ship :Fleet->GetShips())
 	{
-		if (Ship->IsMilitary() && !Ship->GetDamageSystem()->IsDisarmed() && !Ship->GetDamageSystem()->IsUncontrollable())
+		if (Ship->IsMilitaryArmed() && !Ship->GetDamageSystem()->IsDisarmed() && !Ship->GetDamageSystem()->IsUncontrollable())
 		{
 			HasMilitaryShip = true;
 			break;

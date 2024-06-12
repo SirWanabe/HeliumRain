@@ -288,7 +288,7 @@ struct FFlareSpacecraftComponentDescription
 	/** Part internal name */
 	UPROPERTY(EditAnywhere, Category = Content) FName Identifier;
 
-	/** Part size */
+	/** Part type */
 	UPROPERTY(EditAnywhere, Category = Content)	TEnumAsByte<EFlarePartType::Type> Type;
 
 	/** Part size */

@@ -43,7 +43,6 @@ UFlareSimulatedSpacecraft::UFlareSimulatedSpacecraft(const FObjectInitializer& O
 
 }
 
-
 void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 {
 	Company = Cast<UFlareCompany>(GetOuter());
@@ -55,11 +54,252 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	// Load spacecraft description
 	SpacecraftDescription = Game->GetSpacecraftCatalog()->Get(Data.Identifier);
 
+	if (Data.SaveVersion < SpacecraftDescription->SaveVersion)
+	{
+	//Version number incremented in spaceship data, check component quantities match and attempt fix (prevents crashes from mod updates)
+		UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+
+		FName RCSIdentifier;
+		FName OrbitalEngineIdentifier;
+		if (SpacecraftDescription->Size == EFlarePartSize::S)
+		{
+			RCSIdentifier = FName("rcs-coral");
+			OrbitalEngineIdentifier = FName("engine-thresher");
+		}
+		else if (SpacecraftDescription->Size == EFlarePartSize::L)
+		{
+			RCSIdentifier = FName("rcs-rift");
+			OrbitalEngineIdentifier = FName("pod-thera");
+		}
+
+		TArray<FFlareSpacecraftComponentSave*> GunComponents;
+		TArray<FFlareSpacecraftComponentSave*> InternalComponents;
+		TArray<FFlareSpacecraftComponentSave*> OrbitalEngineComponents;
+		TArray<FFlareSpacecraftComponentSave*> RCSComponents;
+		TArray<FFlareSpacecraftComponentSave*> TurretComponents;
+
+		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
+		{
+			FFlareSpacecraftComponentSave* ComponentData = &GetData().Components[ComponentIndex];
+			FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+			if (ComponentDescription->Type == EFlarePartType::InternalComponent)
+			{
+				InternalComponents.Add(ComponentData);
+			}
+			else if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
+			{
+				OrbitalEngineComponents.Add(ComponentData);
+			}
+			else if (ComponentDescription->Type == EFlarePartType::RCS)
+			{
+				RCSComponents.Add(ComponentData);
+			}
+			else if (ComponentDescription->Type == EFlarePartType::Weapon)
+			{
+				if (ComponentDescription->WeaponCharacteristics.TurretCharacteristics.IsTurret)
+				{
+					TurretComponents.Add(ComponentData);
+				}
+//ComponentDescription->WeaponCharacteristics.GunCharacteristics.IsGun,ComponentDescription->WeaponCharacteristics.BombCharacteristics.IsBomb
+				else
+				{
+					GunComponents.Add(ComponentData);
+				}
+			}
+		}
+
+		if (SpacecraftDescription->GunSlots.Num() != GunComponents.Num())
+		{
+			if (GunComponents.Num() < SpacecraftDescription->GunSlots.Num())
+			{
+				//add only missing
+				int MissingElements = SpacecraftDescription->GunSlots.Num() - GunComponents.Num();
+				for (int32 i = 0; i < MissingElements; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateGun(i + GunComponents.Num(), SpacecraftDescription,Game);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+			else
+			{
+				//remove all and start fresh again
+				for (int32 ComponentIndex = 0; ComponentIndex < GunComponents.Num(); ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = GunComponents[ComponentIndex];
+					for (int32 ComponentArrayIndex = 0; ComponentArrayIndex < GetData().Components.Num(); ComponentArrayIndex++)
+					{
+						FFlareSpacecraftComponentSave ComponentArrayData = GetData().Components[ComponentArrayIndex];
+						if (ComponentArrayData.ShipSlotIdentifier == ComponentData->ShipSlotIdentifier)
+						{
+							GetData().Components.RemoveAt(ComponentArrayIndex);
+							break;
+						}
+					}
+				}
+
+				for (int32 i = 0; i < SpacecraftDescription->GunSlots.Num(); i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateGun(i, SpacecraftDescription,Game);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+		}
+
+		if (SpacecraftDescription->InternalComponentSlots.Num() != InternalComponents.Num())
+		{
+			if (InternalComponents.Num() < SpacecraftDescription->InternalComponentSlots.Num())
+			{
+				//add only missing
+				int MissingElements = SpacecraftDescription->InternalComponentSlots.Num() - InternalComponents.Num();
+				for (int32 i = 0; i < MissingElements; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i + InternalComponents.Num(), RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+			else
+			{
+				//remove all and start fresh again
+				for (int32 ComponentIndex = 0; ComponentIndex < InternalComponents.Num(); ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = InternalComponents[ComponentIndex];
+					for (int32 ComponentArrayIndex = 0; ComponentArrayIndex < GetData().Components.Num(); ComponentArrayIndex++)
+					{
+						FFlareSpacecraftComponentSave ComponentArrayData = GetData().Components[ComponentArrayIndex];
+						if (ComponentArrayData.ShipSlotIdentifier == ComponentData->ShipSlotIdentifier)
+						{
+							GetData().Components.RemoveAt(ComponentArrayIndex);
+							break;
+						}
+					}
+				}
+
+				for (int32 i = 0; i < SpacecraftDescription->RCSCount; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i, RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+		}
+
+		if (SpacecraftDescription->RCSCount != RCSComponents.Num())
+		{
+			if (RCSComponents.Num() < SpacecraftDescription->RCSCount)
+			{
+				//add only missing
+				int MissingElements = SpacecraftDescription->RCSCount - RCSComponents.Num();
+				for (int32 i = 0; i < MissingElements; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i + RCSComponents.Num(), RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+			else
+			{
+				//remove all and start fresh again
+				for (int32 ComponentIndex = 0; ComponentIndex < RCSComponents.Num(); ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = RCSComponents[ComponentIndex];
+					for (int32 ComponentArrayIndex = 0; ComponentArrayIndex < GetData().Components.Num(); ComponentArrayIndex++)
+					{
+						FFlareSpacecraftComponentSave ComponentArrayData = GetData().Components[ComponentArrayIndex];
+						if (ComponentArrayData.ShipSlotIdentifier == ComponentData->ShipSlotIdentifier)
+						{
+							GetData().Components.RemoveAt(ComponentArrayIndex);
+							break;
+						}
+					}
+				}
+
+				for (int32 i = 0; i < SpacecraftDescription->RCSCount; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i, RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+		}
+
+		if (SpacecraftDescription->OrbitalEngineCount != OrbitalEngineComponents.Num())
+		{
+			if (OrbitalEngineComponents.Num() < SpacecraftDescription->OrbitalEngineCount)
+			{
+				//add only missing
+				int MissingElements = SpacecraftDescription->OrbitalEngineCount - OrbitalEngineComponents.Num();
+				for (int32 i = 0; i < MissingElements; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateOrbitalEngine(i + OrbitalEngineComponents.Num(), RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+			else
+			{
+				//remove all and start fresh again
+				for (int32 ComponentIndex = 0; ComponentIndex < OrbitalEngineComponents.Num(); ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = OrbitalEngineComponents[ComponentIndex];
+					for (int32 ComponentArrayIndex = 0; ComponentArrayIndex < GetData().Components.Num(); ComponentArrayIndex++)
+					{
+						FFlareSpacecraftComponentSave ComponentArrayData = GetData().Components[ComponentArrayIndex];
+						if (ComponentArrayData.ShipSlotIdentifier == ComponentData->ShipSlotIdentifier)
+						{
+							GetData().Components.RemoveAt(ComponentArrayIndex);
+							break;
+						}
+					}
+				}
+
+				for (int32 i = 0; i < SpacecraftDescription->OrbitalEngineCount; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateOrbitalEngine(i, RCSIdentifier);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+		}
+
+		if (SpacecraftDescription->TurretSlots.Num() != TurretComponents.Num())
+		{
+			if (TurretComponents.Num() < SpacecraftDescription->TurretSlots.Num())
+			{
+				//add only missing
+				int MissingElements = SpacecraftDescription->TurretSlots.Num() - TurretComponents.Num();
+				for (int32 i = 0; i < MissingElements; i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateTurret(i + TurretComponents.Num(), SpacecraftDescription, Game);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+			else
+			{
+				//remove all and start fresh again
+				for (int32 ComponentIndex = 0; ComponentIndex < TurretComponents.Num(); ComponentIndex++)
+				{
+					FFlareSpacecraftComponentSave* ComponentData = TurretComponents[ComponentIndex];
+					for (int32 ComponentArrayIndex = 0; ComponentArrayIndex < GetData().Components.Num(); ComponentArrayIndex++)
+					{
+						FFlareSpacecraftComponentSave ComponentArrayData = GetData().Components[ComponentArrayIndex];
+						if (ComponentArrayData.ShipSlotIdentifier == ComponentData->ShipSlotIdentifier)
+						{
+							GetData().Components.RemoveAt(ComponentArrayIndex);
+							break;
+						}
+					}
+				}
+
+				for (int32 i = 0; i < SpacecraftDescription->TurretSlots.Num(); i++)
+				{
+					FFlareSpacecraftComponentSave ComponentData = CreateTurret(i, SpacecraftDescription,Game);
+					GetData().Components.Add(ComponentData);
+				}
+			}
+		}
+
+		SpacecraftData.SaveVersion = SpacecraftDescription->SaveVersion;
+	}
+
 	// Initialize damage system
 	if (!DamageSystem)
 	{
 		DamageSystem = NewObject<UFlareSimulatedSpacecraftDamageSystem>(this, UFlareSimulatedSpacecraftDamageSystem::StaticClass());
-	
 	}
 
 	DamageSystem->Initialize(this, &SpacecraftData);
@@ -69,6 +309,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	{
 		WeaponsSystem = NewObject<UFlareSimulatedSpacecraftWeaponsSystem>(this, UFlareSimulatedSpacecraftWeaponsSystem::StaticClass());
 	}
+
 	WeaponsSystem->Initialize(this, &SpacecraftData);
 
 	// Initialize complex
@@ -198,7 +439,6 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		}
 	}
 
-
 	// Cargo bay init
 	if (SpacecraftData.AttachComplexStationName == NAME_None)
 	{
@@ -229,7 +469,6 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 	{
 		AutoFillConstructionCargoBay();
 	}
-
 
 	// Setup station connectors
 	ConnectorSlots.Empty();
@@ -276,7 +515,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 	if (IsStation() && IsShipyard())
 	{
-		if(SpacecraftData.ShipyardOrderExternalConfig.Num() <= 0)
+		if (SpacecraftData.ShipyardOrderExternalConfig.Num() <= 0)
 			//if num below 0 it's probably from an old savegame
 		{
 			SpacecraftData.ShipyardOrderExternalConfig.Reserve(Game->GetSpacecraftCatalog()->ShipCatalog.Num());
@@ -395,6 +634,85 @@ FFlareSpacecraftSave* UFlareSimulatedSpacecraft::Save()
 	return &SpacecraftData;
 }
 
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateNewComponent()
+{
+	FFlareSpacecraftComponentSave ComponentData;
+	ComponentData.Damage = 0.f;
+
+	//Save optimization
+	ComponentData.Turret.BarrelsAngle = 0;
+	ComponentData.Turret.TurretAngle = 0;
+	ComponentData.Weapon.FiredAmmo = 0;
+	return ComponentData;
+}
+
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateRCS(int32 slot, FName RCSIdentifier)
+{
+	FFlareSpacecraftComponentSave ComponentData = CreateNewComponent();
+	ComponentData.ComponentIdentifier = RCSIdentifier;
+	ComponentData.ShipSlotIdentifier = FName(*("rcs-" + FString::FromInt(slot)));
+	return ComponentData;
+}
+
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateOrbitalEngine(int32 slot, FName OrbitalEngineIdentifier)
+{
+	FFlareSpacecraftComponentSave ComponentData = CreateNewComponent();
+	ComponentData.ComponentIdentifier = OrbitalEngineIdentifier;
+	ComponentData.ShipSlotIdentifier = FName(*("engine-" + FString::FromInt(slot)));
+	return ComponentData;
+}
+
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateGun(int32 slot, FFlareSpacecraftDescription* ShipDescription, AFlareGame* XGamePass)
+{
+	FFlareSpacecraftComponentSave ComponentData = CreateNewComponent();
+	bool SetDefault = false;
+
+	FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->GunSlots[slot].GroupIndex];
+	if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
+	{
+		ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
+		SetDefault = true;
+	}
+
+	if (!SetDefault)
+	{
+		ComponentData.ComponentIdentifier = XGamePass->GetDefaultWeaponIdentifier();
+	}
+
+	ComponentData.ShipSlotIdentifier = ShipDescription->GunSlots[slot].SlotIdentifier;
+	return ComponentData;
+}
+
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateTurret(int32 slot, FFlareSpacecraftDescription* ShipDescription, AFlareGame* XGamePass)
+{
+	FFlareSpacecraftComponentSave ComponentData = CreateNewComponent();
+	bool SetDefault = false;
+	if (ShipDescription->WeaponGroups.Num() < slot)
+	{
+		FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->TurretSlots[slot].GroupIndex];
+		if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
+		{
+			ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
+			SetDefault = true;
+		}
+	}
+	if (!SetDefault)
+	{
+		ComponentData.ComponentIdentifier = XGamePass->GetDefaultTurretIdentifier();
+	}
+
+	ComponentData.ShipSlotIdentifier = ShipDescription->TurretSlots[slot].SlotIdentifier;
+	return ComponentData;
+}
+
+FFlareSpacecraftComponentSave UFlareSimulatedSpacecraft::CreateInternalComponent(int32 slot, FFlareSpacecraftDescription* ShipDescription)
+{
+	FFlareSpacecraftComponentSave ComponentData = CreateNewComponent();
+	ComponentData.ComponentIdentifier = ShipDescription->InternalComponentSlots[slot].ComponentIdentifier;
+	ComponentData.ShipSlotIdentifier = ShipDescription->InternalComponentSlots[slot].SlotIdentifier;
+	return ComponentData;
+}
+
 void UFlareSimulatedSpacecraft::SelectWhiteListDefault(FName IdentifierSearch)
 {
 	UFlareCompanyWhiteList* FoundWhiteList = Company->GetWhiteList(IdentifierSearch);
@@ -459,6 +777,18 @@ EFlarePartSize::Type UFlareSimulatedSpacecraft::GetSize() const
 bool UFlareSimulatedSpacecraft::IsMilitary() const
 {
 	return SpacecraftDescription->IsMilitary();
+}
+
+bool UFlareSimulatedSpacecraft::IsMilitaryArmed() const
+{
+	return SpacecraftDescription->IsMilitaryArmed();
+}
+
+
+
+bool UFlareSimulatedSpacecraft::IsNotMilitary() const
+{
+	return SpacecraftDescription->CheckIsNotMilitary();
 }
 
 bool UFlareSimulatedSpacecraft::IsCapableCarrier() const
@@ -2854,13 +3184,12 @@ int32 UFlareSimulatedSpacecraft::GetEquippedSalvagerCount()
 
 int32 UFlareSimulatedSpacecraft::GetCombatPoints(bool ReduceByDamage)
 {
-	if (!IsMilitary() || (ReduceByDamage && GetDamageSystem()->IsDisarmed()))
+	if (!IsMilitaryArmed() || (ReduceByDamage && GetDamageSystem()->IsDisarmed()))
 	{
 		return 0;
 	}
 
 	int32 SpacecraftCombatPoints = GetDescription()->CombatPoints;
-
 	int32 WeaponGroupCount = GetDescription()->WeaponGroups.Num();
 
 	for(int32 WeaponGroupIndex = 0; WeaponGroupIndex < WeaponGroupCount; WeaponGroupIndex++)

@@ -126,7 +126,7 @@ bool UFlareBattle::HasBattle()
 					continue;
 				}
 
-				if (!Ship->IsMilitary() || Ship->GetDamageSystem()->IsDisarmed())
+				if (!Ship->IsMilitaryArmed() || Ship->GetDamageSystem()->IsDisarmed())
 				{
 					// No weapon
 					continue;
@@ -457,7 +457,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotMilitary;
 		}
 
-		if(ShipCandidate->IsMilitary()  && !ShipCandidate->GetDamageSystem()->IsDisarmed())
+		if(ShipCandidate->IsMilitaryArmed()  && !ShipCandidate->GetDamageSystem()->IsDisarmed())
 		{
 			StateScore *= Preferences.IsDangerous;
 		}

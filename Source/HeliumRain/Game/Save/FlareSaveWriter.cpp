@@ -494,7 +494,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 		CapturePoints.Add(MakeShareable(new FJsonValueObject(JsonChildObject)));
 	}
 	JsonObject->SetArrayField("CapturePoints", CapturePoints);
-
+	JsonObject->SetStringField("SaveVersion", FormatInt32(Data->SaveVersion));
 	return JsonObject;
 }
 
@@ -557,7 +557,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraftComponent(FFlareSpacecra
 	JsonObject->SetObjectField("Turret", SaveSpacecraftComponentTurret(&Data->Turret));
 	JsonObject->SetObjectField("Weapon", SaveSpacecraftComponentWeapon(&Data->Weapon));
 	JsonObject->SetObjectField("Pilot", SaveTurretPilot(&Data->Pilot));
-
+	
 	return JsonObject;
 }
 

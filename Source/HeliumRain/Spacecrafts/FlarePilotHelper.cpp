@@ -963,7 +963,7 @@ bool PilotHelper::IsTargetDangerous(PilotHelper::PilotTarget const& Target)
 {
 	if(Target.SpacecraftTarget)
 	{
-		return Target.SpacecraftTarget->GetParent()->IsMilitary() && !Target.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed();
+		return Target.SpacecraftTarget->GetParent()->IsMilitaryArmed() && !Target.SpacecraftTarget->GetParent()->GetDamageSystem()->IsDisarmed();
 	}
 	else if(Target.BombTarget)
 	{

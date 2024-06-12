@@ -354,7 +354,7 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSkirmishManager* Skirmish, FName F
 		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftCatalog->ShipCatalog.Num(); SpacecraftIndex++)
 		{
 			FFlareSpacecraftDescription* Description = &SpacecraftCatalog->ShipCatalog[SpacecraftIndex]->Data;
-			if (!Description->IsSubstation && Description->IsMilitary() && !Description->IsDroneShip)
+			if (Description->IsMilitary() && !Description->IsSubstation  && !Description->IsDroneShip)
 			{
 				if (Description->BuildableCompany.Num() > 0)
 				{

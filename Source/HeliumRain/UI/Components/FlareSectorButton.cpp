@@ -50,18 +50,15 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 		.Padding(FMargin(25))
 		[
 			SNew(SVerticalBox)
-
 			// Upper line
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(Theme.SectorButtonTextPadding)
 			[
-				SAssignNew(TextBlock, STextBlock)
-				.Text(this, &SFlareSectorButton::GetSectorTitle)
+				SAssignNew(SectorTitle, STextBlock)
 				.WrapTextAt(3 * Theme.SectorButtonWidth)
 				.TextStyle(&Theme.TextFont)
 				.Justification(ETextJustify::Center)
-				.ShadowColorAndOpacity(this, &SFlareSectorButton::GetShadowColor)
 			]
 
 			// Main
@@ -81,17 +78,12 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 					.ButtonStyle(FCoreStyle::Get(), "NoBorder")
 					[
 						// Background
-//						SNew(SBorder)
 						SAssignNew(BackgroundBorder,SBorder)
 						.Padding(Theme.SectorButtonPadding)
 						.BorderImage(&Theme.SectorButtonBorder)
-//						.BorderBackgroundColor(this, &SFlareSectorButton::GetBorderColor)
 						[
 							// Icon
 							SAssignNew(ButtonImage, SImage)
-//							SNew(SImage)
-//							.Image(this, &SFlareSectorButton::GetBackgroundBrush)
-//							.ColorAndOpacity(this, &SFlareSectorButton::GetMainColor)
 						]
 					]
 				]
@@ -111,59 +103,43 @@ void SFlareSectorButton::Construct(const FArguments& InArgs)
 					SAssignNew(FleetBoxOne, SHorizontalBox)
 				]
 
-			+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SAssignNew(TextBlock, STextBlock)
-					.Text(this, &SFlareSectorButton::GetSectorText)
-					.WrapTextAt(3 * Theme.SectorButtonWidth)
-					.TextStyle(&Theme.SmallFont)
-					.Justification(ETextJustify::Center)
-					.ShadowColorAndOpacity(this, &SFlareSectorButton::GetShadowColor)
-					.Visibility(this, &SFlareSectorButton::GetBottomTextVisibility)
-				]
-			]
-			//SWrapBox 
-			+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SectorButtonTextPadding)
-				[
-					SNew(SVerticalBox)
-
-					+ SVerticalBox::Slot()
+				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxTwo, SHorizontalBox)
 				]
-			]
-			+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(Theme.SectorButtonTextPadding)
-				[
-					SNew(SVerticalBox)
 
-					+ SVerticalBox::Slot()
+				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(FleetBoxThree, SHorizontalBox)
 				]
-			]
 
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SAssignNew(SectorText, STextBlock)
+					.WrapTextAt(3 * Theme.SectorButtonWidth)
+					.TextStyle(&Theme.SmallFont)
+					.Justification(ETextJustify::Center)
+				]
+			]
 		]
 	];
 
 	RefreshButton();
 }
+
 TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 {
 //Primarily full row 1 and 2, in extreme case when there's lots of fleets 
 //place all into third row for a little bit, and from then do a 1-2-3 instead of 1-2
-
 	if (TotalCount >= 30 && TotalCount < 40)
 	{
 		CurrentBox = FleetBoxThree;
+
 	}
 	else if (CurrentCount >= 7)
 	{
@@ -195,7 +171,6 @@ TSharedPtr<SHorizontalBox> SFlareSectorButton::GetCurrentBox()
 
 void SFlareSectorButton::UpdateBackgroundImages()
 {
-
 	BackgroundBorder->SetBorderBackgroundColor(GetBorderColor());
 	ButtonImage->SetImage(GetBackgroundBrush());
 	ButtonImage->SetColorAndOpacity(GetMainColor());
@@ -205,8 +180,18 @@ void SFlareSectorButton::RefreshButton()
 {
 	if (Sector == nullptr || !IsValid(Sector))
 	{
+		SectorTitle->SetText(FText());
+		SectorText->SetVisibility(EVisibility::Collapsed);
+		SectorText->SetText(FText());
 		return;
 	}
+
+	SectorTitle->SetShadowColorAndOpacity(GetShadowColor());
+	SectorTitle->SetText(Sector->GetSectorName());
+
+	SectorText->SetShadowColorAndOpacity(GetShadowColor());
+	SectorText->SetText(GetSectorText());
+	SectorText->SetVisibility(GetBottomTextVisibility());
 
 	UpdateBackgroundImages();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
@@ -217,35 +202,101 @@ void SFlareSectorButton::RefreshButton()
 		DisplayMode = EFlareOrbitalMode::Stations;
 	}
 
-	FleetBoxOne->ClearChildren();
-	FleetBoxTwo->ClearChildren();
-	FleetBoxThree->ClearChildren();
+	if (DisplayMode != EFlareOrbitalMode::Fleets)
+	{
+		FleetBoxOne->SetVisibility(EVisibility::Collapsed);
+		FleetBoxTwo->SetVisibility(EVisibility::Collapsed);
+		FleetBoxThree->SetVisibility(EVisibility::Collapsed);
+	}
 
 	if (DisplayMode == EFlareOrbitalMode::Fleets)
 	{
-		int32 FleetNumber = 0;
+		FleetBoxOne->SetVisibility(EVisibility::Visible);
+		FleetBoxTwo->SetVisibility(EVisibility::Visible);
+		FleetBoxThree->SetVisibility(EVisibility::Visible);
+
 		CurrentBox = FleetBoxOne;
 		CurrentCount = 0;
 		TotalCount = 0;
+
+		for (int32 CountIndex = 0; CountIndex < TrackedFleets.Num(); CountIndex++)
+		{
+			UFlareFleet* Fleet = TrackedFleets[CountIndex];
+			bool RemoveFleet = false;
+
+			int32 TravelingFleetPosition = TrackedTravellingFleets.Find(Fleet);
+			if (!Fleet)
+			{
+				RemoveFleet = true;
+			}
+			else if (TravelingFleetPosition != INDEX_NONE)
+			{
+				if (Fleet->GetCurrentSector() == Sector)
+				{
+					RemoveFleet = true;
+					TrackedTravellingFleets.RemoveAt(TravelingFleetPosition);
+					TrackedFleetDateBoxes.RemoveAt(TravelingFleetPosition);
+				}
+				else if (Fleet->GetCurrentTravel())
+				{
+					if (Fleet->GetCurrentTravel()->GetDestinationSector() != Sector)
+					{
+						RemoveFleet = true;
+						TrackedTravellingFleets.RemoveAt(TravelingFleetPosition);
+						TrackedFleetDateBoxes.RemoveAt(TravelingFleetPosition);
+					}
+					else
+					{
+						TSharedPtr<STextBlock> DateBox = TrackedFleetDateBoxes[TravelingFleetPosition];
+						if (DateBox)
+						{
+							FText DateText = UFlareGameTools::FormatDate(Fleet->GetCurrentTravel()->GetRemainingTravelDuration(), 1);
+							DateBox->SetText(DateText);
+						}
+					}
+				}
+			}
+			else if (Fleet->GetCurrentSector() != Sector)
+			{
+				RemoveFleet = true;
+			}
+
+			if (RemoveFleet)
+			{
+				FleetBoxOne->RemoveSlot(TrackedFleetBoxes[CountIndex].ToSharedRef());
+				FleetBoxTwo->RemoveSlot(TrackedFleetBoxes[CountIndex].ToSharedRef());
+				FleetBoxThree->RemoveSlot(TrackedFleetBoxes[CountIndex].ToSharedRef());
+				TrackedFleets.RemoveAt(CountIndex);
+				TrackedFleetBoxes.RemoveAt(CountIndex);
+				CountIndex--;
+			}
+		}
+
+		const FSlateBrush* FleetSmall = FFlareStyleSet::GetIcon("Fleet_Small");
+		const FSlateBrush* FleetSmallMilitary = FFlareStyleSet::GetIcon("Fleet_Small_Military");
 
 		// Get local fleets
 		for (UFlareFleet* Fleet : Sector->GetSectorFleets())
 		{
 			if (Fleet->GetFleetCompany()->IsPlayerCompany())
 			{
-				FLinearColor FleetColor = Fleet->GetFleetColor();
-				const FSlateBrush* FleetIcon = (Fleet->GetCombatPoints(false) > 0) ?
-					FFlareStyleSet::GetIcon("Fleet_Small_Military") : FFlareStyleSet::GetIcon("Fleet_Small");
-
 				CurrentCount++;
 				TotalCount++;
-				FleetNumber++;
-
 				CurrentBox = GetCurrentBox();
+
+				if (TrackedFleets.Find(Fleet) != INDEX_NONE)
+				{
+					continue;
+				}
+
+				TSharedPtr<SVerticalBox>		FleetBox;
+				FLinearColor FleetColor = Fleet->GetFleetColor();
+				const FSlateBrush* FleetIcon = (Fleet->GetCombatPoints(false) > 0) ?
+				FleetSmallMilitary : FleetSmall;
 				CurrentBox->AddSlot()
 				.AutoWidth()
 				[
-					SNew(SVerticalBox)
+					SAssignNew(FleetBox,SVerticalBox)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Center)
@@ -255,6 +306,9 @@ void SFlareSectorButton::RefreshButton()
 						.ColorAndOpacity(FleetColor)
 					]
 				];
+
+				TrackedFleets.AddUnique(Fleet);
+				TrackedFleetBoxes.AddUnique(FleetBox);
 			}
 		}
 
@@ -263,39 +317,51 @@ void SFlareSectorButton::RefreshButton()
 		{
 			if (Travel->GetFleet()->GetFleetCompany()->IsPlayerCompany() && Sector == Travel->GetDestinationSector())
 			{
+				CurrentCount++;
+				TotalCount++;
+				CurrentBox = GetCurrentBox();
+
+				if (TrackedFleets.Find(Travel->GetFleet()) != INDEX_NONE)
+				{
+					continue;
+				}
+
 				FLinearColor FleetColor = Travel->GetFleet()->GetFleetColor();
 				FText DateText = UFlareGameTools::FormatDate(Travel->GetRemainingTravelDuration(), 1);
 				FleetColor.A = 0.5f;
 
-				CurrentCount++;
-				TotalCount++;
+				TSharedPtr<SVerticalBox>		FleetBox;
+				TSharedPtr<STextBlock>			DateBox;
 
-				CurrentBox = GetCurrentBox();
 				CurrentBox->AddSlot()
-					.AutoWidth()
-					[
-						SNew(SVerticalBox)
+				.AutoWidth()
+				[
+					SAssignNew(FleetBox, SVerticalBox)
 
-						+ SVerticalBox::Slot()
+					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Center)
 					[
 						SNew(SImage)
-						.Image(FFlareStyleSet::GetIcon("Fleet_Small"))
-					.ColorAndOpacity(FleetColor)
+						.Image(FleetSmall)
+						.ColorAndOpacity(FleetColor)
 					]
-
-				+ SVerticalBox::Slot()
+					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[
-						SNew(STextBlock)
+						SAssignNew(DateBox,STextBlock)
 						.Text(DateText)
-					.TextStyle(&Theme.SmallFont)
+						.TextStyle(&Theme.SmallFont)
 					]
 				];
+
+				TrackedTravellingFleets.AddUnique(Travel->GetFleet());
+				TrackedFleets.AddUnique(Travel->GetFleet());
+				TrackedFleetBoxes.AddUnique(FleetBox);
+				TrackedFleetDateBoxes.AddUnique(DateBox);
 			}
 		}
-		SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
+//		SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
 	}
 	else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 	{
@@ -372,10 +438,7 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 		FText SectorStatus = Sector->GetSectorFriendlynessText(PlayerCompany);
 		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), Sector->GetSectorName(), SectorStatus);
 
-//		FText IdentifierFText = FText::FromName(Sector->GetData()->Identifier);
-///		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), IdentifierFText, SectorStatus);
 		FText SectorInfoText = Sector->GetSectorDescription();
-
 		// Get local fleets
 		for (UFlareFleet* Fleet : Sector->GetSectorFleets())
 		{
@@ -451,16 +514,6 @@ EVisibility SFlareSectorButton::GetBottomTextVisibility() const
 	{
 		return EVisibility::Visible;
 	}
-}
-
-FText SFlareSectorButton::GetSectorTitle() const
-{
-	if (Sector)
-	{
-		return Sector->GetSectorName();
-	}
-
-	return FText();
 }
 
 FText SFlareSectorButton::GetSectorText() const
@@ -562,7 +615,6 @@ FText SFlareSectorButton::GetSectorText() const
 		{
 			SectorText = Sector->GetSectorBattleStateText(PlayerCompany);
 		}
-
 	}
 
 	return SectorText;

@@ -1171,6 +1171,11 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 		{
 			if (Spacecraft->IsStation())
 			{
+				if (Spacecraft->GetDescription()->IsTelescope())
+				{
+					CompanyTelescopes.AddUnique(Spacecraft);
+				}
+
 				if(Spacecraft->IsComplexElement())
 				{
 					CompanyChildStations.AddUnique(Spacecraft);
@@ -1178,7 +1183,6 @@ UFlareSimulatedSpacecraft* UFlareCompany::LoadSpacecraft(const FFlareSpacecraftS
 				else
 				{
 					CompanyStations.AddUnique(Spacecraft);
-//					AddOrRemoveCompanySectorStation(Spacecraft,false);
 				}
 			}
 			else
@@ -1238,7 +1242,9 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	CompanySpacecrafts.Remove(Spacecraft);
 	CompanyStations.Remove(Spacecraft);
 	CompanyChildStations.Remove(Spacecraft);
+	CompanyTelescopes.Remove(Spacecraft);
 	CompanyShips.Remove(Spacecraft);
+
 
 	if (Spacecraft->GetDescription()->IsDroneCarrier)
 	{
@@ -3094,6 +3100,20 @@ void UFlareCompany::AddRetaliation(float Retaliation)
 void UFlareCompany::RemoveRetaliation(float Retaliation)
 {
 	CompanyData.Retaliation -= Retaliation;
+}
+
+TArray<UFlareSimulatedSector*> UFlareCompany::GetUndiscoveredSectors()
+{
+	// List all unknown sectors
+	TArray<UFlareSimulatedSector*> Candidates;
+	for (auto CandidateSector : GetGame()->GetGameWorld()->GetSectors())
+	{
+		if (!IsKnownSector(CandidateSector) && !CandidateSector->GetDescription()->IsHiddenFromTelescopes)
+		{
+			Candidates.Add(CandidateSector);
+		}
+	}
+	return Candidates;
 }
 
 #undef LOCTEXT_NAMESPACE

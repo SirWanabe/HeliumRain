@@ -113,7 +113,7 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 					.AutoWidth()
 					.HAlign(HAlign_Left)
 					.VAlign(VAlign_Top)
-					.Padding(Theme.SmallContentPadding)
+					.Padding(FMargin(60,5,5,5))
 					[
 						// Company whitelists
 						SNew(SVerticalBox)

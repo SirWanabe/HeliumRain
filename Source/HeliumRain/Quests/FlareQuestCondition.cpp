@@ -2838,7 +2838,7 @@ void UFlareQuestConditionRetreatDangerousShip::OnTravelStarted(UFlareTravel* Tra
 
 	for(UFlareSimulatedSpacecraft* Ship : Travel->GetFleet()->GetShips())
 	{
-		if(Ship->IsMilitary()  && !Ship->GetDamageSystem()->IsDisarmed())
+		if(Ship->IsMilitaryArmed()  && !Ship->GetDamageSystem()->IsDisarmed())
 		{
 			Completed = true;
 			break;

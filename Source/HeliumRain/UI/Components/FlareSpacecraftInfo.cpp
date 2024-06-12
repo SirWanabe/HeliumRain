@@ -1499,7 +1499,7 @@ EVisibility SFlareSpacecraftInfo::GetCombatValueVisibility() const
 	// Check the target
 	if (TargetSpacecraft && TargetSpacecraft->IsValidLowLevel())
 	{
-		if (TargetSpacecraft->IsStation() || !TargetSpacecraft->IsMilitary())
+		if (TargetSpacecraft->IsStation() || !TargetSpacecraft->IsMilitaryArmed())
 		{
 			return EVisibility::Collapsed;
 		}

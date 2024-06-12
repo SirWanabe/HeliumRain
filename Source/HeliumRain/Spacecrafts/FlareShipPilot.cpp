@@ -2004,10 +2004,12 @@ void UFlareShipPilot::FindPilotAvoidShip(float DeltaSeconds)
 		if (!PilotAvoidShip)
 		{
 			TimeUntilNextPilotAvoidCheck = PilotAvoidCheckReactionTimeSlow;
+			InitiatedCombat = false;
 		}
 		else
 		{
 			TimeUntilNextPilotAvoidCheck = PilotAvoidCheckReactionTimeFast;
+			InitiatedCombat = true;
 		}
 	}
 }

@@ -425,7 +425,7 @@ public:
 
     /** Create a station in the level  for a specific company */
 	UFlareSimulatedSpacecraft* CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction,
-		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters());
+		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), int32 StartingLevel = 1);
 
     /** Create a ship in the level  for a specific company */
 	UFlareSimulatedSpacecraft* CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition, UFlareSimulatedSpacecraft* BuiltBy = NULL);
@@ -433,7 +433,10 @@ public:
 	/** Create a ship or station in the level  for a specific company. No null parameter accepted */
 	UFlareSimulatedSpacecraft* CreateSpacecraft(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetLocation, FRotator TargetRotation = FRotator::ZeroRotator,
 		FFlareSpacecraftSave* CapturedSpacecraft = NULL, int32 SpawnLocation = 0, bool UnderConstruction = false, FName AttachComplexStationName = NAME_None,
-		UFlareSimulatedSpacecraft* BuiltBy = NULL);
+		UFlareSimulatedSpacecraft* BuiltBy = NULL, int32 StartingLevel = 1);
+
+	FFlareSpacecraftSave CreateDefaultShipData(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetPosition, FRotator TargetRotation,
+		FFlareSpacecraftSave* CapturedSpacecraft, int32 SpawnLocation, bool UnderConstruction, FName AttachComplexStationName, UFlareSimulatedSpacecraft* BuiltBy, int32 StartingLevel);
 
 	/** Create an asteroid */
 	void CreateAsteroid(int32 ID, FName Name, FVector Location);

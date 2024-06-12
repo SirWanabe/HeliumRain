@@ -264,6 +264,15 @@ void UFlareSpacecraftCatalog::ReplaceOldEntrySettings(FFlareSpacecraftDescriptio
 		}
 	}
 
+	if (Spacecraft->Data.Factories.Num() > 0)
+	{
+		OldEntryDesc->Factories.Empty();
+		for (UFlareFactoryCatalogEntry* NewFactory : Spacecraft->Data.Factories)
+		{
+			OldEntryDesc->Factories.Add(NewFactory);
+		}
+	}
+
 	OldEntryDesc->CargoBayCapacity = Spacecraft->Data.CargoBayCapacity;
 	OldEntryDesc->CargoBayCount = Spacecraft->Data.CargoBayCount;
 

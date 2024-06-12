@@ -112,7 +112,7 @@ void SFlareShipStatus::SetTargetShip(UFlareSimulatedSpacecraft* Target)
 	if (TargetShip)
 	{
 		SetVisibility(EVisibility::Visible);
-		if (TargetShip->IsMilitary())
+		if (TargetShip->IsMilitaryArmed())
 		{
 			WeaponIndicator->SetVisibility(EVisibility::Visible);
 		}
@@ -162,7 +162,7 @@ void SFlareShipStatus::OnMouseEnter(const FGeometry& MyGeometry, const FPointerE
 			{
 				Info = FText::Format(LOCTEXT("ShipUncontrollableFormat", "{0}This ship is uncontrollable and can't move in the local space !\n"), Info);
 			}
-			if (TargetShip->IsMilitary() && DamageSystem->IsDisarmed())
+			if (TargetShip->IsMilitaryArmed() && DamageSystem->IsDisarmed())
 			{
 				Info = FText::Format(LOCTEXT("ShipDisarmedFormat", "{0}This ship is disarmed and unable to fight back !\n"), Info);
 			}
@@ -175,7 +175,7 @@ void SFlareShipStatus::OnMouseEnter(const FGeometry& MyGeometry, const FPointerE
 				Info = FText::Format(LOCTEXT("ShipRepairormat", "{0}This ship is being repaired.\n"), Info);
 			}
 
-			if (TargetShip->IsMilitary())
+			if (TargetShip->IsMilitaryArmed())
 			{
 				int32 MaxAmmo = 0;
 				int32 CurrentSpentAmmo = 0;

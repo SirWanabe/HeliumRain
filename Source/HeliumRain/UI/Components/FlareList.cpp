@@ -357,7 +357,6 @@ void SFlareList::RefreshList(bool DisableSort)
 					else if (A->GetWeaponsSystem()->GetWeaponGroupCount() > B->GetWeaponsSystem()->GetWeaponGroupCount())
 					{
 						return true;
-//						return A->GetWeaponsSystem()->GetWeaponGroupCount() > B->GetWeaponsSystem()->GetWeaponGroupCount();
 					}
 					else 
 					{

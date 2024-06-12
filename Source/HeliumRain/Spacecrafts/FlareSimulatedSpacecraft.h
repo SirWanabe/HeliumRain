@@ -46,6 +46,10 @@ public:
 
 	/** Check if this is a military ship */
 	virtual bool IsMilitary() const;
+	virtual bool IsMilitaryArmed() const;
+
+	/** Check if this has not military flag set */
+	virtual bool IsNotMilitary() const;
 
 	/** Check if this is a carrier with internal bay*/
 	virtual bool IsCapableCarrier() const;
@@ -61,6 +65,17 @@ public:
 	virtual bool CanFight() const;
 
 	virtual bool CanTravel() const;
+
+	/*----------------------------------------------------
+		Creation
+	----------------------------------------------------*/
+
+	FFlareSpacecraftComponentSave CreateNewComponent();
+	FFlareSpacecraftComponentSave CreateRCS(int32 slot, FName RCSIdentifier);
+	FFlareSpacecraftComponentSave CreateOrbitalEngine(int32 slot, FName RCSIdentifier);
+	FFlareSpacecraftComponentSave CreateGun(int32 slot, FFlareSpacecraftDescription* ShipDescription, AFlareGame* XGamePass);
+	FFlareSpacecraftComponentSave CreateTurret(int32 slot, FFlareSpacecraftDescription* ShipDescription, AFlareGame* XGamePass);
+	FFlareSpacecraftComponentSave CreateInternalComponent(int32 slot, FFlareSpacecraftDescription* ShipDescription);
 
 	/*----------------------------------------------------
 		Sub system

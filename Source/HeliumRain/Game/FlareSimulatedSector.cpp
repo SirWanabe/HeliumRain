@@ -187,7 +187,7 @@ float UFlareSimulatedSector::GetSectorLimits()
 	return 2000000; // 20 km
 }
 
-UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction, FFlareStationSpawnParameters SpawnParameters)
+UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction, FFlareStationSpawnParameters SpawnParameters, int32 StartingLevel)
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
 	UFlareSimulatedSpacecraft* Station = NULL;
@@ -202,7 +202,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationCla
 	{
 		bool SafeSpawn = (SpawnParameters.AttachActorName != NAME_None);
 		bool IsChildStation = (SpawnParameters.AttachComplexStationName != NAME_None);
-		Station = CreateSpacecraft(Desc, Company, SpawnParameters.Location, SpawnParameters.Rotation, NULL, SafeSpawn, UnderConstruction, SpawnParameters.AttachComplexStationName);
+		Station = CreateSpacecraft(Desc, Company, SpawnParameters.Location, SpawnParameters.Rotation, NULL, SafeSpawn, UnderConstruction, SpawnParameters.AttachComplexStationName, nullptr, StartingLevel);
 
 		// Attach to asteroid
 		if (Station && Desc->BuildConstraint.Contains(EFlareBuildConstraint::FreeAsteroid))
@@ -263,12 +263,13 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FName ShipCla
 }
 
 UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecraftDescription* ShipDescription, UFlareCompany* Company, FVector TargetPosition, FRotator TargetRotation,
-	FFlareSpacecraftSave* CapturedSpacecraft, int32 SpawnLocation, bool UnderConstruction, FName AttachComplexStationName, UFlareSimulatedSpacecraft* BuiltBy)
+	FFlareSpacecraftSave* CapturedSpacecraft, int32 SpawnLocation, bool UnderConstruction, FName AttachComplexStationName, UFlareSimulatedSpacecraft* BuiltBy, int32 StartingLevel)
 {
 	UFlareSimulatedSpacecraft* Spacecraft = NULL;
 
 	// Default data
 	FFlareSpacecraftSave ShipData;
+	ShipData.SaveVersion = ShipDescription->SaveVersion;
 	ShipData.IsDestroyed = false;
 	ShipData.WantUndockInternalShips = false;
 	ShipData.IsUnderConstruction = UnderConstruction;
@@ -301,7 +302,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.IsReserve = false;
 	ShipData.AllowExternalOrder = true;
 	ShipData.AllowAutoConstruction = true;
-	ShipData.Level = 1;
+	ShipData.Level = StartingLevel;
 	ShipData.HarpoonCompany = NAME_None;
 	ShipData.OwnerShipName = NAME_None;
 	ShipData.DynamicComponentStateIdentifier = FName("idle");
@@ -352,103 +353,35 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 		+ ShipDescription->GunSlots.Num()
 		+ ShipDescription->TurretSlots.Num()
 		+ ShipDescription->InternalComponentSlots.Num());
+
 	for (int32 i = 0; i < ShipDescription->RCSCount; i++)
 	{
-		FFlareSpacecraftComponentSave ComponentData;
-		ComponentData.ComponentIdentifier = RCSIdentifier;
-		ComponentData.ShipSlotIdentifier = FName(*("rcs-" + FString::FromInt(i)));
-		ComponentData.Damage = 0.f;
-
-		//Save optimization
-		ComponentData.Turret.BarrelsAngle = 0;
-		ComponentData.Turret.TurretAngle = 0;
-		ComponentData.Weapon.FiredAmmo = 0;
-
+		//note: at this point Spacecraft is still null, calling these "create" functions is *dodgy* :)
+		FFlareSpacecraftComponentSave ComponentData = Spacecraft->CreateRCS(i, RCSIdentifier);
 		ShipData.Components.Add(ComponentData);
 	}
 
 	for (int32 i = 0; i < ShipDescription->OrbitalEngineCount; i++)
 	{
-		FFlareSpacecraftComponentSave ComponentData;
-		ComponentData.ComponentIdentifier = OrbitalEngineIdentifier;
-		ComponentData.ShipSlotIdentifier = FName(*("engine-" + FString::FromInt(i)));
-		ComponentData.Damage = 0.f;
-
-		//Save optimization
-		ComponentData.Turret.BarrelsAngle = 0;
-		ComponentData.Turret.TurretAngle = 0;
-		ComponentData.Weapon.FiredAmmo = 0;
-
+		FFlareSpacecraftComponentSave ComponentData = Spacecraft->CreateOrbitalEngine(i, OrbitalEngineIdentifier);
 		ShipData.Components.Add(ComponentData);
 	}
 
 	for (int32 i = 0; i < ShipDescription->GunSlots.Num(); i++)
 	{
-		FFlareSpacecraftComponentSave ComponentData;
-		bool SetDefault = false;
-
-		FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->GunSlots[i].GroupIndex];
-		if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
-		{
-			ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
-			SetDefault = true;
-		}
-
-		if (!SetDefault)
-		{
-			ComponentData.ComponentIdentifier = Game->GetDefaultWeaponIdentifier();
-		}
-
-		ComponentData.ShipSlotIdentifier = ShipDescription->GunSlots[i].SlotIdentifier;
-		ComponentData.Damage = 0.f;
-		ComponentData.Weapon.FiredAmmo = 0;
-
-		//Save optimization
-		ComponentData.Turret.BarrelsAngle = 0;
-		ComponentData.Turret.TurretAngle = 0;
-
+		FFlareSpacecraftComponentSave ComponentData = Spacecraft->CreateGun(i, ShipDescription, Game);
 		ShipData.Components.Add(ComponentData);
 	}
 
 	for (int32 i = 0; i < ShipDescription->TurretSlots.Num(); i++)
 	{
-		FFlareSpacecraftComponentSave ComponentData;
-
-		bool SetDefault = false;
-		if (ShipDescription->WeaponGroups.Num() < i)
-		{
-			FFlareSpacecraftSlotGroupDescription CurrentWeaponGroup = ShipDescription->WeaponGroups[ShipDescription->TurretSlots[i].GroupIndex];
-			if (CurrentWeaponGroup.DefaultWeapon != NAME_None)
-			{
-				ComponentData.ComponentIdentifier = CurrentWeaponGroup.DefaultWeapon;
-				SetDefault = true;
-			}
-		}
-		if (!SetDefault)
-		{
-			ComponentData.ComponentIdentifier = Game->GetDefaultTurretIdentifier();
-		}
-
-		ComponentData.ShipSlotIdentifier = ShipDescription->TurretSlots[i].SlotIdentifier;
-		ComponentData.Turret.BarrelsAngle = 0;
-		ComponentData.Turret.TurretAngle = 0;
-		ComponentData.Weapon.FiredAmmo = 0;
-		ComponentData.Damage = 0.f;
+		FFlareSpacecraftComponentSave ComponentData = Spacecraft->CreateTurret(i, ShipDescription, Game);
 		ShipData.Components.Add(ComponentData);
 	}
 
 	for (int32 i = 0; i < ShipDescription->InternalComponentSlots.Num(); i++)
 	{
-		FFlareSpacecraftComponentSave ComponentData;
-		ComponentData.ComponentIdentifier = ShipDescription->InternalComponentSlots[i].ComponentIdentifier;
-		ComponentData.ShipSlotIdentifier = ShipDescription->InternalComponentSlots[i].SlotIdentifier;
-		ComponentData.Damage = 0.f;
-
-		//Save optimization
-		ComponentData.Turret.BarrelsAngle = 0;
-		ComponentData.Turret.TurretAngle = 0;
-		ComponentData.Weapon.FiredAmmo = 0;
-
+		FFlareSpacecraftComponentSave ComponentData = Spacecraft->CreateInternalComponent(i, ShipDescription);
 		ShipData.Components.Add(ComponentData);
 	}
 
@@ -543,7 +476,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 		// Add to player fleet if possible
 		UFlareFleet* PlayerFleet = Game->GetPC()->GetPlayerFleet();
 
-		if (Company == Game->GetPC()->GetCompany() && PlayerFleet &&  PlayerFleet->GetCurrentSector() == this)
+		if (Company == Game->GetPC()->GetCompany() && PlayerFleet &&  PlayerFleet->GetCurrentSector() == this && PlayerFleet->GetShipCount() < PlayerFleet->GetMaxShipCount())
 		{
 			PlayerFleet->AddShip(Spacecraft);
 		}

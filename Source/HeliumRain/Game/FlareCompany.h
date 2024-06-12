@@ -172,6 +172,8 @@ public:
 	void Simulate();
 	void ClearTemporaryCaches();
 
+	TArray<UFlareSimulatedSector*> GetUndiscoveredSectors();
+
 	/*----------------------------------------------------
 		Customization
 	----------------------------------------------------*/
@@ -253,6 +255,9 @@ protected:
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyStations;
 	TMap<UFlareSimulatedSector*, TArray<UFlareSimulatedSpacecraft*>> CompanyStationsBySectors;
+
+	TArray<UFlareSimulatedSpacecraft*>		CompanyTelescopes;
+
 
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyChildStations;
@@ -401,6 +406,11 @@ public:
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyStations()
 	{
 		return CompanyStations;
+	}
+
+	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyTelescopes()
+	{
+		return CompanyTelescopes;
 	}
 
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyChildStations()

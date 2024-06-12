@@ -259,6 +259,7 @@ protected:
 	// Cache
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 	TArray<UFlareSimulatedSpacecraft*>       Shipyards;
+	TArray<UFlareSimulatedSector*>			 UndiscoveredSectors;
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionUpgradeStations;
 	TArray<UFlareSimulatedSpacecraft*>       UnderConstructionStations;
 

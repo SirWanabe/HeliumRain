@@ -164,7 +164,7 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 			{
 				NavigationSystem->TickSystem(DeltaSeconds);
 			}
-			if (IsMilitary())
+			if (IsMilitaryArmed())
 			{
 				WeaponsSystem->TickSystem(DeltaSeconds);
 			}
@@ -1018,7 +1018,7 @@ void AFlareSpacecraft::SafeDestroy()
 
 		StopFire();
 
-		if (IsMilitary())
+		if (IsMilitaryArmed())
 		{
 			GetWeaponsSystem()->DeactivateWeapons();
 		}
@@ -2457,7 +2457,7 @@ void AFlareSpacecraft::LeftMouseRelease()
 
 void AFlareSpacecraft::DeactivateWeapon()
 {
-	if (IsMilitary())
+	if (IsMilitaryArmed())
 	{
 		FLOG("AFlareSpacecraft::DeactivateWeapon");
 		GetWeaponsSystem()->DeactivateWeapons();
@@ -2505,7 +2505,7 @@ void AFlareSpacecraft::ActivateWeaponGroupByIndex(int32 Index)
 {
 	FLOGV("AFlareSpacecraft::ActivateWeaponGroup : %d", Index);
 
-	if (IsMilitary() && Index < GetWeaponsSystem()->GetWeaponGroupCount())
+	if (IsMilitaryArmed() && Index < GetWeaponsSystem()->GetWeaponGroupCount())
 	{
 		GetStateManager()->EnablePilot(false);
 
@@ -2538,7 +2538,7 @@ void AFlareSpacecraft::NextWeapon()
 {
 	UFlareSpacecraftWeaponsSystem* WeaponSystems = GetWeaponsSystem();
 	
-	if (WeaponSystems && IsMilitary())
+	if (WeaponSystems && IsMilitaryArmed())
 	{
 		int32 CurrentIndex = WeaponSystems->GetActiveWeaponGroupIndex() + 1;
 		CurrentIndex = FMath::Clamp(CurrentIndex, 0, WeaponSystems->GetWeaponGroupCount() - 1);

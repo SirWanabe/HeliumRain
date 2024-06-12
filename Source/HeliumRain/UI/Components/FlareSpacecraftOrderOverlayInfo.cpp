@@ -893,7 +893,7 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 							}
 							else if (OutputAction.Action == EFlareFactoryAction::GainResearch)
 							{
-								FactoryString += "Gain Research";
+								FactoryString += FString::Printf(TEXT("Gain %u Research"), OutputAction.Quantity);
 							}
 							DoneResource = true;
 						}
@@ -1207,6 +1207,10 @@ FText SFlareSpaceCraftOverlayInfo::GetTechnologyRequirementsText(const FFlareSpa
 		Identifier == "station-research")
 	{
 		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get("science");
+	}
+	else if(Description->RequiredTechnologies.Num() > 0)
+	{
+		Technology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(Description->RequiredTechnologies[0]);
 	}
 
 	if (Technology)

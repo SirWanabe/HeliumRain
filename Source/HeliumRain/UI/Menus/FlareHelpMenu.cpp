@@ -1490,17 +1490,84 @@ Companies are the factions which control the entire environment in Helium Rain. 
 				.TextStyle(&Theme.SubTitleFont)
 				]
 
-			+ SVerticalBox::Slot()
+				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[
 					SNew(STextBlock)
 					.WrapTextAt(TextWrappingBig)
-				.TextStyle(&Theme.TextFont)
-				.Text(LOCTEXT("VersionHistoryHRFM", "Created by Wanabe\n\
+					.TextStyle(&Theme.TextFont)
+					.Text(LOCTEXT("VersionHistoryHRFM1", "Created by Wanabe\n\
 https://github.com/SirWanabe/HeliumRain\n\
 \n\
 1.4.0\n\n\
-1.3.9\n\n\
+(UI) Trade Route overhaul\n\
+(UI - Trade Route) Condensed \"Load\", \"Buy\" and \"Load / Buy\" operations into \"Load\"\n\
+(UI - Trade Route) Condensed \"Unload\", \"Sell\", \"Unload / Sell\", \"Donate\", \"Unload / Donate\" operations into \"Unload\"\n\
+(UI - Trade Route) Created \"Goto Operation\" and \"Maintenance\" Operation\n\
+(UI - Trade Route) When Goto Operation begins the Trade Route will move their current Operation to one selected by the Goto Operation\n\
+(UI - Trade Route) When Maintenance Operation begins the fleet will attempt to Repair and /or Rearm, depending on the Operations settings\n\
+(UI - Trade Route) Increased total amount of sectors for a Trade Route by 1. (4 to 5)\n\
+(UI - Trade Route) Added in conditions for operations. \"Percent of Times\", \"Load Percentage\", \"Requires Maintenance\", \"At War\".All conditions must be met to proceed with the operation.Use in combination with \"Wait Days\" to give them a timeout.\n\
+(UI - Trade Route) For Load and Unload operations, added in sliders \"Trade Self Priority\" and \"Trade Others Priority\".This sets the likely - hood of the operation interacting with owned or non - owned assets.\n\
+(UI - Trade Menu) Now has a \"Change Source\" button to allow the player to quickly go through their available ships for sector trading with lower amount of total clicks.\n\
+(UI - Trade Menu) Will now report when there are no docks available.\n\
+(UI - Trade Menu) It's now possible to use the \"Trade\" option directly from other stations to pre-select them in the trade window.\n\
+\n\
+(Feature) New feature : Company Whitelists.\n\
+(UI - Company Whitelist) Menu is accessed from the Company screen. Whitelists can be set as the overall default for the Company and also set for fleets or individual ships / stations.\n\
+Whitelists are used to enable or disable trade from other companies or to specify which resources you want to be able to trade. Order of preference for which Whitelist to use is Ship->Fleet->Company.\n\
+\n\
+(UI) Increased size of resource cargo icon in UI by 5 % to improve readability.\n\
+(UI) Improved formatting of resource and input / output etc display of resources to be more consistent.\n\
+(UI) Stations which are being captured or are unlicensed will now show an additional icon next to their name indicating their status.\n\
+(UI) Sector Buttons in TradeRoute menu now display total stations in sector\n\
+(UI) Sector Buttons with Fleets display is now much more stable, no unnecessary jittering button positions\n\
+(UI) Fleets with ships that are trading will not appear in the Orbital Maps fleet list as it is not available for travel\n\
+(UI) Changing trade routes on the orbital menu will update the fleets list. Showing or hiding any fleets from the available list\n\
+(UI) Economy menu Sub - menu Stations / Ships now displays total quantity of stations / ships\n\
+(UI) Economy menu Sub - menu Population now displays total average and also totals of each value\n\
+(UI) Upgrade station button now has a tool - tip if it's not available\n\
+(UI) Trade button is disabled while travelling\n\
+(UI) Resources subcategory in help - file now moved under \"Statistical Information\". Information regarding resources is now generated from game data\n\
+\n\
+(Modding) Added StartVarianceMinInputs, StartVarianceMaxInputs, StartVarianceMinOutputs, StartVarianceMaxOutputs variables for FFlareCompanyStartingShips to enable changing station starting resource levels\n\
+(Modding) Added IsNotMilitary bool to FFlareSpacecraftDescription. Enable to treat a weaponized ship as non-military. IE: Have defensive turrets on a freighter but want to disable military behaviours such as engaging enemy ships or AI Companies using specifically for attacking\n\
+(Modding) Added SaveVersion int32 to FFlareSpacecraftDescription. Increment value to trigger game checking internal components and attempt to fix them to prevent crash issues from updating mods\n\
+\n\
+(Balance) Removed the 5 % money generation boost compared to vanilla from population birth\n\
+(Balance) Reduced the effect difficulty has on the pre-requisites of offered contracts(more frequent contract offers on higher difficulties)\n\
+(Balance) Reduced the effect difficulty has on AI chance to declare war on other AI companies(more frequent AI vs AI war declarations on higher difficulties)\n\
+(Balance) Reduced the effect difficulty has on Artefact discovery research reward. AI Companies who know about the sector may now gain research when artefacts are discovered, heavily dependant upon the selected difficulty settings.\n\
+(Balance) Unlock cost of sector building license now increases for each owned unlicensed station in the sector\n\
+(Balance) Stations being captured or without their technology unlocked will now have a reduction in their production efficiency\n\
+(Balance) Tweaks to some aspects of AI Budget handling\n\
+(Balance) It is no longer possible to upgrade stations without the local sector license and required technology\n\
+(Balance) Universe starting condition altered, every non - player faction begins with 4 Solens(Old: 33, New 48).Lowered effect of starting Economy Level on some stations.Increased starting Steel factory by 2, Hydrogen Pumps by 2 and Iron Mines by 2\n\
+\n\
+(Performance): FlareSectorButton no longer recalculates its display name and text every tick\n\
+\n\
+Fixed(HRFanMod): Default for Combat Debris Quantity set to 100 % instead of 500 %\n\
+Fixed(HRFanMod): Default keys button had left and right strafe default settings swapped\n\
+Fixed(HRFanMod): Buy licence / build station button is now disabled while in a travelling sector\n\
+Fixed(HRFanMod): If starting a new game after playing an existing game it was possible to have the ship colour previews stop visually updating the changes during game creation\n\
+Fixed(HRFanMod): When looking at \"Upgrade\" menu for drone carriers the \"Allow automatic construction\" button will now be properly hidden\n\
+Fixed(HRFanMod): If looking at a station with an asteroid twice in a row in a full screen menu, the asteroid would display with some missing details\n\
+Fixed(HRFanMod): Fixed crash when looking at details menu for an under construction station complex\n\
+Fixed(Vanilla): Contracts menu will now update if it was opened when a contract completed or gained progress\n\
+Fixed(Vanilla): Closing the orbital menu button will no longer briefly show stations on the various sector icons\n\
+Fixed(Vanilla): If there is an active contract to sell resources to a station the manual trading slider will not automatically preset the desired amount unless the selected station is the contracted buyer or a seller of the resource.\n\
+Fixed(Vanilla): In Trade Routes menu, moving a trade route to left or right would not properly remember which currently selected operation was being edited\n\
+Fixed(Vanilla): On game start higher level stations weren't properly given their starting cargo capacity levels\n\
+Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
+"))
+				]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+								.WrapTextAt(TextWrappingBig)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("VersionHistoryHRFM2", "1.3.9\n\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
 (Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
 (Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\
@@ -1522,7 +1589,7 @@ https://github.com/SirWanabe/HeliumRain\n\
 (New Game Menu) Added in 'AI Cheats' toggle to new game menu.Used to enable / disable some artificial cheats the AI can receive on difficulties above or equal to Hard\n\
 \n\
 (Performance) Moved sector Shell cache to a more generic cache system.Added in Bomb, Debris and Asteroid cache.\n\
-(Performance) Shells, Bomb, Asteroid, ShipPilot, TurretAI tick speeds have been reduced.Optimisations to some of their processes\n\
+(Performance) Shells, Bomb, Asteroid, ShipPilot, TurretAI tick speeds have been reduced. Optimisations to some of their processes\n\
 (Performance) Set EPSCPoolMethod::AutoRelease for various types of particles, enabling UE to automatically pool / fetch them\n\
 (Performance) FlareSectorButtons no longer have a tick override\n\
 (Performance) Spacecraft tick moved over into a new sector tick method\n\
@@ -1560,9 +1627,9 @@ Fixed(Vanilla): contracts / quests can now see station complex children for comp
 Fixed(Vanilla): If a company declares war on a player while in the Orbital Map Menu the sector buttons would not immediately update their display to show the Red war state\n\
 \n\
 1.3.8\n\
-'lots of stuff'"))
-				]]]]]]]
-
+\"lots of stuff\""))
+]
+]]]]]]
 				+ SFlareTabView::Slot()
 				.Header(LOCTEXT("VersionTab", "Version history"))
 				.HeaderHelp(LOCTEXT("VersionTabInfo", "Helium Rain version history"))
