@@ -321,6 +321,7 @@ public:
 
 	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = 0);
 	virtual bool DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex);
+	virtual bool DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex, AFlareSpacecraft* TargetStation);
 
 	/*----------------------------------------------------
 		Getters (Attitude)

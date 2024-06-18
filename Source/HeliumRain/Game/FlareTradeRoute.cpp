@@ -1269,7 +1269,7 @@ bool UFlareTradeRoute::IsUsefulSector(UFlareSimulatedSector* Sector, int Startin
 		{
 			int32 AvailableFS;
 			int32 OwnedFS;
-			int32 AffordableFS;
+			int32 AffordableFS = 0;
 			bool CheckedAvailableFleetSupplyCount = false;
 
 			// Repair

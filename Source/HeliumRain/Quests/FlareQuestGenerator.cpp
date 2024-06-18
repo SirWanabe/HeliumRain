@@ -503,11 +503,11 @@ void UFlareQuestGenerator::GenerateAttackQuests(UFlareCompany* AttackCompany, in
 	if(PlayerFleet->IsTraveling())
 	{
 		PlayerTravelDuration +=	PlayerFleet->GetCurrentTravel()->GetRemainingTravelDuration();
-		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentTravel()->GetDestinationSector(), Target.Sector, PlayerCompany);
+		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentTravel()->GetDestinationSector(), Target.Sector, PlayerCompany,PlayerFleet);
 	}
 	else
 	{
-		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentSector(), Target.Sector, PlayerCompany);
+		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentSector(), Target.Sector, PlayerCompany,PlayerFleet);
 	}
 
 	if(PlayerTravelDuration > TravelDuration)

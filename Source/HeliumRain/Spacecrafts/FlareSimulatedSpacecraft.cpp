@@ -153,7 +153,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 				int MissingElements = SpacecraftDescription->InternalComponentSlots.Num() - InternalComponents.Num();
 				for (int32 i = 0; i < MissingElements; i++)
 				{
-					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i + InternalComponents.Num(), RCSIdentifier);
+					FFlareSpacecraftComponentSave ComponentData = CreateInternalComponent(i + InternalComponents.Num(), SpacecraftDescription);
 					GetData().Components.Add(ComponentData);
 				}
 			}
@@ -174,9 +174,9 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 					}
 				}
 
-				for (int32 i = 0; i < SpacecraftDescription->RCSCount; i++)
+				for (int32 i = 0; i < InternalComponents.Num(); i++)
 				{
-					FFlareSpacecraftComponentSave ComponentData = CreateRCS(i, RCSIdentifier);
+					FFlareSpacecraftComponentSave ComponentData = CreateInternalComponent(i, SpacecraftDescription);
 					GetData().Components.Add(ComponentData);
 				}
 			}
@@ -589,6 +589,8 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		ActiveSpacecraft->Load(this);
 		ActiveSpacecraft->Redock();
 	}
+
+	UpdateEngineAcceleration();
 }
 
 void UFlareSimulatedSpacecraft::Reload()
@@ -1623,7 +1625,6 @@ void UFlareSimulatedSpacecraft::Stabilize()
 		SpacecraftData.LinearVelocity = FVector::ZeroVector;
 		SpacecraftData.AngularVelocity = FVector::ZeroVector;
 
-//		float Limits = UFlareSector::GetSectorLimits();
 		float Limits = GetCurrentSector()->GetSectorLimits();
 		float Distance = SpacecraftData.Location.Size();
 
@@ -1937,6 +1938,51 @@ bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription
 	return true;
 }
 
+void UFlareSimulatedSpacecraft::UpdateEngineAcceleration()
+{
+	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
+	float OldEngineAccelerationPower = EngineAccelerationPower;
+	float ShipEnginePower = 0;
+
+	int32 RCSCapableOfMainEngineThrust = GetDescription()->RCSCapableOfMainEngineThrust;
+	for (int32 i = 0; i < GetData().Components.Num(); i++)
+	{
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(GetData().Components[i].ComponentIdentifier);
+		if (ComponentDescription->Type == EFlarePartType::RCS)
+		{
+			if (RCSCapableOfMainEngineThrust > 0)
+			{
+				RCSCapableOfMainEngineThrust--;
+				ShipEnginePower += ComponentDescription->EngineCharacteristics.EnginePower;
+			}
+		}
+		else if (ComponentDescription->EngineCharacteristics.IsEngine)
+		{
+			ShipEnginePower += ComponentDescription->EngineCharacteristics.EnginePower * 2;
+		}
+	}
+
+	//Acceleration in metres per second
+//	ShipEnginePower = ((1000 * ShipEnginePower) / Desc->Mass);
+	//kilometres per second
+	EngineAccelerationPower = ((1000 * ShipEnginePower) / (GetDescription()->Mass)) / 1000;
+
+	if (EngineAccelerationPower != OldEngineAccelerationPower)
+	{
+		if (GetCurrentFleet())
+		{
+			if (GetCurrentFleet()->GetFleetLowestEngineAccelerationPower() > EngineAccelerationPower)
+			{
+				GetCurrentFleet()->SetSlowestShipPowerValue(this, EngineAccelerationPower);
+			}
+			else if(GetCurrentFleet()->GetFleetSlowestShip() == this)
+			{
+				GetCurrentFleet()->RecalculateSlowestFleetShip();
+			}
+		}
+	}
+}
+
 FFlareSpacecraftComponentDescription* UFlareSimulatedSpacecraft::GetCurrentPart(EFlarePartType::Type Type, int32 WeaponGroupIndex)
 {
 	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
@@ -1993,8 +2039,6 @@ void UFlareSimulatedSpacecraft::FinishConstruction()
 		GetComplexMaster()->Reload();
 	}
 }
-
-
 
 void UFlareSimulatedSpacecraft::OrderRepairStock(float FS)
 {

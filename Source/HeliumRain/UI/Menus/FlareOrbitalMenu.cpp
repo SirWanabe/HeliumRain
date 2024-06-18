@@ -58,10 +58,9 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 
 				+ SHorizontalBox::Slot()
 				.HAlign(HAlign_Left)
-				.AutoWidth()
+				.MaxWidth(1024)
 				[
 					SNew(SVerticalBox)
-
 					// World status
 					+ SVerticalBox::Slot()
 					.HAlign(HAlign_Fill)
@@ -76,7 +75,8 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 
 				// Display modes
 				+ SHorizontalBox::Slot()
-				.HAlign(HAlign_Center)
+//				.HAlign(HAlign_Center)
+				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Top)
 				.Padding(Theme.SmallContentPadding)
 				[

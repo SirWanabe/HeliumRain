@@ -2932,6 +2932,7 @@ void SFlareHelpMenu::Enter()
 		SetupResources = true;
 	}
 }
+
 void SFlareHelpMenu::SetupResourceDisplay(TSharedPtr<SVerticalBox> HudBox, TArray<FFlareResourceDescription*> ResourcesData, FText CategoryName, FText CategorySubText)
 {
 	if (ResourcesData.Num() > 0)

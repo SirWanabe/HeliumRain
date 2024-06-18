@@ -330,7 +330,7 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 	}
 	else
 	{
-		TravelTimeToA = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), Ship->GetCurrentSector(), SectorA, Company);
+		TravelTimeToA = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), Ship->GetCurrentSector(), SectorA, Company,Ship->GetCurrentFleet());
 	}
 
 	if (SectorA == SectorB)
@@ -342,7 +342,7 @@ SectorDeal AITradeHelper::FindBestDealForShipToSector(UFlareSimulatedSpacecraft*
 	{
 		// Travel time
 
-		TravelTimeToB = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), SectorA, SectorB, Company);
+		TravelTimeToB = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), SectorA, SectorB, Company, Ship->GetCurrentFleet());
 
 	}
 	int64 TravelTime = TravelTimeToA + TravelTimeToB;
@@ -1522,49 +1522,34 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 
 						if (Company == World->GetGame()->GetPC()->GetCompany())
 						{
+							Need.HighPriority = PlayerPriority;
 							if (PlayerallowedpriorityConstruction && (IsConstruction || IsShipyard))
 							{
 								if (IsConstruction)
 								{
-									Need.HighPriority = 1;
+									Need.HighPriority += 1;
 								}
 								else if (IsShipyard && Station->IsAllowExternalOrder())
 								{
-									Need.HighPriority = 2;
+									Need.HighPriority += 2;
 								}
-								else
-								{
-									Need.HighPriority = PlayerPriority;
-								}
-							}
-							else
-							{
-								Need.HighPriority = PlayerPriority;
 							}
 						}
-						else
+
+						else if (IsConstruction)
 						{
-							if (IsConstruction)
+							Need.HighPriority = 2;
+						}
+
+						else if (IsShipyard && Station->IsAllowExternalOrder())
+						{
+							if (Company != ST->Pirates)
 							{
-								Need.HighPriority = 2;
+								Need.HighPriority = 5;
 							}
 							else
 							{
-								if (IsShipyard)
-								{
-									if (Company != ST->Pirates)
-									{
-										Need.HighPriority = 3;
-									}
-									else
-									{
-										Need.HighPriority = 1;
-									}
-								}
-								else
-								{
-									Need.HighPriority = 0;
-								}
+								Need.HighPriority = 2;
 							}
 						}
 
@@ -1577,7 +1562,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 								if (InputQuantityCycles >= 0 && InputQuantityCycles < 7)
 								{
 									Need.HighPriority++;
-									break;
+//									break;
 								}
 							}
 						}
@@ -1769,11 +1754,11 @@ void AITradeHelper::GenerateIdleShips(AITradeIdleShips& Ships, UFlareWorld* Worl
 		{
 			if (Ship->IsMilitary())
 			{
-				if (Company->GetWarCount(Company) > 0)
+				if (Ship->GetActiveCargoBay()->GetCapacity() == 0)
 				{
 					continue;
 				}
-				else if (Ship->GetActiveCargoBay()->GetCapacity() == 0)
+				else if (Company->GetWarCount(Company) > 0)
 				{
 					continue;
 				}
@@ -1795,7 +1780,6 @@ void AITradeHelper::GenerateIdleShips(AITradeIdleShips& Ships, UFlareWorld* Worl
 			}
 
 			bool Traveling = Ship->GetCurrentFleet()->IsTraveling();
-
 			AIIdleShip IdleShip;
 			IdleShip.Company = Ship->GetCompany();
 			IdleShip.Capacity = Ship->GetActiveCargoBay()->GetCapacity();
@@ -1845,12 +1829,10 @@ void AITradeHelper::ComputeGlobalTrading(UFlareWorld* World, AITradeNeeds& Needs
 bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney)
 {
 	bool MaintenanceSource = false;
-//	AITradeSource* Source = FindBestSource(Sources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
 	AITradeSource* Source = FindBestSource(Sources, Need, CompaniesMoney);
 
 	if(Source == nullptr && Need.Maintenance)
 	{
-//		Source = FindBestSource(MaintenanceSources, Need.Resource, Need.Sector, Need.Company, Need.Quantity, Need.SourceFunctionIndex, CompaniesMoney);
 		Source = FindBestSource(MaintenanceSources, Need, CompaniesMoney);
 		MaintenanceSource = true;
 	}

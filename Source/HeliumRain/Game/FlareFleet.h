@@ -179,6 +179,9 @@ public:
 	bool CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource);
 	bool CanTradeWhiteListTo(UFlareSimulatedSpacecraft* OtherSpacecraft, FFlareResourceDescription* Resource);
 
+	void RecalculateSlowestFleetShip();
+	void SetSlowestShipPowerValue(UFlareSimulatedSpacecraft* NewShip, float NewValue);
+
 protected:
 
 	TArray<UFlareSimulatedSpacecraft*>     FleetShips;
@@ -196,10 +199,23 @@ protected:
 
 	UFlareCompanyWhiteList*				   FleetSelectedWhiteList;
 
+	UFlareSimulatedSpacecraft*			   FleetSlowestShip;
+	float								   FleetLowestEngineAccelerationPower = 0.f;
+
 public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	float GetFleetLowestEngineAccelerationPower() const
+	{
+		return FleetLowestEngineAccelerationPower;
+	}
+
+	UFlareSimulatedSpacecraft* GetFleetSlowestShip() const
+	{
+		return FleetSlowestShip;
+	}
 
 	int32 GetUnableToTravelShips() const;
 
@@ -216,6 +232,7 @@ public:
 	{
 		return FleetSelectedWhiteList;
 	}
+
 
 	FText GetFleetName() const;
 
@@ -260,6 +277,7 @@ public:
 
 	/** Get the current military ship count by size in the fleet */
 	uint32 GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const;
+	uint32 GetMilitaryShipCount() const;
 
 	/** Get the maximum ship count in a fleet */
 	uint32 GetMaxShipCount();

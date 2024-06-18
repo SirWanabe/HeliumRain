@@ -1850,11 +1850,11 @@ FText SFlareShipMenu::GetShipOrderStatus(int32 Index) const
 	}
 
 
-	return FText::Format(LOCTEXT("ShipInQueueFormat", "\u2022 In queue{3}: {0} for {1}{2}"),
+	return FText::Format(LOCTEXT("ShipInQueueFormat", "\u2022 In queue{0}: {1} for {2}{3}"),
+							Duration,
 							OrderDescription->Name,
 							OrderCompany->GetCompanyName(),
-							Reason,
-							Duration);
+							Reason);
 
 }
 

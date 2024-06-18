@@ -1474,7 +1474,6 @@ void UFlareWorld::SimulatePeopleMoneyMigration()
 			float PopulationA = SectorA->GetPeople()->GetPopulation();
 			float PopulationB = SectorB->GetPeople()->GetPopulation();
 
-
 			if(PopulationA == 0 && PopulationB == 0)
 			{
 				// 2 sector without population. Do nothing
@@ -1596,7 +1595,6 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 	{
 		return;
 	}
-
 
 	FText SingleShip = LOCTEXT("ShipSingle", "ship");
 	FText MultipleShips = LOCTEXT("ShipPlural", "ships");
@@ -2468,17 +2466,18 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 
 					if (TargetFactory->IsActive() && TargetFactory->IsNeedProduction() && !TargetFactory->HasCostReserved() && !TargetFactory->HasInputResources())
 					{
-
-						ProductionText = FText::Format(LOCTEXT("ShipProductionNoResourcesProdTextFormat", "\u2022 {0} being built at {1} (missing resources)"),
+						FString MissingResources = TargetFactory->GetInputResourcesRequiredString();
+						ProductionText = FText::Format(LOCTEXT("ShipProductionNoResourcesProdTextFormat", "\u2022 {0} being built at {1} (missing {2})"),
 						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
-						SectorName);
+						SectorName,
+						FText::FromString(MissingResources));
 					}
 					else
 					{
 						ProductionText = FText::Format(LOCTEXT("ShipProductionTextFormat", "\u2022 {0} being built at {1} ({2} left)"),
-							Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
-							SectorName,
-							UFlareGameTools::FormatDate(ProductionTime, 2));
+						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
+						SectorName,
+						UFlareGameTools::FormatDate(ProductionTime, 2));
 					}
 
 					FFlareIncomingEvent ProductionEvent;
@@ -2499,13 +2498,13 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 					FFlareSpacecraftDescription* OrderDesc = Game->GetSpacecraftCatalog()->Get(Order.ShipClass);
 					FText SectorName = CompanyStation->GetCurrentSector()->GetSectorName();
 					int32 ProductionTime = CompanyStation->GetShipProductionTime(Order.ShipClass) + CompanyStation->GetEstimatedQueueAndProductionDuration(Order.ShipClass, i);
-
 					FText ProductionText;
+
 					if (CompanyStation->IsShipyardMissingResources())
 					{
 						ProductionText = FText::Format(LOCTEXT("ShipNoResourcesProdTextFormat", "\u2022 {0} ordered at {1} (missing resources)"),
 						OrderDesc->Name,
-							SectorName);
+						SectorName);
 					}
 					else
 					{

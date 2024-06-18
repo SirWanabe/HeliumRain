@@ -2297,7 +2297,6 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 		return IsTechnologyUnlocked("science");
 	}
 
-
 	FLOGV("WARNING: station %s don't need technology", *Description->Identifier.ToString());
 	return true;
 }

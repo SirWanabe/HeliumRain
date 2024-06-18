@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FlareSpacecraftComponent.h"
-#include "../Game/FlareCache.H"
+#include "../Game/FlareCache.h"
 #include "FlareWeapon.generated.h"
 
 

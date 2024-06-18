@@ -180,7 +180,7 @@ void SFlarePartInfo::BuildInfoBlock(TSharedPtr<SHorizontalBox>& Box, const FFlar
 			ShowHelpers);
 	}
 
-	if (Desc->EngineCharacteristics.IsEngine)
+	if (Desc->EngineCharacteristics.IsEngine || Desc->Type == EFlarePartType::RCS)
 	{
 		if (Desc->EngineCharacteristics.AngularAccelerationRate > 0)
 		{

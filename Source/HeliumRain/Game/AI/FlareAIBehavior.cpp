@@ -487,10 +487,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	BuildTradeDiversitySizeBase = 10;
 	
 	BuildEfficientMilitaryChance = 0.05f;
-	BuildEfficientMilitaryChanceSmall = 0.10f;
+	BuildEfficientMilitaryChanceSmall = 0.15f;
 
 	BuildEfficientTradeChance = 0.10f;
-	BuildEfficientTradeChanceSmall = 0.30f;
+	BuildEfficientTradeChanceSmall = 0.35f;
 
 	BuildStationWorthMultiplier = 1.2f;
 	Station_Shipyard_Maximum = 5;
@@ -565,8 +565,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		DailyProductionCostSensitivityMilitary = 0;
 		DailyProductionCostSensitivityEconomic = 0;
 
+		BuildDroneCombatWorth = 0;
 		BuildEfficientMilitaryChance = 0.0125f;
-		BuildEfficientMilitaryChanceSmall = 0.025f;
+		BuildEfficientMilitaryChanceSmall = 0.030f;
 		UpgradeMilitarySalvagerSRatio = 0.25f;
 		UpgradeMilitarySalvagerLRatio = 0.25f;
 		ResearchOrder.Reserve(4);
@@ -641,10 +642,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		WarDeclared_TransferToMilitaryBudgetTechnologyPercent = 0.01f;
 
 		BuildEfficientMilitaryChance = 0.025f;
-		BuildEfficientMilitaryChanceSmall = 0.5f;
+		BuildEfficientMilitaryChanceSmall = 0.525f;
 
 		BuildEfficientTradeChance = 0.05f;
-		BuildEfficientTradeChanceSmall = 0.15f;
+		BuildEfficientTradeChanceSmall = 0.2f;
 		ResearchOrder.Reserve(5);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -748,10 +749,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 		// Budget
 		BuildEfficientMilitaryChance = 0.025f;
-		BuildEfficientMilitaryChanceSmall = 0.5f;
+		BuildEfficientMilitaryChanceSmall = 0.525f;
 
 		BuildEfficientTradeChance = 0.05f;
-		BuildEfficientTradeChanceSmall = 0.15f;
+		BuildEfficientTradeChanceSmall = 0.20f;
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -863,7 +864,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildMilitaryDiversitySizeBase = 0;
 		PacifismAfterTribute = 50;
 		BuildEfficientMilitaryChance = 0.10f;
-		BuildEfficientMilitaryChanceSmall = 0.15f;
+		BuildEfficientMilitaryChanceSmall = 0.25f;
 		ResearchOrder.Reserve(6);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("pirate-tech");
@@ -904,10 +905,10 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		MaxTradeShipsBuildingWar = 1;
 
 		BuildEfficientMilitaryChance = 0.10f;
-		BuildEfficientMilitaryChanceSmall = 0.15f;
+		BuildEfficientMilitaryChanceSmall = 0.25f;
 
 		BuildEfficientTradeChance = 0.20f;
-		BuildEfficientTradeChanceSmall = 0.30f;
+		BuildEfficientTradeChanceSmall = 0.50f;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");

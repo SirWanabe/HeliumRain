@@ -1202,8 +1202,8 @@ void SFlareWorldEconomyMenu::RefreshStationList()
 				}
 				else
 				{
-					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany());
-					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany());
+					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany(),ShipA.GetCurrentFleet());
+					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany(),ShipB.GetCurrentFleet());
 					if (DistanceComparisonA < DistanceComparisonB)
 					{
 						return true;
@@ -1250,8 +1250,8 @@ void SFlareWorldEconomyMenu::RefreshStationList()
 				}
 				else
 				{
-					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany());
-					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany());
+					int64 DistanceComparisonA = UFlareTravel::ComputeTravelDuration(ShipA.GetGame()->GetGameWorld(), PlayerSector, ShipA.GetCurrentSector(), ShipA.GetGame()->GetPC()->GetCompany(),ShipA.GetCurrentFleet());
+					int64 DistanceComparisonB = UFlareTravel::ComputeTravelDuration(ShipB.GetGame()->GetGameWorld(), PlayerSector, ShipB.GetCurrentSector(), ShipB.GetGame()->GetPC()->GetCompany(),ShipB.GetCurrentFleet());
 					if (DistanceComparisonA < DistanceComparisonB)
 					{
 						return true;

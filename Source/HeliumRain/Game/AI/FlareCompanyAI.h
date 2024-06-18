@@ -38,6 +38,7 @@ struct DefenseSector
 	int32 ArmySmallShipCombatPoints;
 	int32 LargeShipArmyCount;
 	int32 SmallShipArmyCount;
+
 	bool CapturingStation;
 	bool CapturingShip;
 	UFlareSimulatedSpacecraft* PrisonersKeeper;
@@ -73,6 +74,7 @@ public:
 	/** Used to give commands for the active sector */
 	virtual void SimulateActiveAI();
 	virtual void SimulateActiveTradeShip(AFlareSpacecraft* Ship);
+	virtual void SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship);
 
 	/** Simulate a day */
 	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);
@@ -156,27 +158,31 @@ public:
 	/** Move carriers towards required resources if not maxed on drones*/
 	void UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship, TArray<FFlareResourceDescription*> InputResources);
 
-	UFlareSimulatedSector* FindNearestSectorWithPeace(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
-
-	UFlareSimulatedSector* FindNearestSectorWithFS(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
-
-	UFlareSimulatedSector* FindNearestSectorWithUpgradePossible(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector);
+	UFlareSimulatedSector* FindNearestSectorWithPeace(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector, UFlareFleet* Fleet = nullptr);
+	UFlareSimulatedSector* FindNearestSectorWithFS(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector, UFlareFleet* Fleet = nullptr);
+	UFlareSimulatedSector* FindNearestSectorWithUpgradePossible(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector, UFlareFleet* Fleet = nullptr);
 
 	bool UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager=false);
+	bool UpgradeShipWeapon(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager = false);
+	bool UpgradeShipEngine(UFlareSimulatedSpacecraft* Ship, EFlareBudget::Type Budget);
+	bool UpgradeShipRCS(UFlareSimulatedSpacecraft* Ship, EFlareBudget::Type Budget);
 
-	bool UpgradeMilitaryFleet(AIWarContext& WarContext, WarTarget Target, DefenseSector& Sector, TArray<UFlareSimulatedSpacecraft*> &MovableShips);
+	FFlareSpacecraftComponentDescription* FindBestEngineOrRCS(TArray< FFlareSpacecraftComponentDescription*> PartListData, FFlareSpacecraftComponentDescription* BestPart, EFlareBudget::Type Budget, bool EngineOrRCS);
+	int32 GetBestPartWeightValue(FFlareSpacecraftComponentDescription* BestPart, EFlareBudget::Type Budget, bool EngineOrRCS);
 
-	TArray<WarTargetIncomingFleet> GenerateWarTargetIncomingFleets(AIWarContext& WarContext, UFlareSimulatedSector* DestinationSector);
+	bool UpgradeMilitaryFleet(AIWarContext& WarContext, WarTarget Target, DefenseSector& Sector, TMap<UFlareCompany*, UFlareFleet*>& MovableFleets);
+	TArray<WarTargetIncomingFleet> GenerateWarTargetIncomingFleets(AIWarContext& WarContext, UFlareSimulatedSector* DestinationSector, bool SkipEnemiesOrAllies = false);
 
 	TArray<WarTarget> GenerateWarTargetList(AIWarContext& WarContext);
 
 	TArray<UFlareSimulatedSpacecraft*> GenerateWarShipList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip = NULL);
+	TMap<UFlareCompany*, UFlareFleet*> GenerateWarFleetList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip = NULL);
 
 	TArray<DefenseSector> SortSectorsByDistance(UFlareSimulatedSector* BaseSector, TArray<DefenseSector> SectorsToSort);
 
-	int64 GetDefenseSectorTravelDuration(TArray<DefenseSector>& DefenseSectorList, const DefenseSector& OriginSector);
+	int64 GetDefenseSectorTravelDuration(TArray<DefenseSector>& DefenseSectorList, const DefenseSector& OriginSector, UFlareFleet* Fleet);
 
-	TArray<DefenseSector> GetDefenseSectorListInRange(TArray<DefenseSector>& DefenseSectorList, const DefenseSector& OriginSector, int64 MaxTravelDuration);
+	TArray<DefenseSector> GetDefenseSectorListInRange(TArray<DefenseSector>& DefenseSectorList, const DefenseSector& OriginSector, int64 MaxTravelDuration, UFlareFleet* Fleet);
 
 	TArray<DefenseSector> GenerateDefenseSectorList(AIWarContext& WarContext);
 
@@ -225,6 +231,8 @@ protected:
 	/** Get a list of wrecked cargos */
 	TArray<UFlareSimulatedSpacecraft*> FindIncapacitatedCargos() const;
 	
+	void UpgradeCargoShips();
+	bool CanUpgradeFromSector(UFlareSimulatedSector* Sector);
 	int32 GetDamagedCargosCapacity();
 
 	int32 GetCargosCapacity();
@@ -281,6 +289,7 @@ protected:
 	bool									CheckedBuildingShips;
 
 	bool									ActiveAIDesireRepairs;
+	TMap<UFlareSimulatedSector*, bool>		CanUpgradeSectors;
 
 public:
 

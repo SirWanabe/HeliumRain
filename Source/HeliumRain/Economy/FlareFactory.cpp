@@ -294,7 +294,6 @@ bool UFlareFactory::HasInputMoney()
 bool UFlareFactory::HasInputResources()
 {
 	float TotalResourceMargin = GetResourceInputMultiplier();
-
 	for (int32 ResourceIndex = 0 ; ResourceIndex < GetCycleData().InputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
@@ -305,6 +304,30 @@ bool UFlareFactory::HasInputResources()
 		}
 	}
 	return true;
+}
+
+FString UFlareFactory::GetInputResourcesRequiredString()
+{
+	FString ReturnValue;
+
+	float TotalResourceMargin = GetResourceInputMultiplier();
+	for (int32 ResourceIndex = 0; ResourceIndex < GetCycleData().InputResources.Num(); ResourceIndex++)
+	{
+		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
+		int32 AdjustedQuantity = Resource->Quantity * TotalResourceMargin;
+		int32 CurrentResourceCount = Parent->GetActiveCargoBay()->GetResourceQuantitySimple(&Resource->Resource->Data);
+		if (CurrentResourceCount < AdjustedQuantity)
+		{
+			if (ReturnValue.Len())
+			{
+				ReturnValue += ", ";
+			}
+
+			int32 MissingResources = AdjustedQuantity - CurrentResourceCount;
+			ReturnValue += FString::Printf(TEXT("%s: %d"), *Resource->Resource->Data.Name.ToString(), MissingResources);
+		}
+	}
+	return ReturnValue;
 }
 
 bool UFlareFactory::HasOutputFreeSpace()

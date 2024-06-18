@@ -16,13 +16,8 @@
 
 #include "../UI/Components/FlareNotification.h"
 
-//static const double TRAVEL_DURATION_PER_PHASE_KM = 0.4;
-//static const double TRAVEL_DURATION_PER_ALTITUDE_KM = 1.5;
-
-
 static const double TRAVEL_DURATION_PER_PHASE_KM = 0.52;
 static const double TRAVEL_DURATION_PER_ALTITUDE_KM = 2;
-//TRAVEL_DURATION_PER_ALTITUDE_KM * 0.26 = TRAVEL_DURATION_PER_PHASE_KM
 
 #define LOCTEXT_NAMESPACE "FlareTravelInfos"
 
@@ -427,10 +422,10 @@ bool UFlareTravel::CanChangeDestination()
 
 void UFlareTravel::GenerateTravelDuration()
 {
-	TravelDuration = ComputeTravelDuration(Game->GetGameWorld(), OriginSector, DestinationSector, Fleet->GetFleetCompany());
+	TravelDuration = ComputeTravelDuration(Game->GetGameWorld(), OriginSector, DestinationSector, Fleet->GetFleetCompany(), Fleet);
 }
 
-int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSector* OriginSector, UFlareSimulatedSector* DestinationSector, UFlareCompany* Company)
+int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSector* OriginSector, UFlareSimulatedSector* DestinationSector, UFlareCompany* Company, UFlareFleet* TravelFleet)
 {
 	int64 TravelDuration = 0;
 
@@ -446,7 +441,6 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 	FName OriginCelestialBodyIdentifier;
 	FName DestinationCelestialBodyIdentifier;
 
-
 	OriginAltitude = OriginSector->GetOrbitParameters()->Altitude;
 	OriginCelestialBodyIdentifier = OriginSector->GetOrbitParameters()->CelestialBodyIdentifier;
 	OriginPhase = OriginSector->GetOrbitParameters()->Phase;
@@ -459,14 +453,14 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 	{
 		// Phase change travel
 		FFlareCelestialBody* CelestialBody = World->GetPlanerarium()->FindCelestialBody(OriginCelestialBodyIdentifier);
-		TravelDuration = ComputePhaseTravelDuration(World, CelestialBody, OriginAltitude, OriginPhase, DestinationPhase) / UFlareGameTools::SECONDS_IN_DAY;
+		TravelDuration = ComputePhaseTravelDuration(World, CelestialBody, OriginAltitude, OriginPhase, DestinationPhase, TravelFleet);
 	}
 	else
 	{
 		// Altitude change travel
 		FFlareCelestialBody* OriginCelestialBody = World->GetPlanerarium()->FindCelestialBody(OriginCelestialBodyIdentifier);
 		FFlareCelestialBody* DestinationCelestialBody = World->GetPlanerarium()->FindCelestialBody(DestinationCelestialBodyIdentifier);
-		TravelDuration = (UFlareGameTools::SECONDS_IN_DAY/2 + ComputeAltitudeTravelDuration(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody, DestinationAltitude)) / UFlareGameTools::SECONDS_IN_DAY;
+		TravelDuration = ComputeAltitudeTravelDuration(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody, DestinationAltitude, TravelFleet);
 	}
 
 	bool AICheats = World->GetGame()->GetPC()->GetPlayerData()->AICheats;
@@ -522,14 +516,13 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 		}
 	}
 
-	if(Company)//Company->IsTechnologyUnlocked("fast-travel"))
+	if(Company)
 	{
 
 		float TechnologyBonus = Company->IsTechnologyUnlocked("fast-travel") ? 0.5f : 1.f;
 		float TechnologyBonusSecondary = Company->GetTechnologyBonus("travel-bonus");
 		TechnologyBonus -= TechnologyBonusSecondary;
 		TravelDuration *= TechnologyBonus;
-//		TravelDuration /= 2;
 	}
 	return FMath::Max((int64) 2, TravelDuration+1);
 }
@@ -541,7 +534,7 @@ double UFlareTravel::ComputeSphereOfInfluenceAltitude(UFlareWorld* World, FFlare
 }
 
 
-int64 UFlareTravel::ComputePhaseTravelDuration(UFlareWorld* World, FFlareCelestialBody* CelestialBody, double Altitude, double OriginPhase, double DestinationPhase)
+int64 UFlareTravel::ComputePhaseTravelDuration(UFlareWorld* World, FFlareCelestialBody* CelestialBody, double Altitude, double OriginPhase, double DestinationPhase, UFlareFleet* TravelFleet)
 {
 	double TravelPhase =  FMath::Abs(FMath::UnwindDegrees(DestinationPhase - OriginPhase));
 
@@ -549,10 +542,15 @@ int64 UFlareTravel::ComputePhaseTravelDuration(UFlareWorld* World, FFlareCelesti
 	double OrbitPerimeter = 2 * PI * OrbitRadius;
 	double TravelDistance = OrbitPerimeter * TravelPhase / 360;
 
-	return TRAVEL_DURATION_PER_PHASE_KM * TravelDistance;
+	if (TravelFleet)
+	{
+		return ((TravelDistance * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower())) / (UFlareGameTools::SECONDS_IN_DAY);
+
+	}
+	return (TRAVEL_DURATION_PER_PHASE_KM * TravelDistance) / UFlareGameTools::SECONDS_IN_DAY;
 }
 
-int64 UFlareTravel::ComputeAltitudeTravelDuration(UFlareWorld* World, FFlareCelestialBody* OriginCelestialBody, double OriginAltitude, FFlareCelestialBody* DestinationCelestialBody, double DestinationAltitude)
+int64 UFlareTravel::ComputeAltitudeTravelDuration(UFlareWorld* World, FFlareCelestialBody* OriginCelestialBody, double OriginAltitude, FFlareCelestialBody* DestinationCelestialBody, double DestinationAltitude, UFlareFleet* TravelFleet)
 {
 	double TravelAltitude;
 
@@ -564,21 +562,27 @@ int64 UFlareTravel::ComputeAltitudeTravelDuration(UFlareWorld* World, FFlareCele
 	{
 		// Planet to moon
 		TravelAltitude = ComputeAltitudeTravelToMoonDistance(World, OriginCelestialBody, OriginAltitude, DestinationCelestialBody) +
-			ComputeAltitudeTravelToSoiDistance(World, DestinationCelestialBody, DestinationAltitude);
+						 ComputeAltitudeTravelToSoiDistance(World, DestinationCelestialBody, DestinationAltitude);
 	}
 	else if (World->GetPlanerarium()->IsSatellite(OriginCelestialBody, DestinationCelestialBody))
 	{
 		// Moon to planet
 		TravelAltitude = ComputeAltitudeTravelToSoiDistance(World, OriginCelestialBody, OriginAltitude) +
-				ComputeAltitudeTravelToMoonDistance(World, DestinationCelestialBody, DestinationAltitude, OriginCelestialBody);
+						 ComputeAltitudeTravelToMoonDistance(World, DestinationCelestialBody, DestinationAltitude, OriginCelestialBody);
 	}
 	else
 	{
 		TravelAltitude = ComputeAltitudeTravelToSoiDistance(World, OriginCelestialBody, OriginAltitude) +
-				ComputeAltitudeTravelMoonToMoonDistance(World, OriginCelestialBody, DestinationCelestialBody) +
-				ComputeAltitudeTravelToSoiDistance(World, DestinationCelestialBody, DestinationAltitude);
+						 ComputeAltitudeTravelMoonToMoonDistance(World, OriginCelestialBody, DestinationCelestialBody) +
+						 ComputeAltitudeTravelToSoiDistance(World, DestinationCelestialBody, DestinationAltitude);
 	}
-	return TRAVEL_DURATION_PER_ALTITUDE_KM * TravelAltitude + UFlareGameTools::SECONDS_IN_DAY;
+
+	if (TravelFleet && TravelFleet->GetFleetLowestEngineAccelerationPower())
+	{
+		return ((TravelAltitude * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower())) / (UFlareGameTools::SECONDS_IN_DAY);
+	}
+
+	return (TRAVEL_DURATION_PER_ALTITUDE_KM * TravelAltitude + UFlareGameTools::SECONDS_IN_DAY) / UFlareGameTools::SECONDS_IN_DAY;
 }
 
 double UFlareTravel::ComputeAltitudeTravelDistance(UFlareWorld* World, double OriginAltitude, double DestinationAltitude)
@@ -613,8 +617,14 @@ bool UFlareTravel::IsPlayerHostile()
 	{
 		return false;
 	}
+	
+	UFlareCompany* PlayerCompany = Fleet->GetGame()->GetPC()->GetCompany();
+	bool CanBeHostile = (Fleet->GetFleetCompany()->GetWarState(PlayerCompany) == EFlareHostility::Hostile);
 
-	bool CanBeHostile = Game->GetQuestManager()->IsUnderMilitaryContract(GetDestinationSector(), Fleet->GetFleetCompany(), false);
+	if (!CanBeHostile)
+	{
+		CanBeHostile = Game->GetQuestManager()->IsUnderMilitaryContract(GetDestinationSector(), Fleet->GetFleetCompany(), false);
+	}
 
 	if(!CanBeHostile)
 	{

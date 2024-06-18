@@ -279,9 +279,8 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 			}
 			else
 			{
-				FVector Temp = (CurrentLocation - MostDangerousLocation).GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
-
-				//UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp * 10, FColor::Red, true);
+				FVector Temp = (CurrentLocation - MostDangerousLocation).GetUnsafeNormal() * (Ship->GetNavigationSystem()->GetLinearMaxVelocity());
+//				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp, FColor::Red, true);
 				return Temp;
 			}
 		}

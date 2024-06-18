@@ -125,7 +125,7 @@ bool UFlareFleet::CanTravel(FText& OutInfo, UFlareSimulatedSector* TargetSector)
 
 		if(TargetSector && TargetSector == GetCurrentTravel()->GetDestinationSector())
 		{
-			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), GetCurrentSector(), TargetSector, Game->GetPC()->GetCompany());
+			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(Game->GetGameWorld(), GetCurrentSector(), TargetSector, Game->GetPC()->GetCompany(),this);
 			FText DayText;
 
 			if (TravelDuration == 1)
@@ -379,6 +379,10 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	UFlareFleet* OldFleet = Ship->GetCurrentFleet();
 	if (OldFleet)
 	{
+		if (OldFleet == this)
+		{
+			return;
+		}
 		OldFleet->RemoveShip(Ship, false, false);
 	}
 
@@ -389,6 +393,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	{
 		FleetCount++;
 	}
+
 	Ship->SetCurrentFleet(this);
 
 	if (FleetCompany == GetGame()->GetPC()->GetCompany() && GetGame()->GetQuestManager())
@@ -403,6 +408,15 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 			this->AddShip(OwnedShips);
 		}
 	}
+
+	if (!FleetSlowestShip)
+	{
+		RecalculateSlowestFleetShip();
+	}
+	else if (FleetLowestEngineAccelerationPower > Ship->GetEngineAccelerationPower())
+	{
+		SetSlowestShipPowerValue(Ship, Ship->GetEngineAccelerationPower());
+	}
 }
 
 void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
@@ -414,6 +428,7 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 	}
 
 	UFlareFleet* NewFleet = nullptr;
+	bool SlowestShipRemoved = false;
 	for (int32 Index = 0; Index < ShipsToRemove.Num(); Index++)
 	{
 		UFlareSimulatedSpacecraft* Ship = ShipsToRemove[Index];
@@ -424,10 +439,17 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 
 		FleetData.ShipImmatriculations.Remove(Ship->GetImmatriculation());
 		FleetShips.Remove(Ship);
+
+		if (FleetSlowestShip == Ship)
+		{
+			SlowestShipRemoved = true;
+		}
+
 		if (!Ship->GetDescription()->IsDroneShip)
 		{
 			FleetCount--;
 		}
+
 		Ship->SetCurrentFleet(NULL);
 
 		if (NewFleet == nullptr)
@@ -443,6 +465,13 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 	if (FleetShips.Num() == 0)
 	{
 		Disband();
+	}
+	else
+	{
+		if (SlowestShipRemoved)
+		{
+			RecalculateSlowestFleetShip();
+		}
 	}
 }
 
@@ -474,6 +503,10 @@ void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed, bo
 	if(FleetShips.Num() == 0)
 	{
 		Disband();
+	}
+	else if (FleetSlowestShip == Ship)
+	{
+		RecalculateSlowestFleetShip();
 	}
 }
 
@@ -609,6 +642,7 @@ void UFlareFleet::InitShipList()
 				FleetCount++;
 			}
 		}
+		RecalculateSlowestFleetShip();
 	}
 }
 
@@ -761,6 +795,24 @@ int32 UFlareFleet::GetFleetFreeSpaceForResource(FFlareResourceDescription* Resou
 uint32 UFlareFleet::GetShipCount() const
 {
 	return FleetCount;
+}
+
+uint32 UFlareFleet::GetMilitaryShipCount() const
+{
+	uint32 Count = 0;
+	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+	{
+		if (FleetShips[ShipIndex]->GetDescription()->IsDroneShip)
+		{
+			continue;
+		}
+
+		if (FleetShips[ShipIndex]->IsMilitary())
+		{
+			Count++;
+		}
+	}
+	return Count;
 }
 
 uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
@@ -1009,5 +1061,32 @@ bool UFlareFleet::CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecra
 	}
 	return true;
 }
+
+void UFlareFleet::RecalculateSlowestFleetShip()
+{
+	FleetSlowestShip = nullptr;
+	FleetLowestEngineAccelerationPower = NULL;
+
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	for (UFlareSimulatedSpacecraft* Ship : GetShips())
+	{
+		if (!Ship->GetDescription()->IsDroneShip)
+		{
+			float ShipEnginePower = Ship->GetEngineAccelerationPower();
+
+			if (!FleetSlowestShip || ShipEnginePower < FleetLowestEngineAccelerationPower)
+			{
+				SetSlowestShipPowerValue(Ship, ShipEnginePower);
+			}
+		}
+	}
+}
+
+void UFlareFleet::SetSlowestShipPowerValue(UFlareSimulatedSpacecraft* NewShip,float NewValue)
+{
+	FleetSlowestShip = NewShip;
+	FleetLowestEngineAccelerationPower = NewValue;
+}
+
 
 #undef LOCTEXT_NAMESPACE

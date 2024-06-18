@@ -130,7 +130,7 @@ void SFlareCompanyMenu::Construct(const FArguments& InArgs)
 								SNew(SFlareButton)
 								.Width(6)
 								.Text(LOCTEXT("AddNewWhiteList", "Create new company whitelist"))
-								.HelpText(LOCTEXT("WhiteListInfo", "Create a white-list which you can then utilize to restrict trading to only the companies contained within"))
+								.HelpText(LOCTEXT("WhiteListInfoNew", "Create a white-list which designates various trading settings with other companies"))
 								.Icon(FFlareStyleSet::GetIcon("New"))
 								.OnClicked(this, &SFlareCompanyMenu::OnNewWhiteListClicked)
 							]

@@ -704,10 +704,10 @@ struct FFlareCompanyAIDescription
 	/** Chance faction will ignore its diversity ratio and try to build a better trade ship. Default: 0.10*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BuildEfficientTradeChance;
-	/** Extra chance ontop of BuildEfficientMilitaryChance that faction will ignore its diversity ratio and build a better small military ship. Default: 0.10*/
+	/** Chance faction will ignore its diversity ratio and build a better small military ship. Default: 0.15*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BuildEfficientMilitaryChanceSmall;
-	/** Extra chance ontop of BuildEfficientTradeChance that faction will ignore its diversity ratio and build a better small trade ship.  Default: 0.30*/
+	/** Chance faction will ignore its diversity ratio and build a better small trade ship.  Default: 0.35*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float BuildEfficientTradeChanceSmall;
 

@@ -743,7 +743,10 @@ struct FFlareSpacecraftDescription
 
 	/** Optionally set a default RCS */
 	UPROPERTY(EditAnywhere, Category = Content) FName DefaultRCS;
-	
+
+	/** Quantity of RCS which can thrust in same direction as primary engines */
+	UPROPERTY(EditAnywhere, Category = Content) int32 RCSCapableOfMainEngineThrust;
+
 	/** Number of orbital engine */
 	UPROPERTY(EditAnywhere, Category = Save) int32 OrbitalEngineCount;
 

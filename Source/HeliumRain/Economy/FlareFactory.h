@@ -57,6 +57,8 @@ public:
 
 	bool HasInputResources();
 
+	FString GetInputResourcesRequiredString();
+
 	bool HasOutputFreeSpace();
 
 	bool HasCostReserved();

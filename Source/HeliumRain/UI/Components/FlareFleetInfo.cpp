@@ -471,7 +471,7 @@ FText SFlareFleetInfo::GetTravelText() const
 		}
 		else
 		{
-			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(PC->GetGame()->GetGameWorld(), TargetFleet->GetCurrentSector(), TargetSectorTravel, PC->GetCompany());
+			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(PC->GetGame()->GetGameWorld(), TargetFleet->GetCurrentSector(), TargetSectorTravel, PC->GetCompany(),TargetFleet);
 
 			FText TravelWord;
 

@@ -333,12 +333,8 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndUpgrade(FFlareSpacecraftComponen
 					continue;
 				}
 
-				bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
-				if (DockingConfirmed)
+				if (DockAtAndUpgrade(NewPartDesc, CurrentWeaponGroupIndex, TargetStation))
 				{
-					TransactionDestinationDock = StationInterface;
-					TransactionNewPartDesc = NewPartDesc;
-					TransactionNewPartWeaponGroupIndex = CurrentWeaponGroupIndex;
 					return true;
 				}
 			}
@@ -349,6 +345,20 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndUpgrade(FFlareSpacecraftComponen
 	TransactionNewPartDesc = NULL;
 	TransactionNewPartWeaponGroupIndex = NULL;
 	return false;
+}
+
+bool UFlareSpacecraftNavigationSystem::DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex, AFlareSpacecraft* TargetStation)
+{
+	UFlareSimulatedSpacecraft* StationInterface = TargetStation->GetParent();
+
+	bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
+	if (DockingConfirmed)
+	{
+		TransactionDestinationDock = StationInterface;
+		TransactionNewPartDesc = NewPartDesc;
+		TransactionNewPartWeaponGroupIndex = CurrentWeaponGroupIndex;
+	}
+	return DockingConfirmed;
 }
 
 bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
@@ -934,7 +944,16 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 		FVector Global = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LinearEngineTarget.Target);
 		FVector GlobalFixed = PilotHelper::AnticollisionCorrection(Spacecraft, Global, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f);
 
-		LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(GlobalFixed));
+		LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(GlobalFixed));
+
+		// This speed check basically serves as a simple timeout if the ship gets stuck
+		int32 Speed = Spacecraft->GetLinearVelocity().Size();
+		if (Speed == 0)
+		{
+			LinearEngineTarget.XVelocityControl = false;
+			LinearEngineTarget.YVelocityControl = false;
+			LinearEngineTarget.ZVelocityControl = false;
+		}
 	}
 }
 
@@ -1508,7 +1527,12 @@ bool UFlareSpacecraftNavigationSystem::UpdateAngularBraking(float DeltaSeconds)
 void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Physics);
-
+/*
+	if (Spacecraft != Spacecraft->GetGame()->GetPC()->GetShipPawn())
+	{
+		return;
+	}
+*/
 	if (Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
 		return;
@@ -1558,32 +1582,32 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 	{
 		float LocalLinearVelocityInAxis = FVector::DotProduct(Axis, LocalLinearVelocity);
 		float DeltaV = VelocityTargetInAxis - LocalLinearVelocityInAxis;
-
-		/*FLOGV("ProcessVelocityEngineAxis VelocityTargetInAxis=%f Axis=%s", VelocityTargetInAxis, *Axis.ToString());
+/*
+		FLOGV("ProcessVelocityEngineAxis VelocityTargetInAxis=%f Axis=%s", VelocityTargetInAxis, *Axis.ToString());
 		FLOGV("    - LocalLinearVelocityInAxis=%f", LocalLinearVelocityInAxis);
-		FLOGV("    - DeltaV=%f", DeltaV);*/
-
+		FLOGV("    - DeltaV=%f", DeltaV);
+*/
 		TArray<int>& UsefulEngines = DeltaV > 0 ? AxisEngines.Key: AxisEngines.Value;
-
-		//FLOGV("    - UsefulEngines=%d", UsefulEngines.Num());
-
+/*
+		FLOGV("    - UsefulEngines=%d", UsefulEngines.Num());
+*/
 		float LinearMasterAlpha = 0.f;
 		float LinearMasterBoostAlpha = 0.f;
 
-
+//		if (!FMath::IsNearlyZero(DeltaV))
 		if (!FMath::IsNearlyZero(DeltaV))
 		{
 			// First, try without using the boost
 			float Acceleration = SharableBoostAcceleration + GetTotalMaxThrustWithEngines(Engines, UsefulEngines, false) / Spacecraft->GetSpacecraftMass();
-
-			//FLOGV("    - Acceleration=%f", Acceleration);
-
-
+/*
+			FLOGV("    - Acceleration=%f", Acceleration);
+*/
 			float AccelerationDeltaV = Acceleration * DeltaSeconds;
-			//FLOGV("    - AccelerationDeltaV=%f", AccelerationDeltaV);
-
+/*
+			FLOGV("    - AccelerationDeltaV=%f", AccelerationDeltaV);
+*/
 			LinearMasterAlpha = FMath::Clamp(FMath::Abs(DeltaV)/ AccelerationDeltaV, 0.0f, 1.0f);
-			// Second, if the not enought trust check with the boost
+			// Second, if the not enough trust check with the boost
 			if (UseOrbitalBoost && AccelerationDeltaV < FMath::Abs(DeltaV) )
 			{
 				float AccelerationWithBoost = GetTotalMaxThrustWithEngines(Engines, UsefulEngines, true) / Spacecraft->GetSpacecraftMass();
@@ -1597,13 +1621,14 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 					LinearMasterBoostAlpha = FMath::Clamp(DeltaVAfterClassicalAcceleration/ BoostDeltaV, 0.0f, 1.0f);
 
-					SharableBoostAcceleration += (AccelerationWithBoost - Acceleration) * 1;
+					SharableBoostAcceleration += (AccelerationWithBoost - Acceleration);
 
 					Acceleration = AccelerationWithBoost;
-
-					/*FLOGV("    - boost Acceleration=%f", Acceleration);
+/*
+					FLOGV("    - boost Acceleration=%f", Acceleration);
 					FLOGV("    - boost AccelerationWithBoost=%f", AccelerationWithBoost);
-					FLOGV("    - boost LinearMasterBoostAlpha=%f", LinearMasterBoostAlpha);*/
+					FLOGV("    - boost LinearMasterBoostAlpha=%f", LinearMasterBoostAlpha);
+*/
 				}
 			}
 
@@ -1633,13 +1658,12 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 
 			FVector Increment = Axis * (DeltaV > 0 ? 1.f : -1.f) * ClampedAcceleration * DeltaSeconds * 100; // Multiply by 100 because UE4 works in cm
-
-			/*FLOGV("    - Acceleration=%f", Acceleration);
+/*
+			FLOGV("    - Acceleration=%f", Acceleration);
 			FLOGV("    - ClampedAcceleration=%f", ClampedAcceleration);
 			FLOGV("    - LinearMasterAlpha=%f", LinearMasterAlpha);
-			FLOGV("    - Increment=%s", *Increment.ToString());*/
-
-
+			FLOGV("    - Increment=%s", *Increment.ToString());
+*/
 			LocalDeltaV += Increment;
 		}
 	};

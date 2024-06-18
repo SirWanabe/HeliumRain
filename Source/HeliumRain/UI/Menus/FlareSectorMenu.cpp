@@ -826,7 +826,7 @@ FText SFlareSectorMenu::GetTravelText() const
 		}
 		else
 		{
-			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(MenuManager->GetGame()->GetGameWorld(), SelectedFleet->GetCurrentSector(), TargetSector, MenuManager->GetPC()->GetCompany());
+			int64 TravelDuration = UFlareTravel::ComputeTravelDuration(MenuManager->GetGame()->GetGameWorld(), SelectedFleet->GetCurrentSector(), TargetSector, MenuManager->GetPC()->GetCompany(), SelectedFleet);
 
 			FText TravelWord;
 
@@ -845,7 +845,31 @@ FText SFlareSectorMenu::GetTravelText() const
 			}
 			else
 			{
+/*
+				float EnginePower = SelectedFleet->GetFleetLowestEngineAccelerationPower();
+				double OriginAltitude;
+				double DestinationAltitude;
+				double OriginPhase;
+				double DestinationPhase;
+				FName OriginCelestialBodyIdentifier;
+				FName DestinationCelestialBodyIdentifier;
+
+				OriginAltitude = SelectedFleet->GetCurrentSector()->GetOrbitParameters()->Altitude;
+				OriginCelestialBodyIdentifier = SelectedFleet->GetCurrentSector()->GetOrbitParameters()->CelestialBodyIdentifier;
+				OriginPhase = SelectedFleet->GetCurrentSector()->GetOrbitParameters()->Phase;
+				DestinationAltitude = TargetSector->GetOrbitParameters()->Altitude;
+				DestinationCelestialBodyIdentifier = TargetSector->GetOrbitParameters()->CelestialBodyIdentifier;
+				DestinationPhase = TargetSector->GetOrbitParameters()->Phase;
+
+				FFlareCelestialBody* OriginCelestialBody = MenuManager->GetGame()->GetGameWorld()->GetPlanerarium()->FindCelestialBody(OriginCelestialBodyIdentifier);
+				FFlareCelestialBody* DestinationCelestialBody = MenuManager->GetGame()->GetGameWorld()->GetPlanerarium()->FindCelestialBody(DestinationCelestialBodyIdentifier);
+
+				double TravelAltitude = UFlareTravel::ComputeAltitudeTravelToMoonDistance(MenuManager->GetGame()->GetGameWorld(), OriginCelestialBody, OriginAltitude, DestinationCelestialBody) +
+				UFlareTravel::ComputeAltitudeTravelToSoiDistance(MenuManager->GetGame()->GetGameWorld(), DestinationCelestialBody, DestinationAltitude);
+				return FText::Format(LOCTEXT("TravelFormat", "{0} ({1} days) DEBUG: {2}, TA: {3}"), TravelWord, FText::AsNumber(TravelDuration), EnginePower, TravelAltitude);
+*/
 				return FText::Format(LOCTEXT("TravelFormat", "{0} ({1} days)"), TravelWord, FText::AsNumber(TravelDuration));
+
 			}
 		}
 	}

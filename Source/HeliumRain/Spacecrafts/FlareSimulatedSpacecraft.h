@@ -177,6 +177,7 @@ public:
 
 	FFlareSpacecraftComponentDescription* GetCurrentPart(EFlarePartType::Type Type, int32 WeaponGroupIndex);
 
+	void UpdateEngineAcceleration();
 
 	void FinishConstruction();
 
@@ -347,6 +348,8 @@ protected:
 	bool													OwnerHasStationLicense;
 
 	UFlareCompanyWhiteList*									ShipSelectedWhiteList;
+	float													EngineAccelerationPower = 0.f;
+
 
 public:
 
@@ -358,6 +361,11 @@ public:
 	{
 		return Game;
 	}	
+
+	inline float GetEngineAccelerationPower() const
+	{
+		return EngineAccelerationPower;
+	}
 
 	inline UFlareCompanyWhiteList* GetSelectedWhiteList() const
 	{

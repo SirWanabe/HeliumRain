@@ -2235,31 +2235,38 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		bool SuccessfulUpgrade = ShipSimmed->UpgradePart(TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
 		if (SuccessfulUpgrade)
 		{
-			FText UpgradeStatus = FText(LOCTEXT("UpgradeInfoSuccess", "Upgraded"));
-
-			FText FirstHalf;
-
-			if (!FlewByPlayer)
+			AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
+			if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Ship)
 			{
-				UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
-				FirstHalf = FText::Format(LOCTEXT("LocalUpgradeFormat", "{0} is now docked at {1}\n"),
-					UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
-					UFlareGameTools::DisplaySpacecraftName(StationSimmed)
-				);
+				FFlareMenuParameterData Data;
+				Data.Spacecraft = ShipSimmed;
+				PlayerMenu->OpenMenu(EFlareMenu::MENU_Ship, Data, false, true);
 			}
 
-			FText Formatted = FText::Format(LOCTEXT("LocalUpgradeSuccessInfo", "{0}{1} {2}"),
+			if (GetParent()->GetCompany() == PC->GetCompany())
+			{
+				FText UpgradeStatus = FText(LOCTEXT("UpgradeInfoSuccess", "Upgraded"));
+				FText FirstHalf;
+
+				if (!FlewByPlayer)
+				{
+					UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
+					FirstHalf = FText::Format(LOCTEXT("LocalUpgradeFormat", "{0} is now docked at {1}\n"),
+					UFlareGameTools::DisplaySpacecraftName(ShipSimmed),
+					UFlareGameTools::DisplaySpacecraftName(StationSimmed)
+					);
+				}
+
+				FText Formatted = FText::Format(LOCTEXT("LocalUpgradeSuccessInfo", "{0}{1} {2}"),
 				FirstHalf,
 				UpgradeStatus,
 				TransactionNewPartDesc->Name);
 
-			if (GetParent()->GetCompany() == PC->GetCompany())
-			{
 				PC->Notify(
-					LOCTEXT("RemoteUpgradeSuccessTitle", "Remote Upgrade Info"),
-					Formatted,
-					"upgrade-success",
-					EFlareNotification::NT_Info);
+				LOCTEXT("RemoteUpgradeSuccessTitle", "Remote Upgrade Info"),
+				Formatted,
+				"upgrade-success",
+				EFlareNotification::NT_Info);
 			}
 		}
 		else

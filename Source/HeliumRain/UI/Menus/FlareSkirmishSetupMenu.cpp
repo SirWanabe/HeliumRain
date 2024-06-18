@@ -1375,7 +1375,7 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 	{
 		for (const UFlareSpacecraftCatalogEntry* Spacecraft : SpacecraftCatalog->ShipCatalog)
 		{
-			if (Spacecraft->Data.IsDroneShip)
+			if (Spacecraft->Data.IsDroneShip || Spacecraft->Data.IsNotMilitary)
 			{
 				continue;
 			}

@@ -2354,11 +2354,11 @@ bool UFlareQuestConditionPlayerTravelTooLong::IsCompleted()
 	if(PlayerFleet->IsTraveling())
 	{
 		PlayerTravelDuration +=	PlayerFleet->GetCurrentTravel()->GetRemainingTravelDuration();
-		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentTravel()->GetDestinationSector(), TargetSector, GetGame()->GetPC()->GetCompany());
+		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentTravel()->GetDestinationSector(), TargetSector, GetGame()->GetPC()->GetCompany(),PlayerFleet);
 	}
 	else
 	{
-		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentSector(), TargetSector, GetGame()->GetPC()->GetCompany());
+		PlayerTravelDuration +=	UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), PlayerFleet->GetCurrentSector(), TargetSector, GetGame()->GetPC()->GetCompany(),PlayerFleet);
 	}
 
 	return GetGame()->GetGameWorld()->GetDate() + PlayerTravelDuration > DateLimit;
