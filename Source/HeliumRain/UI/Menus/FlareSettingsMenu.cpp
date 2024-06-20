@@ -21,8 +21,8 @@
 
 #define LOCTEXT_NAMESPACE "FlareSettingsMenu"
 
-#define MIN_MAX_SHIPS 20
-#define MAX_MAX_SHIPS 100
+#define MIN_MAX_SHIPS 25
+#define MAX_MAX_SHIPS 125
 
 #define STEP_RESOLUTIONSCALE 10
 #define MIN_RESOLUTIONSCALE 30

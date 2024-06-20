@@ -75,7 +75,6 @@ void SFlareOrbitalMenu::Construct(const FArguments& InArgs)
 
 				// Display modes
 				+ SHorizontalBox::Slot()
-//				.HAlign(HAlign_Center)
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Top)
 				.Padding(Theme.SmallContentPadding)
@@ -412,6 +411,11 @@ void SFlareOrbitalMenu::RequestOrbitalFleetsUpdate(bool Instant)
 	{
 		OrbitalFleetsUpdateRequested = true;
 	}
+}
+
+UFlareFleet* SFlareOrbitalMenu::GetCurrentSelectedFleet()
+{
+	return OrbitalFleetsInfo->GetSelectedFleet();
 }
 
 void SFlareOrbitalMenu::UpdateSectorStates()

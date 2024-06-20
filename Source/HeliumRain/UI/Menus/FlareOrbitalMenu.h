@@ -61,7 +61,6 @@ public:
 
 	/** A notification was received, stop */
 	void RequestStopFastForward();
-
 	void RequestOrbitalFleetsUpdate(bool Instant = false);
 
 	void UpdateSectorBattleStates();
@@ -72,6 +71,8 @@ public:
 
 	float GetTimeSinceFFWD() const;
 	bool GetFastForwardActive() const;
+
+	UFlareFleet* GetCurrentSelectedFleet();
 
 	/** Is this mode the current one */
 	bool IsCurrentDisplayMode(EFlareOrbitalMode::Type Mode) const;

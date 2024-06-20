@@ -361,7 +361,6 @@ void SFlareSectorButton::RefreshButton()
 				TrackedFleetDateBoxes.AddUnique(DateBox);
 			}
 		}
-//		SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
 	}
 	else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
 	{
@@ -437,16 +436,32 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 	{
 		FText SectorStatus = Sector->GetSectorFriendlynessText(PlayerCompany);
 		FText SectorNameText = FText::Format(LOCTEXT("SectorNameFormat", "{0} ({1})"), Sector->GetSectorName(), SectorStatus);
-
 		FText SectorInfoText = Sector->GetSectorDescription();
+
 		// Get local fleets
+		UFlareFleet* CurrentlySelectedMovementFleet = MenuManager->GetOrbitMenu()->GetCurrentSelectedFleet();
+		if (CurrentlySelectedMovementFleet)
+		{
+			if (CurrentlySelectedMovementFleet->GetCurrentSector() != Sector)
+			{
+				int64 TravelDays = UFlareTravel::ComputeTravelDuration(MenuManager->GetGame()->GetGameWorld(), CurrentlySelectedMovementFleet->GetCurrentSector(), Sector, CurrentlySelectedMovementFleet->GetFleetCompany() , CurrentlySelectedMovementFleet);
+				if (TravelDays > 0)
+				{
+					SectorInfoText = FText::Format(LOCTEXT("SectorInfoSelectedFleetFormat", "{0}\n\u2192 {1} will arrive in {2} days."),
+					SectorInfoText,
+					CurrentlySelectedMovementFleet->GetFleetName(),
+					TravelDays);
+				}
+			}
+		}
+
 		for (UFlareFleet* Fleet : Sector->GetSectorFleets())
 		{
 			if (Fleet->GetFleetCompany()->IsPlayerCompany())
 			{
 				SectorInfoText = FText::Format(LOCTEXT("SectorInfoFleetLocalFormat", "{0}\n\u2022 Your fleet {1} is here."),
-					SectorInfoText,
-					Fleet->GetFleetName());
+				SectorInfoText,
+				Fleet->GetFleetName());
 			}
 		}
 

@@ -38,6 +38,16 @@ namespace EFlareEventVisibility
 	};
 }
 
+/** Data for game events which can alter game balance IE: Global War*/
+USTRUCT()
+struct FFlareWorldGameEventSave
+{
+	GENERATED_USTRUCT_BODY()
+	FName					EventName;
+	int64					EventDate;
+	int64					EventDateEnd;
+};
+
 /** World save data */
 USTRUCT()
 struct FFlareWorldSave
@@ -48,7 +58,7 @@ struct FFlareWorldSave
 	int64                    Date;
 
 	UPROPERTY(EditAnywhere, Category = Save)
-	int64                    EventDate_GlobalWar;
+	TArray<FFlareWorldGameEventSave> GlobalEvents;
 
 	UPROPERTY(VisibleAnywhere, Category = Save)
 	TArray<FFlareCompanySave> CompanyData;
@@ -176,6 +186,8 @@ public:
 	/** Add a factory to world */
 	void AddFactory(UFlareFactory* Factory);
 
+	FFlareWorldGameEventSave* GetGlobalEvent(FName EventSearch);
+
 protected:
 
 	/*----------------------------------------------------
@@ -208,7 +220,7 @@ protected:
 	UFlareSimulatedPlanetarium*			 Planetarium;
 
 	UPROPERTY()
-	UFlareBattle*						BattleSimulation;
+	UFlareBattle*					  	 BattleSimulation;
 
 	AFlareGame*                          Game;
 

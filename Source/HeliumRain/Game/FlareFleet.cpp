@@ -159,18 +159,18 @@ bool UFlareFleet::CanTravel(FText& OutInfo, UFlareSimulatedSector* TargetSector)
 
 FText UFlareFleet::GetStatusInfo() const
 {
-	bool Intersepted = false;
+	bool Intercepted = false;
 
 	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
 	{
 		if(Ship->IsIntercepted())
 		{
-			Intersepted = true;
+			Intercepted = true;
 			break;
 		}
 	}
 
-	if (Intersepted)
+	if (Intercepted)
 	{
 		return FText::Format(LOCTEXT("FleetIntercepted", "Intercepted in {0}"), GetCurrentSector()->GetSectorName());
 	}
@@ -409,13 +409,23 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 		}
 	}
 
-	if (!FleetSlowestShip)
+	if (!Ship->GetDescription()->IsDroneShip)
 	{
-		RecalculateSlowestFleetShip();
-	}
-	else if (FleetLowestEngineAccelerationPower > Ship->GetEngineAccelerationPower())
-	{
-		SetSlowestShipPowerValue(Ship, Ship->GetEngineAccelerationPower());
+		if (!FleetSlowestShip)
+		{
+			if (GetShipCount() == 1)
+			{
+				SetSlowestShipPowerValue(Ship, Ship->GetEngineAccelerationPower());
+			}
+			else
+			{
+				RecalculateSlowestFleetShip();
+			}
+		}
+		else if (FleetLowestEngineAccelerationPower > Ship->GetEngineAccelerationPower())
+		{
+			SetSlowestShipPowerValue(Ship, Ship->GetEngineAccelerationPower());
+		}
 	}
 }
 

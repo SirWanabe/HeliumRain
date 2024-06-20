@@ -238,46 +238,54 @@ void UFlareSimulatedSpacecraftWeaponsSystem::GetTargetPreference(float* IsSmall,
 	*IsHarpooned = HarpoonedPool;
 }
 
-int32 UFlareSimulatedSpacecraftWeaponsSystem::FindBestWeaponGroup(UFlareSimulatedSpacecraft* Target)
+int32 UFlareSimulatedSpacecraftWeaponsSystem::FindBestWeaponGroup(UFlareSimulatedSpacecraft* ShipTarget, FFlareMeteoriteSave* MeteoriteTarget)
 {
 	int32 BestWeaponGroup = -1;
 	float BestScore = 0;
 
-	if (!Target) {
+	if (!ShipTarget || !MeteoriteTarget)
+	{
 		return -1;
 	}
 
-	bool LargeTarget = (Target->GetSize() == EFlarePartSize::L);
-	bool SmallTarget = (Target->GetSize() == EFlarePartSize::S);
-	bool UncontrollableTarget = Target->GetDamageSystem()->IsUncontrollable();
+	bool LargeTarget = false;
+	bool UncontrollableTarget = false;
+
+	if (ShipTarget)
+	{
+		UncontrollableTarget = ShipTarget->GetDamageSystem()->IsUncontrollable();
+		if (ShipTarget->GetSize() == EFlarePartSize::L)
+		{
+			LargeTarget = true;
+		}
+	}
+	else if (MeteoriteTarget)
+	{
+		LargeTarget = true;
+	}
 
 	for (int32 GroupIndex = 0; GroupIndex < WeaponGroupList.Num(); GroupIndex++)
 	{
 		float Score = Spacecraft->GetDamageSystem()->GetWeaponGroupHealth(GroupIndex, true);
-
-
 		EFlareShellDamageType::Type DamageType = WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.DamageType;
-
-
-
-		if (SmallTarget)
-		{
-			Score *= WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.AntiSmallShipValue;
-		}
 
 		if (LargeTarget)
 		{
 			Score *= WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.AntiLargeShipValue;
 		}
-
-		if(DamageType == EFlareShellDamageType::LightSalvage || DamageType == EFlareShellDamageType::HeavySalvage)
-		{
-			Score *= (UncontrollableTarget ? 1.f : 0.f);
-			Score *= (Target->IsHarpooned() ? 0.f: 1.f);
-		}
 		else
 		{
-			if(Target->IsMilitary())
+			Score *= WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.AntiSmallShipValue;
+		}
+
+		if (ShipTarget)
+		{
+			if (DamageType == EFlareShellDamageType::LightSalvage || DamageType == EFlareShellDamageType::HeavySalvage)
+			{
+				Score *= (UncontrollableTarget ? 1.f : 0.f);
+				Score *= (ShipTarget->IsHarpooned() ? 0.f : 1.f);
+			}
+			else if (ShipTarget->IsMilitary())
 			{
 				Score *= (UncontrollableTarget ? 0.01f : 1.f);
 			}

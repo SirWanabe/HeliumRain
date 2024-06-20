@@ -2036,7 +2036,6 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 }
 
 AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNeed& Need, AICompaniesMoney& CompaniesMoney)
-//AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, FFlareResourceDescription* Resource, UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 NeededQuantity, size_t FunctionIndex, AICompaniesMoney& CompaniesMoney)
 {
 	static std::function<AITradeSource* (AITradeSourcesByResource&, UFlareSimulatedSector*, UFlareCompany*, int32, UFlareSimulatedSpacecraft*, FFlareResourceDescription*, AICompaniesMoney&)> Functions[SourceFunctionCount];
 	static bool FunctionsInit = false;
@@ -2091,6 +2090,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -2150,6 +2155,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2203,6 +2214,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -2262,6 +2279,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2316,6 +2339,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2367,6 +2396,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -2434,6 +2469,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -2505,6 +2546,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2570,6 +2617,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -2641,6 +2694,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2707,6 +2766,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 					continue;
 				}
 
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
+					continue;
+				}
+
 				if(BestSource == nullptr)
 				{
 					BestSource = Source;
@@ -2770,6 +2835,12 @@ AITradeSource* AITradeHelper::FindBestSource(AITradeSources& Sources, AITradeNee
 				if ((Source->Ship && !Source->Ship->CanTradeWhiteListTo(iNeedStation, Unused, iNeedResource)) || (iNeedStation && !iNeedStation->CanTradeWhiteListFrom(Source->Ship, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				// Dangerous sector for source ship
+				if (iSector->GetSectorBattleState(Source->Ship->GetCompany()).HasDanger)
+				{
 					continue;
 				}
 
@@ -3117,6 +3188,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3173,6 +3250,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3225,6 +3308,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
 					continue;
 				}
 
@@ -3284,6 +3373,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3339,6 +3434,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3391,6 +3492,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
 					continue;
 				}
 
@@ -3454,6 +3561,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3513,6 +3626,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
 					continue;
 				}
 
@@ -3579,6 +3698,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3638,6 +3763,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 				if ((iNeedStation && !iNeedStation->CanTradeWhiteListTo(IdleShip->Ship, Unused, iNeedResource)) || (IdleShip->Ship && !IdleShip->Ship->CanTradeWhiteListFrom(iNeedStation, Unused, iNeedResource)))
 				{
 					// White list restricted
+					continue;
+				}
+
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
 					continue;
 				}
 
@@ -3701,6 +3832,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3756,6 +3893,12 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 					continue;
 				}
 
+				//Source or destination is currently in danger, this idle ship is not suitable for the job.
+				if (iSector->GetSectorBattleState(IdleShip->Company).HasDanger || (iNeedStation && iNeedStation->GetCurrentSector()->GetSectorBattleState(IdleShip->Company).HasDanger))
+				{
+					continue;
+				}
+
 				if(BestShip == nullptr)
 				{
 					BestShip = IdleShip;
@@ -3783,7 +3926,6 @@ AIIdleShip* AITradeHelper::FindBestShip(AITradeIdleShips& IdleShips, AITradeSour
 
 	for(auto& Function : Functions)
 	{
-//		AIIdleShip* Ship = Function(IdleShips, Sector, SourceCompany, NeedCompany, NeedQuantity);
 		AIIdleShip* Ship = Function(IdleShips, Source.Sector, Source.Company, Need.Company, Need.Station, Need.Resource, Need.Quantity);
 		if(Ship != nullptr)
 		{

@@ -205,8 +205,15 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
 
 	JsonObject->SetStringField("Date", FormatInt64(Data->Date));
-	JsonObject->SetStringField("EventDate_GlobalWar", FormatInt64(Data->EventDate_GlobalWar));
-	
+
+	TArray< TSharedPtr<FJsonValue> > GlobalEvents;
+	GlobalEvents.Reserve(Data->GlobalEvents.Num());
+	for (int i = 0; i < Data->GlobalEvents.Num(); i++)
+	{
+		GlobalEvents.Add(MakeShareable(new FJsonValueObject(SaveWorldEvents(&Data->GlobalEvents[i]))));
+	}
+	JsonObject->SetArrayField("GlobalEvents", GlobalEvents);
+
 	TArray< TSharedPtr<FJsonValue> > Companies;
 	Companies.Reserve(Data->CompanyData.Num());
 	for(int i = 0; i < Data->CompanyData.Num(); i++)
@@ -234,6 +241,14 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorld(FFlareWorldSave* Data)
 	return JsonObject;
 }
 
+TSharedRef<FJsonObject> UFlareSaveWriter::SaveWorldEvents(FFlareWorldGameEventSave* Data)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField("EventName", Data->EventName.ToString());
+	JsonObject->SetStringField("EventDate", FormatInt64(Data->EventDate));
+	JsonObject->SetStringField("EventDateEnd", FormatInt64(Data->EventDateEnd));
+	return JsonObject;
+}
 
 TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 {

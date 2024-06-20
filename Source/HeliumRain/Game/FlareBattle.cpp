@@ -10,6 +10,8 @@
 
 #include "../Player/FlarePlayerController.h"
 
+#define MAXIMUM_TURNS_METEORITES 25
+#define MAXIMUM_TURNS_SHIPBATTLE 1000
 
 struct BattleTargetPreferences
 {
@@ -47,8 +49,49 @@ void UFlareBattle::Load(UFlareSimulatedSector* BattleSector)
     PlayerCompany = Game->GetPC()->GetCompany();
 	Catalog = Game->GetShipPartsCatalog();
 	FightingCompanies.Empty();
-	SectorViableFightingShips.Empty();
-	CalculatedInitial = false;
+	InitialSectorViableFightingShips.Empty();
+	CurrentSectorViableFightingShips.Empty();
+	LocalMeteorites.Empty();
+	CurrentBattleTurn = 0;
+	SwitchedToFightingMeteorites = false;
+	PlayerAssetsFighting = false;
+	FoundFightingCompanies = false;
+	ShipDisabledPreviousTurn = false;
+	MaximumTurns = MAXIMUM_TURNS_SHIPBATTLE;
+
+	for (FFlareMeteoriteSave& Meteorite : Sector->GetData()->MeteoriteData)
+	{
+		if (Meteorite.DaysBeforeImpact == 0)
+		{
+			LocalMeteorites.Add(&Meteorite);
+		}
+	}
+
+	FindFightingCompanies();
+	for (int32 ShipIndex = 0; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
+	{
+		UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
+		if (Ship->IsReserve())
+		{
+			// No in fight
+			continue;
+		}
+
+		if (!Ship->IsMilitaryArmed() || Ship->GetDamageSystem()->IsDisarmed())
+		{
+			// No weapon
+			continue;
+		}
+
+		if (!FightingCompanies.Contains(Ship->GetCompany()))
+		{
+			// Not in war
+			continue;
+		}
+
+		InitialSectorViableFightingShips.Add(Ship);
+		CurrentSectorViableFightingShips.Add(Ship);
+	}
 }
 
 /*----------------------------------------------------
@@ -58,128 +101,117 @@ void UFlareBattle::Load(UFlareSimulatedSector* BattleSector)
 
 void UFlareBattle::Simulate()
 {
-    int32 BattleTurn = 0;
-
     FLOGV("Simulate battle in %s", *Sector->GetSectorName().ToString());
-
 	CombatLog::AutomaticBattleStarted(Sector);
 
 	while (HasBattle())
     {
-        BattleTurn++;
+		CurrentBattleTurn++;
 		if(!SimulateTurn())
         {
             FLOG("Nobody can fight, end battle");
             break;
         }
-        if (BattleTurn > 1000)
+        if (CurrentBattleTurn > MaximumTurns)
         {
-            FLOG("ERROR: Battle too long, still not ended after 1000 turns");
+			FLOGV("ERROR: Battle too long, still not ended after %d turns", MaximumTurns);
             break;
         }
     }
 
 	CombatLog::AutomaticBattleEnded(Sector);
-    FLOGV("Battle in %s finish after %d turns", *Sector->GetSectorName().ToString(), BattleTurn);
+    FLOGV("Battle in %s finish after %d turns", *Sector->GetSectorName().ToString(), CurrentBattleTurn);
 }
 
 bool UFlareBattle::HasBattle()
 {
     // Check if battle
     bool HasBattle = false;
-	FightingCompanies.Empty();
-    for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
-    {
-        UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
-        if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
-        {
-            // Local sector, don't check if the player want fight
-            continue;
-        }
 
-		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
-		if(!BattleState.WantFight())
-        {
-            // Don't want fight
-            continue;
-        }
-		BattleState = Sector->UpdateSectorBattleState(Company);
+	FindFightingCompanies();
+	if (FightingCompanies.Num() > 0)
+	{
+		return true;
+	}
+	return false;
+}
+
+void UFlareBattle::FindFightingCompanies()
+{
+	FightingCompanies.Empty();
+
+	FoundFightingCompanies = false;
+	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	{
+		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+		if (Company == PlayerCompany)
+		{
+/*
+			if (Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
+			{
+				// Local sector, don't check if the player want fight
+				continue;
+			}
+*/
+		}
+
+		FFlareSectorBattleState BattleState;
+		if (ShipDisabledPreviousTurn)
+		{
+			BattleState = Sector->UpdateSectorBattleState(Company);
+		}
+		else
+		{
+			BattleState = Sector->GetSectorBattleState(Company);
+		}
+
 		if (!BattleState.WantFight())
 		{
-			// Still don't want to fight
-			continue;
+			// Don't want to fight other companies
+			if (!LocalMeteorites.Num())
+			{
+				continue;
+			}
+		}
+		else
+		{
+			FoundFightingCompanies = true;
 		}
 
 		FightingCompanies.Add(Company);
 	}
 
-	if (FightingCompanies.Num() > 0)
-	{
-		if (!CalculatedInitial)
-		{
-			for (int32 ShipIndex = 0; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
-			{
-				UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
-				if (Ship->IsReserve())
-				{
-					// No in fight
-					continue;
-				}
-
-				if (!Ship->IsMilitaryArmed() || Ship->GetDamageSystem()->IsDisarmed())
-				{
-					// No weapon
-					continue;
-				}
-
-				if (!FightingCompanies.Contains(Ship->GetCompany()))
-				{
-					// Not in war
-					continue;
-				}
-				SectorViableFightingShips.Add(Ship);
-			}
-			CalculatedInitial = true;
-		}
-
-		return true;
-	}
-
-	return false;
+	ShipDisabledPreviousTurn = false;
 }
 
 bool UFlareBattle::SimulateTurn()
 {
-    bool HasFight = false;
-    // List all fighting ships
+	bool HasFight = false;
+	PlayerAssetsFighting = false;
+
+	// List all fighting ships
     TArray<UFlareSimulatedSpacecraft*> ShipToSimulate;
-//    for (int32 ShipIndex = 0 ; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
-    for (int32 ShipIndex = 0 ; ShipIndex < SectorViableFightingShips.Num(); ShipIndex++)
+	for (int32 ShipIndex = 0 ; ShipIndex < CurrentSectorViableFightingShips.Num(); ShipIndex++)
 	{
-        UFlareSimulatedSpacecraft* Ship = SectorViableFightingShips[ShipIndex];
-		if(Ship->IsReserve())
+        UFlareSimulatedSpacecraft* Ship = CurrentSectorViableFightingShips[ShipIndex];
+		if(Ship->IsReserve() || Ship->GetDamageSystem()->IsDisarmed())
 		{
-			// No in fight
+			// Not actively participating in fight
+			CurrentSectorViableFightingShips.Remove(Ship);
+			ShipIndex--;
+			ShipDisabledPreviousTurn = true;
 			continue;
 		}
 
-		if(Ship->GetDamageSystem()->IsDisarmed())
-        {
-            // No weapon
-            continue;
-        }
-
-        if(!FightingCompanies.Contains(Ship->GetCompany()))
-        {
-            // Not in war
-            continue;
-        }
-
-        ShipToSimulate.Add(Ship);
+		if (Ship->GetCompany() == PlayerCompany)
+		{
+			PlayerAssetsFighting = true;
+		}
+		
+		ShipToSimulate.Add(Ship);
     }
 
-    // Play fighting ship inthem in random order
-
+    // Play fighting ship in random order
     while(ShipToSimulate.Num())
     {
         int32 Index = FMath::RandRange(0, ShipToSimulate.Num() - 1);
@@ -187,11 +219,10 @@ bool UFlareBattle::SimulateTurn()
         {
             HasFight = true;
         }
-       ShipToSimulate.RemoveAt(Index);
+       ShipToSimulate.RemoveAtSwap(Index);
 	}
 
-//	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorSpacecrafts())
-	for (UFlareSimulatedSpacecraft* Ship : SectorViableFightingShips)
+	for (UFlareSimulatedSpacecraft* Ship : InitialSectorViableFightingShips)
 	{
 		Ship->GetDamageSystem()->NotifyDamage();
 	}
@@ -223,8 +254,8 @@ bool UFlareBattle::SimulateSmallShipTurn(UFlareSimulatedSpacecraft* Ship)
     //  - Find a weapon
     //  - Apply damage
 
-
 	UFlareSimulatedSpacecraft* Target = NULL;
+	FFlareMeteoriteSave* MeteoriteTarget = NULL;
 
     struct BattleTargetPreferences TargetPreferences;
     TargetPreferences.IsLarge = 1;
@@ -274,28 +305,34 @@ bool UFlareBattle::SimulateSmallShipTurn(UFlareSimulatedSpacecraft* Ship)
 		TargetPreferences.IsNotMilitary = 0.0;
 	}
 
-	Target = GetBestTarget(Ship, TargetPreferences);
+	if (FoundFightingCompanies)
+	{
+		Target = GetBestTarget(Ship, TargetPreferences);
+	}
 
 	if (!Target)
     {
-		return false;
+		MeteoriteTarget = GetMeteoriteTarget();
 	}
 
-	// Find best weapon
-	int32 WeaponGroupIndex = Ship->GetWeaponsSystem()->FindBestWeaponGroup(Target);
-
-	if(WeaponGroupIndex == -1)
+	if (Target || MeteoriteTarget)
 	{
-		return false;
+		// Find best weapon
+		int32 WeaponGroupIndex = Ship->GetWeaponsSystem()->FindBestWeaponGroup(Target,MeteoriteTarget);
+
+		if (WeaponGroupIndex == -1)
+		{
+			return false;
+		}
+/*
+		FLOGV("%s want to attack %s with %s",
+			*Ship->GetImmatriculation().ToString(),
+			*Target->GetImmatriculation().ToString(),
+			*Ship->GetWeaponsSystem()->GetWeaponGroup(WeaponGroupIndex)->Description->Identifier.ToString())
+*/
+		return SimulateShipAttack(Ship, WeaponGroupIndex, Target, MeteoriteTarget);
 	}
-
-	FLOGV("%s want to attack %s with %s",
-		  *Ship->GetImmatriculation().ToString(),
-		  *Target->GetImmatriculation().ToString(),
-		  *Ship->GetWeaponsSystem()->GetWeaponGroup(WeaponGroupIndex)->Description->Identifier.ToString())
-
-
-	return SimulateShipAttack(Ship, WeaponGroupIndex, Target);
+	return false;
 }
 
 bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
@@ -306,7 +343,6 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
-
 		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 
 		if(ComponentDescription->Type != EFlarePartType::Weapon || !ComponentDescription->WeaponCharacteristics.TurretCharacteristics.IsTurret)
@@ -322,8 +358,8 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 		}
 
 
-		UFlareSimulatedSpacecraft* Target = NULL;
-
+		UFlareSimulatedSpacecraft* ShipTarget = NULL;
+		FFlareMeteoriteSave* MeteoriteTarget = NULL;
 
 		struct BattleTargetPreferences TargetPreferences;
 		TargetPreferences.IsLarge = 1;
@@ -361,25 +397,55 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 			TargetPreferences.IsNotMilitary = 0.0;
 		}
 
-		Target = GetBestTarget(Ship, TargetPreferences);
-
-		if (!Target)
+		if (FoundFightingCompanies)
 		{
-			return false;
+			ShipTarget = GetBestTarget(Ship, TargetPreferences);
 		}
 
-		FLOGV("%s want to attack %s with %s",
-			  *Ship->GetImmatriculation().ToString(),
-			  *Target->GetImmatriculation().ToString(),
-			  *ComponentData->ShipSlotIdentifier.ToString())
-
-
-		if (SimulateShipWeaponAttack(Ship, ComponentDescription, ComponentData, Target))
+		if (!ShipTarget)
 		{
-			HasAttacked = true;
+			MeteoriteTarget = GetMeteoriteTarget();
+		}
+		else
+		{
+			FLOGV("%s want to attack %s with %s",
+			*Ship->GetImmatriculation().ToString(),
+			*ShipTarget->GetImmatriculation().ToString(),
+			*ComponentData->ShipSlotIdentifier.ToString())
+		}
+
+		if (ShipTarget || MeteoriteTarget)
+		{
+			if (SimulateShipWeaponAttack(Ship, ComponentDescription, ComponentData, ShipTarget, MeteoriteTarget))
+			{
+				HasAttacked = true;
+			}
 		}
 	}
 	return HasAttacked;
+}
+
+FFlareMeteoriteSave* UFlareBattle::GetMeteoriteTarget()
+{
+	if (LocalMeteorites.Num() > 0)
+	{
+		if (!SwitchedToFightingMeteorites && !FoundFightingCompanies)
+		{
+			CurrentBattleTurn = 1;
+			MaximumTurns = MAXIMUM_TURNS_METEORITES;
+			SwitchedToFightingMeteorites = true;
+			FLOG("Battle switched to meteorites only");
+		}
+
+		for (FFlareMeteoriteSave* Meteorite : LocalMeteorites)
+		{
+			if (Meteorite->Damage < Meteorite->BrokenDamage)
+			{
+				return Meteorite;
+			}
+		}
+	}
+	return nullptr;
 }
 
 UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft* Ship, struct BattleTargetPreferences Preferences)
@@ -387,9 +453,9 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 	UFlareSimulatedSpacecraft* BestTarget = NULL;
 	float BestScore = 0;
 
-	//FLOGV("GetBestTarget for %s", *Ship->GetImmatriculation().ToString());
+//	FLOGV("GetBestTarget for %s", *Ship->GetImmatriculation().ToString());
 
-	for (int32 SpacecraftIndex = 0 ; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* ShipCandidate = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
 
@@ -433,8 +499,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 		{
 			StateScore *= Preferences.IsLarge;
 		}
-
-		if (ShipCandidate->GetSize() == EFlarePartSize::S)
+		else if (ShipCandidate->GetSize() == EFlarePartSize::S)
 		{
 			StateScore *= Preferences.IsSmall;
 		}
@@ -524,8 +589,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 	return BestTarget;
 }
 
-
-bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 WeaponGroupIndex, UFlareSimulatedSpacecraft* Target)
+bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 WeaponGroupIndex, UFlareSimulatedSpacecraft* ShipTarget, FFlareMeteoriteSave* MeteoriteTarget)
 {
 	FFlareSimulatedWeaponGroup* WeaponGroup = Ship->GetWeaponsSystem()->GetWeaponGroup(WeaponGroupIndex);
 
@@ -533,7 +597,8 @@ bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 Wea
 
 	// TODO configure Fire probability
 	float FireProbability = 0.8f;
-	if(FMath::FRand() < FireProbability)
+
+	if(SwitchedToFightingMeteorites || FMath::FRand() < FireProbability)
 	{
 		// Fire with all weapon
 		for (int32 WeaponIndex = 0; WeaponIndex <  WeaponGroup->Weapons.Num(); WeaponIndex++)
@@ -543,7 +608,7 @@ bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 Wea
 				continue;
 			}
 
-			if (SimulateShipWeaponAttack(Ship, WeaponGroup->Description, WeaponGroup->Weapons[WeaponIndex], Target))
+			if (SimulateShipWeaponAttack(Ship, WeaponGroup->Description, WeaponGroup->Weapons[WeaponIndex], ShipTarget, MeteoriteTarget))
 			{
 				HasAttacked = true;
 			}
@@ -558,13 +623,11 @@ bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 Wea
 	return HasAttacked;
 }
 
-bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFlareSpacecraftComponentDescription* WeaponDescription, FFlareSpacecraftComponentSave* Weapon, UFlareSimulatedSpacecraft* Target)
+bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFlareSpacecraftComponentDescription* WeaponDescription, FFlareSpacecraftComponentSave* Weapon, UFlareSimulatedSpacecraft* ShipTarget, FFlareMeteoriteSave* MeteoriteTarget)
 {
 	float UsageRatio = Ship->GetDamageSystem()->GetUsableRatio(WeaponDescription, Weapon);
 	int32 MaxAmmo = WeaponDescription->WeaponCharacteristics.AmmoCapacity;
 	int32 CurrentAmmo = MaxAmmo - Weapon->Weapon.FiredAmmo;
-
-
 
 	if(WeaponDescription->WeaponCharacteristics.GunCharacteristics.IsGun)
 	{
@@ -573,26 +636,32 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 		float DamageDelay = FMath::Square(1.f- UsageRatio) * 10 * FiringPeriod * FMath::FRandRange(0.f, 1.f);
 		float Delay = DamageDelay + FiringPeriod;
 
-
 		int32 AmmoToFire = FMath::Max(1, (int32) (5.f * (1.f/Delay)));
 
 		AmmoToFire = FMath::Min(CurrentAmmo, AmmoToFire);
 
 		float TargetCoef = 1.1;
 
-		if(Target->GetSize() == EFlarePartSize::S)
+		if (ShipTarget)
 		{
-			TargetCoef *= 50;
-		}
+			if (ShipTarget->GetSize() == EFlarePartSize::S)
+			{
+				TargetCoef *= 50;
+			}
 
-		if(Target->GetDamageSystem()->IsStranded())
-		{
-			TargetCoef /= 2;
-		}
+			if (ShipTarget->GetDamageSystem()->IsStranded())
+			{
+				TargetCoef /= 2;
+			}
 
-		if(Target->GetDamageSystem()->IsUncontrollable())
+			if (ShipTarget->GetDamageSystem()->IsUncontrollable())
+			{
+				TargetCoef /= 10;
+			}
+		}
+		else if (MeteoriteTarget)
 		{
-			TargetCoef /= 10;
+			TargetCoef = 0.50f;
 		}
 
 		if(WeaponDescription->WeaponCharacteristics.FuzeType == EFlareShellFuzeType::Proximity)
@@ -608,21 +677,27 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 			if(FMath::FRand() < Precision)
 			{
 				// Apply bullet damage
-				SimulateBulletDamage(WeaponDescription, Target, Ship);
+				SimulateBulletDamage(WeaponDescription, ShipTarget, MeteoriteTarget, Ship);
 			}
 		}
-
 		Weapon->Weapon.FiredAmmo += AmmoToFire;
 		Ship->GetDamageSystem()->SetAmmoDirty();
 	}
 	else if(WeaponDescription->WeaponCharacteristics.BombCharacteristics.IsBomb && CurrentAmmo > 0)
 	{
-		// Drop one bomb with a hit probabiliy of (1 + usable ratio + isUncontrollable)/3
+		// Drop one bomb with a hit probability of (1 + usable ratio + isUncontrollable)/3
 
-		if (FMath::FRand() < (1+UsageRatio+(Target->GetDamageSystem()->IsUncontrollable() ? 1.f:0.f)))
+		if (ShipTarget)
 		{
-			// Apply bullet damage
-			SimulateBombDamage(WeaponDescription, Target, Ship);
+			if (FMath::FRand() < (1 + UsageRatio + (ShipTarget->GetDamageSystem()->IsUncontrollable() ? 1.f : 0.f)))
+			{
+				// Apply bomb damage
+				SimulateBombDamage(WeaponDescription, ShipTarget, Ship);
+			}
+		}
+		else if (MeteoriteTarget)
+		{
+			ApplyMeteoriteDamage(MeteoriteTarget, WeaponDescription->WeaponCharacteristics.ExplosionPower, Ship);
 		}
 
 		Weapon->Weapon.FiredAmmo++;
@@ -633,19 +708,32 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 		FLOGV("Not supported weapon %s", *WeaponDescription->Identifier.ToString());
 		return false;
 	}
-
 	return true;
 }
 
-void UFlareBattle::SimulateBulletDamage(FFlareSpacecraftComponentDescription* WeaponDescription, UFlareSimulatedSpacecraft* Target, UFlareSimulatedSpacecraft* DamageSource)
+void UFlareBattle::SimulateBulletDamage(FFlareSpacecraftComponentDescription* WeaponDescription, UFlareSimulatedSpacecraft* ShipTarget, FFlareMeteoriteSave* MeteoriteTarget, UFlareSimulatedSpacecraft* DamageSource)
 {
 	if(WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::ArmorPiercing)
 	{
-		ApplyDamage(Target, WeaponDescription->WeaponCharacteristics.GunCharacteristics.KineticEnergy, EFlareDamage::DAM_ArmorPiercing, DamageSource);
+		if (ShipTarget)
+		{
+			ApplyDamage(ShipTarget, WeaponDescription->WeaponCharacteristics.GunCharacteristics.KineticEnergy, EFlareDamage::DAM_ArmorPiercing, DamageSource);
+		}
+		else if (MeteoriteTarget)
+		{
+			ApplyMeteoriteDamage(MeteoriteTarget, WeaponDescription->WeaponCharacteristics.GunCharacteristics.KineticEnergy, DamageSource);
+		}
 	}
 	else if(WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HEAT)
 	{
-		ApplyDamage(Target, WeaponDescription->WeaponCharacteristics.ExplosionPower, EFlareDamage::DAM_HEAT, DamageSource);
+		if (ShipTarget)
+		{
+			ApplyDamage(ShipTarget, WeaponDescription->WeaponCharacteristics.ExplosionPower, EFlareDamage::DAM_HEAT, DamageSource);
+		}
+		else if (MeteoriteTarget)
+		{
+			ApplyMeteoriteDamage(MeteoriteTarget, WeaponDescription->WeaponCharacteristics.ExplosionPower, DamageSource);
+		}
 	}
 	else if(WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HighExplosive)
 	{
@@ -653,11 +741,17 @@ void UFlareBattle::SimulateBulletDamage(FFlareSpacecraftComponentDescription* We
 		float FragmentHitRatio = FMath::FRandRange(0.01f, 0.1f);
 		int32 FragmentCount = WeaponDescription->WeaponCharacteristics.AmmoFragmentCount * FragmentHitRatio;
 
-
 		for(int FragmentIndex = 0; FragmentIndex < FragmentCount; FragmentIndex++)
 		{
-			float FragmentPowerEffet = FMath::FRandRange(0.f, 2.f);
-			ApplyDamage(Target, FragmentPowerEffet * WeaponDescription->WeaponCharacteristics.ExplosionPower, EFlareDamage::DAM_HighExplosive, DamageSource);
+			float FragmentPowerEffect = FMath::FRandRange(0.f, 2.f);
+			if (ShipTarget)
+			{
+				ApplyDamage(ShipTarget, FragmentPowerEffect * WeaponDescription->WeaponCharacteristics.ExplosionPower, EFlareDamage::DAM_HighExplosive, DamageSource);
+			}
+			else if (MeteoriteTarget)
+			{
+				ApplyMeteoriteDamage(MeteoriteTarget, FragmentPowerEffect * WeaponDescription->WeaponCharacteristics.ExplosionPower, DamageSource);
+			}
 		}
 	}
 }
@@ -667,7 +761,7 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 	// Apply damage
 	ApplyDamage(Target, WeaponDescription->WeaponCharacteristics.ExplosionPower,
 		SpacecraftHelper::GetWeaponDamageType(WeaponDescription->WeaponCharacteristics.DamageType),
-		DamageSource);
+	DamageSource);
 
 	// Ship salvage
 	if (!Target->IsStation() && !Target->GetDescription()->IsDroneShip &&
@@ -679,9 +773,21 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 	}
 }
 
+void UFlareBattle::ApplyMeteoriteDamage(FFlareMeteoriteSave* MeteoriteTarget, float Energy, UFlareSimulatedSpacecraft* DamageSource)
+{
+	MeteoriteTarget->Damage += Energy;
+	if (MeteoriteTarget->Damage >= MeteoriteTarget->BrokenDamage)
+	{
+		LocalMeteorites.RemoveSwap(MeteoriteTarget);
+		if (PlayerAssetsFighting)
+		{
+			Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("meteorite-destroyed").PutName("sector", Sector->GetIdentifier()));
+		}
+	}
+}
+
 void UFlareBattle::ApplyDamage(UFlareSimulatedSpacecraft* Target, float Energy, EFlareDamage::Type DamageType, UFlareSimulatedSpacecraft* DamageSource)
 {
-
 	// Find a component and apply damages
 
 	int32 ComponentIndex;
@@ -694,15 +800,11 @@ void UFlareBattle::ApplyDamage(UFlareSimulatedSpacecraft* Target, float Energy, 
 		ComponentIndex = GetBestTargetComponent(Target);
 	}
 
-
 	FFlareSpacecraftComponentSave* TargetComponent = &Target->GetData().Components[ComponentIndex];
-
 	FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(TargetComponent->ComponentIdentifier);
-
 	CombatLog::SpacecraftDamaged(Target, Energy, 0, FVector::ZeroVector, DamageType, DamageSource->GetCompany(), "SimulatedBattle");
-	float DamageRatio = Target->GetDamageSystem()->ApplyDamage(ComponentDescription, TargetComponent, Energy, DamageType, DamageSource);
+	Target->GetDamageSystem()->ApplyDamage(ComponentDescription, TargetComponent, Energy, DamageType, DamageSource);
 }
-
 
 int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpacecraft)
 {
@@ -735,7 +837,6 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 	}
 
 	TArray<int32> ComponentSelection;
-
 	for (int32 ComponentIndex = 0; ComponentIndex < TargetSpacecraft->GetData().Components.Num(); ComponentIndex++)
 	{
 		FFlareSpacecraftComponentSave* TargetComponent = &TargetSpacecraft->GetData().Components[ComponentIndex];
@@ -745,44 +846,50 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 		float UsageRatio = TargetSpacecraft->GetDamageSystem()->GetUsableRatio(ComponentDescription, TargetComponent);
 		float DamageRatio = TargetSpacecraft->GetDamageSystem()->GetDamageRatio(ComponentDescription, TargetComponent);
 
-
-		if (ComponentDescription && UsageRatio > 0)
+		if (ComponentDescription)
 		{
-			if (ComponentDescription->Type == EFlarePartType::RCS)
+			if (UsageRatio > 0)
 			{
-				for (int32 i = 0; i < RCSWeight; i++)
+				if (ComponentDescription->Type == EFlarePartType::RCS)
 				{
-					ComponentSelection.Add(ComponentIndex);
+					ComponentSelection.Reserve(ComponentSelection.Num() + RCSWeight);
+					for (int32 i = 0; i < RCSWeight; i++)
+					{
+						ComponentSelection.Add(ComponentIndex);
+					}
 				}
-			}
 
-			if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
-			{
-				for (int32 i = 0; i < PodWeight; i++)
+				if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
 				{
-					ComponentSelection.Add(ComponentIndex);
+					ComponentSelection.Reserve(ComponentSelection.Num() + PodWeight);
+					for (int32 i = 0; i < PodWeight; i++)
+					{
+						ComponentSelection.Add(ComponentIndex);
+					}
 				}
-			}
 
-			if (ComponentDescription->Type == EFlarePartType::Weapon)
-			{
-				for (int32 i = 0; i < WeaponWeight; i++)
+				if (ComponentDescription->Type == EFlarePartType::Weapon)
 				{
-					ComponentSelection.Add(ComponentIndex);
+					ComponentSelection.Reserve(ComponentSelection.Num() + WeaponWeight);
+					for (int32 i = 0; i < WeaponWeight; i++)
+					{
+						ComponentSelection.Add(ComponentIndex);
+					}
 				}
-			}
 
-			if (ComponentDescription->Type == EFlarePartType::InternalComponent)
-			{
-				for (int32 i = 0; i < InternalWeight; i++)
+				if (ComponentDescription->Type == EFlarePartType::InternalComponent)
 				{
-					ComponentSelection.Add(ComponentIndex);
+					ComponentSelection.Reserve(ComponentSelection.Num() + InternalWeight);
+					for (int32 i = 0; i < InternalWeight; i++)
+					{
+						ComponentSelection.Add(ComponentIndex);
+					}
 				}
 			}
-		}
-		else if (ComponentDescription && DamageRatio > 0)
-		{
-			ComponentSelection.Add(ComponentIndex);
+			else if (DamageRatio > 0)
+			{
+				ComponentSelection.Add(ComponentIndex);
+			}
 		}
 	}
 

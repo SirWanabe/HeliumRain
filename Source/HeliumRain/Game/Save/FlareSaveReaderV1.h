@@ -33,7 +33,7 @@ protected:
 	void LoadCompanyDescription(const TSharedPtr<FJsonObject> Object, FFlareCompanyDescription* Data);
 	void LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareWorldSave* Data);
 
-
+	void LoadWorldEvents(const TSharedPtr<FJsonObject> Object, FFlareWorldGameEventSave* Data);
 	void LoadCompany(const TSharedPtr<FJsonObject> Object, FFlareCompanySave* Data);
 
 	void LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FFlareSpacecraftSave* Data);

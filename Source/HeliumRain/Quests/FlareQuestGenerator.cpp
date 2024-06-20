@@ -3220,7 +3220,7 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 	UFlareCompany* PlayerCompany = Parent->GetGame()->GetPC()->GetCompany();
 
 	UFlareSimulatedSpacecraft* TargetStation = Parent->GetGame()->GetGameWorld()->FindSpacecraft(InitData.GetName("target-station"));
-	int32 InterseptDate = InitData.GetInt32("intercept-date");
+	int32 InterceptDate = InitData.GetInt32("intercept-date");
 	int32 MeteoriteCount = InitData.GetInt32("meteorite-count");
 
 	QuestClass = UFlareQuestGeneratedMeteoriteInterception::GetClass();
@@ -3237,7 +3237,7 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 	QuestDescription = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionDescription", "A meteorite group will pose a threat to {0} in {1} on {2}. Intercept it and destroy it."),
 		UFlareGameTools::DisplaySpacecraftName(TargetStation),
 		TargetStation->GetCurrentSector()->GetSectorName(),
-		UFlareGameTools::GetDisplayDate(InterseptDate + 1));
+		UFlareGameTools::GetDisplayDate(InterceptDate + 1));
 
 
 
@@ -3251,7 +3251,7 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "prepare", Description);
 
 
-		UFlareQuestConditionAfterDate* Condition = UFlareQuestConditionAfterDate::Create(this, InterseptDate);
+		UFlareQuestConditionAfterDate* Condition = UFlareQuestConditionAfterDate::Create(this, InterceptDate);
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(Condition);
 
 		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, TargetStation->GetCurrentSector()));
@@ -3264,7 +3264,6 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 
 		Description = LOCTEXT("GeneratedMeteoriteDestructionInterception", "Destroy the meteorites");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "destroy", Description);
-
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCounterCondition::Create(this,
 																																			  [=](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
 		{
@@ -3288,11 +3287,17 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 			Condition->Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
 		},  "DestroyMeteoriteCond1", MeteoriteCount));
 
+		{
+			// Failed to destroy the meteorites on time
+			UFlareQuestConditionAfterDate* FailCondition = UFlareQuestConditionAfterDate::Create(this, InterceptDate + 1);
+			Cast<UFlareQuestConditionGroup>(Step->GetFailCondition())->AddChildCondition(FailCondition);
+		}
+
 		Steps.Add(Step);
 	}
 
-	Cast<UFlareQuestConditionGroup>(ExpirationCondition)->AddChildCondition(UFlareQuestConditionAfterDate::Create(this, InterseptDate));
 
+	Cast<UFlareQuestConditionGroup>(ExpirationCondition)->AddChildCondition(UFlareQuestConditionAfterDate::Create(this, InterceptDate));
 
 	AddGlobalFailCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
 																																		  [=](UFlareQuestCondition* Condition, FFlareBundle& Bundle)

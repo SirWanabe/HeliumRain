@@ -36,7 +36,7 @@ public:
 
 	void GetTargetPreference(float* IsSmall, float* IsLarge, float* IsUncontrollableCivil, float* IsUncontrollableSmallMilitary, float* IsUncontrollableLargeMilitary, float* IsNotUncontrollable, float* IsStation, float* IsHarpooned);
 
-	int32 FindBestWeaponGroup(UFlareSimulatedSpacecraft* Target);
+	int32 FindBestWeaponGroup(UFlareSimulatedSpacecraft* ShipTarget, FFlareMeteoriteSave* MeteoriteTarget);
 
 
 	/*----------------------------------------------------

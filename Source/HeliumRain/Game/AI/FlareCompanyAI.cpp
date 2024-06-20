@@ -3280,21 +3280,20 @@ int32 UFlareCompanyAI::GetBestPartWeightValue(FFlareSpacecraftComponentDescripti
 
 	if (EngineOrRCS)
 	{
+		//RCS weights
 		EnginePowerWeight = 2;
 		AngularAccelerationWeight = 10;
-		if (Budget == EFlareBudget::Military)
-		{
-			HitPointsWeight = 10;
-		}
 	}
 	else
 	{
+		//Engine weights
 		EnginePowerWeight = 10;
 		AngularAccelerationWeight = 1;
-		if (Budget == EFlareBudget::Military)
-		{
-			HitPointsWeight = 10;
-		}
+	}
+
+	if (Budget == EFlareBudget::Military)
+	{
+		HitPointsWeight = 10;
 	}
 
 	return (Part->Cost * CostWeight) + (Part->HitPoints * HitPointsWeight) + (Part->EngineCharacteristics.EnginePower * EnginePowerWeight) + (Part->EngineCharacteristics.AngularAccelerationRate * AngularAccelerationWeight);

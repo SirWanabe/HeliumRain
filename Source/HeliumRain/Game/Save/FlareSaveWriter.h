@@ -69,7 +69,7 @@ protected:
 	TSharedRef<FJsonObject> SaveCompanyDescription(FFlareCompanyDescription* Data);
 	TSharedRef<FJsonObject> SaveWorld(FFlareWorldSave* Data);
 
-
+	TSharedRef<FJsonObject> SaveWorldEvents(FFlareWorldGameEventSave* Data);
 	TSharedRef<FJsonObject> SaveCompany(FFlareCompanySave* Data);
 
 	TSharedRef<FJsonObject> SaveSpacecraft(FFlareSpacecraftSave* Data);

@@ -940,7 +940,6 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 		// During docking, lets the others avoid me
 		PilotHelper::AnticollisionConfig IgnoreConfig;
 		IgnoreConfig.SpacecraftToIgnore = AnticollisionDockStation;
-
 		FVector Global = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LinearEngineTarget.Target);
 		FVector GlobalFixed = PilotHelper::AnticollisionCorrection(Spacecraft, Global, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f);
 

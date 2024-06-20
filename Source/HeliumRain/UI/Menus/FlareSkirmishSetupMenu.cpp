@@ -1533,9 +1533,13 @@ void SFlareSkirmishSetupMenu::OnOrderShipConfirmed(FFlareSpacecraftDescription* 
 	}
 
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	if((PlayerShips + EnemyShips +1) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
+	if((PlayerShips + EnemyShips + 1) >= (MyGameSettings->MaxShipsInSector * MAX_SHIPS_MULTI))
 	{
 		Order->IsReserve = true;
+	}
+	else
+	{
+		Order->IsReserve = false;
 	}
 	UpdateShips();
 }

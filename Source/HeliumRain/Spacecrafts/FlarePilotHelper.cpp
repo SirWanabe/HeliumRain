@@ -83,7 +83,6 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	SCOPE_CYCLE_COUNTER(STAT_PilotHelper_AnticollisionCorrection);
 
 	typedef TPair<AActor*, FVector> TFlareCollisionCandidate;
-
 	UFlareSector* ActiveSector = Ship->GetGame()->GetActiveSector();
 	TArray<TFlareCollisionCandidate> Candidates;
 	TFlareCollisionCandidate Candidate;
@@ -111,7 +110,6 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Select dangerous asteroids
-//	Candidates.Reserve(Candidates.Num() + ActiveSector->GetAsteroids().Num());
 	for (auto AsteroidCandidate : ActiveSector->GetAsteroids())
 	{
 		Candidate.Key = AsteroidCandidate;
@@ -120,7 +118,6 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Select dangerous meteorites
-//	Candidates.Reserve(Candidates.Num() + ActiveSector->GetMeteorites().Num());
 	for (auto MeteoriteCandidate : ActiveSector->GetMeteorites())
 	{
 		if(!MeteoriteCandidate->IsBroken())
@@ -134,7 +131,6 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	// Select dangerous colliders
 	TArray<AActor*> ColliderActorList;
 	UGameplayStatics::GetAllActorsOfClass(Ship->GetWorld(), AFlareCollider::StaticClass(), ColliderActorList);
-//	Candidates.Reserve(Candidates.Num() + ColliderActorList.Num());
 	for (auto ColliderCandidate : ColliderActorList)
 	{
 		Candidate.Key = Cast<AFlareCollider>(ColliderCandidate);
@@ -150,13 +146,12 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 
 	// Input data for danger processing
 	FBox ShipBox = Ship->GetComponentsBoundingBox();
-//	FBox ShipBox = Ship->GetMeshBox();
 	FVector CurrentVelocity = Ship->GetLinearVelocity() * 100;
 	FVector CurrentLocation = (ShipBox.Max + ShipBox.Min) / 2.0;
 	float CurrentSize = FMath::Max(ShipBox.GetExtent().Size(), 1.0f);
 	float MaxRelevanceDistance = 200 * CurrentSize;
 
-	// Output data
+// Output data
 	MostDangerousCandidateActor = NULL;
 
 	// Process all candidates

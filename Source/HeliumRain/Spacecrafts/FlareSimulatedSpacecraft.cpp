@@ -73,10 +73,10 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 		}
 
 		TArray<FFlareSpacecraftComponentSave*> GunComponents;
+		TArray<FFlareSpacecraftComponentSave*> TurretComponents;
 		TArray<FFlareSpacecraftComponentSave*> InternalComponents;
 		TArray<FFlareSpacecraftComponentSave*> OrbitalEngineComponents;
 		TArray<FFlareSpacecraftComponentSave*> RCSComponents;
-		TArray<FFlareSpacecraftComponentSave*> TurretComponents;
 
 		for (int32 ComponentIndex = 0; ComponentIndex < GetData().Components.Num(); ComponentIndex++)
 		{

@@ -45,6 +45,7 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	CompanyData = Data;
 	CompanyData.Identifier = FName(*GetName());
 
+	ResearchBonuses.Reserve(5);
 	ResearchBonuses.Add("repair-bonus", 0.f);
 	ResearchBonuses.Add("diplomatic-penaltybonus", 0.f);
 	ResearchBonuses.Add("diplomatic-bonus", 0.f);
@@ -1131,10 +1132,7 @@ void UFlareCompany::CreatedSpaceCraft(UFlareSimulatedSpacecraft* Spacecraft)
 	}
 	if (Spacecraft->IsStation())
 	{
-		if (Spacecraft->IsComplexElement())
-		{
-		}
-		else
+		if (!Spacecraft->IsComplexElement())
 		{
 			AddOrRemoveCompanySectorStation(Spacecraft, false);
 		}
@@ -2233,8 +2231,12 @@ bool UFlareCompany::IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* 
 
 bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const
 {
-	FName Identifier = Description->Identifier;
+	if (Description->IsSubstation)
+	{
+		return false;
+	}
 
+	FName Identifier = Description->Identifier;
 	if (Description->RequiredTechnologies.Num() > 0)
 	{
 		bool AllTechsUnlocked = true;

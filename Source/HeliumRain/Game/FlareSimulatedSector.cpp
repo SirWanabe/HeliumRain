@@ -1818,20 +1818,30 @@ void UFlareSimulatedSector::ProcessMeteorites()
 	}
 }
 
-void UFlareSimulatedSector::GenerateMeteorites()
+void UFlareSimulatedSector::GenerateMeteorites(bool MeteorShowerInProgress)
 {
 	for(UFlareSimulatedSpacecraft* Station : SectorStations)
 	{
 		float Probability = 0.0003;
+		if (MeteorShowerInProgress)
+		{
+			Probability *= 75;
+		}
+
 		if(FMath::FRand() >  Probability)
 		{
 			continue;
 		}
 
-		float PowerRatio = 1 + FMath::Log2(0.002f * GetGame()->GetGameWorld()->GetDate());
+		float PowerFactor = 0.002f;
+		if (MeteorShowerInProgress)
+		{
+			PowerFactor *= 3;
+		}
+
+		float PowerRatio = 1 + FMath::Log2(PowerFactor * GetGame()->GetGameWorld()->GetDate());
 		GenerateMeteoriteGroup(Station, PowerRatio);
 	}
-
 }
 
 void UFlareSimulatedSector::GenerateMeteoriteGroup(UFlareSimulatedSpacecraft* TargetStation, float PowerRatio)

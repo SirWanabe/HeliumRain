@@ -43,7 +43,7 @@ void UFlareWorld::Load(const FFlareWorldSave& Data)
 	Planetarium = NewObject<UFlareSimulatedPlanetarium>(this, UFlareSimulatedPlanetarium::StaticClass());
 	Planetarium->Load();
 
-    // Load all companies
+	// Load all companies
     for (int32 i = 0; i < WorldData.CompanyData.Num(); i++)
     {
 		LoadCompany(WorldData.CompanyData[i]);
@@ -116,6 +116,25 @@ void UFlareWorld::Load(const FFlareWorldSave& Data)
 	WorldMoneyReferenceInit = false;
 }
 
+FFlareWorldGameEventSave* UFlareWorld::GetGlobalEvent(FName EventSearch)
+{
+	for (int EventIndex = 0; EventIndex < WorldData.GlobalEvents.Num(); EventIndex++)
+	{
+		FFlareWorldGameEventSave* CheckingEvent = &WorldData.GlobalEvents[EventIndex];
+		if (CheckingEvent->EventName == EventSearch)
+		{
+			return CheckingEvent;
+		}
+	}
+
+	FFlareWorldGameEventSave NewEvent;
+	NewEvent.EventName = EventSearch;
+	NewEvent.EventDate = WorldData.Date - 1;
+	NewEvent.EventDateEnd = WorldData.Date - 1;
+	WorldData.GlobalEvents.Add(NewEvent);
+	return &WorldData.GlobalEvents.Last();
+}
+
 void UFlareWorld::PostLoad()
 {
 	for (int i = 0; i < Companies.Num(); i++)
@@ -174,6 +193,7 @@ FFlareWorldSave* UFlareWorld::Save()
 	WorldData.CompanyData.Empty();
 	WorldData.SectorData.Empty();
 	WorldData.TravelData.Empty();
+
 	WorldData.CompanyData.Reserve(Companies.Num());
 	WorldData.SectorData.Reserve(Sectors.Num());
 	WorldData.TravelData.Reserve(Travels.Num());
@@ -466,28 +486,40 @@ void UFlareWorld::Simulate()
 
 		// Check if battle
 		bool HasBattle = false;
-		for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
+		for (FFlareMeteoriteSave& Meteorite : Sector->GetData()->MeteoriteData)
 		{
-			UFlareCompany* Company = Companies[CompanyIndex];
-
-			FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(Company);
-
-			if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
+			if (Meteorite.DaysBeforeImpact == 0)
 			{
-				// Local sector, don't check if the player want fight
-				continue;
+				HasBattle = true;
+				break;
 			}
+		}
 
-			if(!BattleState.WantFight())
+		if (!HasBattle)
+		{
+			for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 			{
-				// Don't want fight
-				continue;
+				UFlareCompany* Company = Companies[CompanyIndex];
+
+				FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(Company);
+/*
+				if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
+				{
+					// Local sector, don't check if the player want fight
+					continue;
+				}
+*/
+				if (!BattleState.WantFight())
+				{
+					// Don't want fight
+					continue;
+				}
+
+				FLOGV("%s want fight in %s", *Company->GetCompanyName().ToString(),
+					*Sector->GetSectorName().ToString());
+
+				HasBattle = true;
 			}
-
-			FLOGV("%s want fight in %s", *Company->GetCompanyName().ToString(),
-				  *Sector->GetSectorName().ToString());
-
-			HasBattle = true;
 		}
 
 		if (HasBattle)
@@ -598,6 +630,7 @@ void UFlareWorld::Simulate()
 
 	// AI. Play them in random order
 
+	FLOG("* Simulate > Global Events");
 	bool GlobalWar = false;
 	float MaxCombatPointRatio = float(MaxCombatPoint) / GetGame()->GetGameWorld()->GetTotalWorldCombatPoint();
 
@@ -606,21 +639,8 @@ void UFlareWorld::Simulate()
 	//FLOGV("TotalWorldCombatPoint %d", TotalWorldCombatPoint);
 
 	// If a company is not far from half world power, a global alliance is formed
-
 	int32 GameDifficulty = -1;
 	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
-
-	/*
-	GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check 1"),
-		FText::Format(LOCTEXT("AIStartGlobalWarInfo", "Ratio {0} Maxcombatpoint {1} High company {2}"),
-			MaxCombatPointRatio,
-			MaxCombatPoint,
-			MaxCombatPointCompany->GetCompanyName()),
-		FName("global-war"),
-		EFlareNotification::NT_Military,
-		false,
-		EFlareMenu::MENU_Leaderboard);
-	*/
 
 	if (MaxCombatPointRatio > 0.3 && MaxCombatPoint > 500)
 	{
@@ -690,19 +710,11 @@ void UFlareWorld::Simulate()
 			}
 		}
 
-		if(WorldData.Date > WorldData.EventDate_GlobalWar+MinimumDays)
+		FFlareWorldGameEventSave* GlobalWarEvent = GetGlobalEvent("Global War");
+
+		if(WorldData.Date > GlobalWarEvent->EventDateEnd+MinimumDays)
 		{
 			bool HasChance = FMath::FRand() < Chance;
-/*
-			GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War Check"),
-			FText::Format(LOCTEXT("AIStartGlobalWarInfo", "chance {0}, haschance {1}."),
-			Chance,
-			HasChance),
-			FName("global-war"),
-			EFlareNotification::NT_Military,
-			false,
-			EFlareMenu::MENU_Leaderboard);
-*/
 			if (HasChance)
 			{
 				for (UFlareCompany* OtherCompany : GetCompanies())
@@ -731,7 +743,8 @@ void UFlareWorld::Simulate()
 				// Notify the player that this is happening
 				if (GlobalWar)
 				{
-					WorldData.EventDate_GlobalWar = WorldData.Date;
+					GlobalWarEvent->EventDate = WorldData.Date;
+					GlobalWarEvent->EventDateEnd = WorldData.Date;
 					GetGame()->GetPC()->Notify(LOCTEXT("GlobalWar", "Global War"),
 						FText::Format(LOCTEXT("AIStartGlobalWarInfo", "All companies are now allied to stop the militarization of {0}."),
 						MaxCombatPointCompany->GetCompanyName()),
@@ -740,6 +753,30 @@ void UFlareWorld::Simulate()
 						false,
 						EFlareMenu::MENU_Leaderboard);
 				}
+			}
+		}
+	}
+
+	FFlareWorldGameEventSave* GlobalMeteorStormEvent = GetGlobalEvent("Meteor Storm");
+	bool MeteorStormInProgress = (WorldData.Date >= GlobalMeteorStormEvent->EventDate && WorldData.Date < GlobalMeteorStormEvent->EventDateEnd);
+	if (!MeteorStormInProgress)
+	{
+		if (WorldData.Date > GlobalMeteorStormEvent->EventDateEnd + 365)
+		{
+			float MeteorStormProbability = 0.001;
+			bool HasChance = FMath::FRand() < MeteorStormProbability;
+			if (HasChance)
+			{
+				GlobalMeteorStormEvent->EventDate = WorldData.Date;
+				GlobalMeteorStormEvent->EventDateEnd = WorldData.Date + FMath::RandRange(7, 21);
+
+				GetGame()->GetPC()->Notify(LOCTEXT("MeteorStorm", "Meteor Activity"),
+				FText::Format(LOCTEXT("MeteorStormInfo", "Warning: Nema is entering a period of heightened meteorite activity. This period of activity is expected to pass in {0} days."),
+				(GlobalMeteorStormEvent->EventDateEnd - GlobalMeteorStormEvent->EventDate) - 1),
+				FName("MeteorStorm"),
+				EFlareNotification::NT_Info,
+				false);
+				MeteorStormInProgress = true;
 			}
 		}
 	}
@@ -764,10 +801,8 @@ void UFlareWorld::Simulate()
 	}
 
 	// Clear bombs, Process meteorites
-//	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
 	for (UFlareSimulatedSector* Sector : Sectors)
 	{
-//		Sectors[SectorIndex]->ClearBombs();
 		Sector->ClearBombs();
 		Sector->ProcessMeteorites();
 	}
@@ -775,7 +810,7 @@ void UFlareWorld::Simulate()
 	// GenerateMeteorites
 	for (UFlareSimulatedSector* Sector :Sectors)
 	{
-		Sector->GenerateMeteorites();
+		Sector->GenerateMeteorites(MeteorStormInProgress);
 	}
 
 	CompanyMutualAssistance();
@@ -1830,7 +1865,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 
 
 			GetGame()->GetPC()->Notify(LOCTEXT("MultiplePlayerAttackedDistant", "Incoming attacks"),
-				FText::Format(LOCTEXT("MultipleDaysMultiplePlayerAttackedSoonFormat", "{0} attacks are incoming in few days. You will be attacked with {1} (Combat value: {2}). Prepare for battle."),
+				FText::Format(LOCTEXT("MultipleDaysMultiplePlayerAttackedSoonFormat", "{0} attacks are incoming in a few days. You will be attacked with {1} (Combat value: {2}). Prepare for battle."),
 					MultipleDaysNotificationNeeds,
 					GetShipsText(LightShipCount, HeavyShipCount),
 					CombatValue),
@@ -2288,6 +2323,20 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 		(UnknownShipCount > 1) ? MultipleShips : SingleShip);
 	};
 
+	// Global Events
+	FFlareWorldGameEventSave* GlobalMeteorStormEvent = GetGlobalEvent("Meteor Storm");
+	bool MeteorStormInProgress = (WorldData.Date >= GlobalMeteorStormEvent->EventDate && WorldData.Date < GlobalMeteorStormEvent->EventDateEnd);
+	if (MeteorStormInProgress)
+	{
+		int64 RemainingDuration = GlobalMeteorStormEvent->EventDateEnd - WorldData.Date;
+		FFlareIncomingEvent MeteoriteEvent;
+
+		MeteoriteEvent.Text = FText::Format(LOCTEXT("IncreasedMeteoriteActivities", "\u2022 <WarningText>Increased meteorite activity ({0} left)</>"),
+		UFlareGameTools::FormatDate(RemainingDuration, 1));
+		MeteoriteEvent.RemainingDuration = RemainingDuration;
+		IncomingEvents.Add(MeteoriteEvent);
+	}
+
 	// List incoming threats first
 	TMap<IncomingKey, IncomingValue> IncomingMap = GetIncomingPlayerEnemy();
 	for (auto Entry : IncomingMap)
@@ -2369,7 +2418,6 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 			{
 				FFlareIncomingEvent Event;
 				Event.RemainingDuration = DangerDelay;
-
 				FText MeteoriteText = (DangerCount > 1 ? LOCTEXT("MultipleMeteorites", "meteorites") : LOCTEXT("OneMeteorite", "meteorite"));
 
 				if (DangerDelay == 0)
@@ -2398,7 +2446,10 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 							DelayText);
 					}
 				}
-				IncomingEvents.Add(Event);
+				if (!Event.Text.IsEmpty())
+				{
+					IncomingEvents.Add(Event);
+				}
 			}
 		}
 	}

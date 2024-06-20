@@ -232,7 +232,18 @@ void UFlareSaveReaderV1::LoadCompanyDescription(const TSharedPtr<FJsonObject> Ob
 void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareWorldSave* Data)
 {
 	LoadInt64(Object, "Date", &Data->Date);
-	LoadInt64(Object, "EventDate_GlobalWar", &Data->EventDate_GlobalWar);
+
+	const TArray<TSharedPtr<FJsonValue>>* GlobalEvents;
+	if (Object->TryGetArrayField("GlobalEvents", GlobalEvents))
+	{
+		Data->CompanyData.Reserve(GlobalEvents->Num());
+		for (TSharedPtr<FJsonValue> Item : *GlobalEvents)
+		{
+			FFlareWorldGameEventSave ChildData;
+			LoadWorldEvents(Item->AsObject(), &ChildData);
+			Data->GlobalEvents.Add(ChildData);
+		}
+	}
 
 	const TArray<TSharedPtr<FJsonValue>>* Companies;
 	if(Object->TryGetArrayField("Companies", Companies))
@@ -271,7 +282,12 @@ void UFlareSaveReaderV1::LoadWorld(const TSharedPtr<FJsonObject> Object, FFlareW
 	}
 }
 
-
+void UFlareSaveReaderV1::LoadWorldEvents(const TSharedPtr<FJsonObject> Object, FFlareWorldGameEventSave* Data)
+{
+	LoadFName(Object, "EventName", &Data->EventName);
+	LoadInt64(Object, "EventDate", &Data->EventDate);
+	LoadInt64(Object, "EventDateEnd", &Data->EventDateEnd);
+}
 
 void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlareCompanySave* Data)
 {

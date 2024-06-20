@@ -489,7 +489,7 @@ public:
 	FText GetSectorBalanceText();
 
 	void ProcessMeteorites();
-	void GenerateMeteorites();
+	void GenerateMeteorites(bool MeteorShowerInProgress);
 	void GenerateMeteoriteGroup(UFlareSimulatedSpacecraft* TargetStation, float PowerRatio);
 
 	TMap<FFlareResourceDescription*, int32> DistributeResources(TMap<FFlareResourceDescription*, int32> Resources, UFlareSimulatedSpacecraft* Source, UFlareCompany* TargetCompany, bool DryRun);
