@@ -152,7 +152,7 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 			}
 		} 
 
-		else if (Ship->GetParent()->GetShipMaster() && !Ship->GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
+		else if (Ship->GetParent()->GetShipMaster() && Ship->GetParent()->GetShipMaster()->GetActive() && !Ship->GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
 		{
 			WantFire = false;
 			if (DroneReturnToCarrier(DeltaSeconds))

@@ -1988,7 +1988,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 		//Try to start a travel to current sector
 		return NULL;
 	}
-	else
+	else if(DestinationSector)
 	{
 		UFlareSimulatedSector* OriginSector = TravelingFleet->GetCurrentSector();
 
@@ -2048,6 +2048,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 
 		return Travel;
 	}
+	return NULL;
 }
 
 void UFlareWorld::DeleteTravel(UFlareTravel* Travel)

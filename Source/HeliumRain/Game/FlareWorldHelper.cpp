@@ -23,6 +23,7 @@ TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldHelper::C
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 
 	// Init
+	WorldStats.Reserve(Game->GetResourceCatalog()->Resources.Num());
 	for(int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
@@ -43,7 +44,6 @@ TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldHelper::C
 		TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> SectorStats;
 
 		SectorStats = SectorHelper::ComputeSectorResourceStats(Sector, IncludeStorage);
-
 
 		for(int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 		{

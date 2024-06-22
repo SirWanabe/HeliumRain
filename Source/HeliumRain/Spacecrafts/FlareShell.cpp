@@ -41,7 +41,7 @@ AFlareShell::AFlareShell(const class FObjectInitializer& PCIP) : Super(PCIP)
 
 void AFlareShell::Initialize(UFlareWeapon* Weapon, const FFlareSpacecraftComponentDescription* Description, FVector ShootDirection, FVector ParentVelocity, bool Tracer)
 {
-	TraceDelegate.BindUObject(this, &AFlareShell::OnTraceCompleted);
+//	TraceDelegate.BindUObject(this, &AFlareShell::OnTraceCompleted);
 
 	ShellDescription = Description;
 	TracerShell = Tracer;

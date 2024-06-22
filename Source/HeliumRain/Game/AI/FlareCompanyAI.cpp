@@ -140,8 +140,8 @@ void UFlareCompanyAI::FinishedConstruction(UFlareSimulatedSpacecraft* FinishedSt
 {
 	if (FinishedStation)
 	{
-		UnderConstructionStations.Remove(FinishedStation);
-		UnderConstructionUpgradeStations.Remove(FinishedStation);
+		UnderConstructionStations.RemoveSwap(FinishedStation);
+		UnderConstructionUpgradeStations.RemoveSwap(FinishedStation);
 	}
 }
 
@@ -1376,7 +1376,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	TArray<FName> Keys;
 	LicensedSectors.GetKeys(Keys);
 	bool FoundPossibleSector = false;
-
+	KnownSectors.Reserve(Keys.Num());
 	for (int i = 0; i < Keys.Num(); i++)
 	{
 		FName Identifier = Keys[i];
@@ -1938,10 +1938,21 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 
 		int64 TravelDuration = Travel->GetRemainingTravelDuration();
 		int32 ArmyCombatPoints = 0;
+		int32 ArmyAntiLCombatPoints = 0;
+		int32 ArmyAntiSCombatPoints = 0;
 
 		for (UFlareSimulatedSpacecraft* Ship : Travel->GetFleet()->GetShips())
 		{
-			ArmyCombatPoints += Ship->GetCombatPoints(true);
+			int32 ShipCombatPoints = Ship->GetCombatPoints(true);
+			ArmyCombatPoints += ShipCombatPoints;
+			if (Ship->GetWeaponsSystem()->HasAntiLargeShipWeapon())
+			{
+				ArmyAntiLCombatPoints += ShipCombatPoints;
+			}
+			if (Ship->GetWeaponsSystem()->HasAntiSmallShipWeapon())
+			{
+				ArmyAntiSCombatPoints += ShipCombatPoints;
+			}
 		}
 
 		// Add an entry or modify one
@@ -1951,6 +1962,8 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 			if (Fleet.TravelDuration  == TravelDuration)
 			{
 				Fleet.ArmyCombatPoints += ArmyCombatPoints;
+				Fleet.ArmyAntiLCombatPoints += ArmyAntiLCombatPoints;
+				Fleet.ArmyAntiSCombatPoints += ArmyAntiSCombatPoints;
 				ExistingTravelFound = true;
 				break;
 			}
@@ -1961,6 +1974,8 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 			WarTargetIncomingFleet Fleet;
 			Fleet.TravelDuration = TravelDuration;
 			Fleet.ArmyCombatPoints = ArmyCombatPoints;
+			Fleet.ArmyAntiLCombatPoints = ArmyAntiLCombatPoints;
+			Fleet.ArmyAntiSCombatPoints = ArmyAntiSCombatPoints;
 			IncomingFleetList.Add(Fleet);
 		}
 	}
@@ -2116,8 +2131,7 @@ TArray<WarTarget> UFlareCompanyAI::GenerateWarTargetList(AIWarContext& WarContex
 				}
 				else if (Spacecraft->IsMilitary())
 				{
-					int32 ShipCombatPoints= Spacecraft->GetCombatPoints(true);
-
+					int32 ShipCombatPoints = Spacecraft->GetCombatPoints(true);
 					Target.OwnedArmyCombatPoints += ShipCombatPoints;
 					Target.OwnedMilitaryCount++;
 
@@ -2146,17 +2160,19 @@ TArray<WarTarget> UFlareCompanyAI::GenerateWarTargetList(AIWarContext& WarContex
 			// Retreat
 			if (Target.EnemyArmyCombatPoints > 0)
 			{
-				TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Target.Sector);
+				TMap<UFlareCompany*, TArray<UFlareFleet*>> MovableFleets = GenerateWarFleetList(WarContext, Target.Sector);
 				if (MovableFleets.Num() > 0)
 				{
-					TArray<UFlareCompany*> Keys;
-					MovableFleets.GetKeys(Keys);
-
-					for (int i = 0; i < Keys.Num(); i++)
+					TArray<UFlareCompany*> InvolvedCompanies;
+					MovableFleets.GenerateKeyArray(InvolvedCompanies);
+					TArray<UFlareFleet*> UsableFleets;
+					for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
 					{
-						UFlareCompany* IdentifierCompany = Keys[i];
-						UFlareFleet* AssignedFleet = MovableFleets[IdentifierCompany];
+						UsableFleets.Append(MovableFleets[InvolvedCompanies]);
+					}
 
+					for (UFlareFleet* AssignedFleet : UsableFleets)
+					{
 						// Find nearest sector without danger with available FS and travel there
 						UFlareSimulatedSector* RetreatSector = FindNearestSectorWithFS(WarContext, Target.Sector, AssignedFleet);
 						if (!RetreatSector)
@@ -2354,10 +2370,9 @@ TArray<UFlareSimulatedSpacecraft*> UFlareCompanyAI::GenerateWarShipList(AIWarCon
 	return WarShips;
 }
 
-
-TMap<UFlareCompany*, UFlareFleet*> UFlareCompanyAI::GenerateWarFleetList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip)
+TMap<UFlareCompany*, TArray<UFlareFleet*>> UFlareCompanyAI::GenerateWarFleetList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip)
 {
-	TMap<UFlareCompany*, UFlareFleet*> NewWarFleets;
+	TMap<UFlareCompany*, TArray<UFlareFleet*>> NewWarFleets;
 
 	for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorShips())
 	{
@@ -2368,19 +2383,38 @@ TMap<UFlareCompany*, UFlareFleet*> UFlareCompanyAI::GenerateWarFleetList(AIWarCo
 		 && Ship != ExcludeShip
 		 && !Ship->GetDescription()->IsDroneShip)
 		{
-			UFlareFleet* FormedWarFleet;
 			if (NewWarFleets.Contains(Ship->GetCompany()))
 			{
-				FormedWarFleet = NewWarFleets[Ship->GetCompany()];
-				if (FormedWarFleet->GetShipCount() < FormedWarFleet->GetMaxShipCount())
+				TArray<UFlareFleet*> &CompanyFleets = NewWarFleets[Ship->GetCompany()];
+
+				UFlareFleet* SelectedFleet = nullptr;
+				for (UFlareFleet* PossibleFleets : CompanyFleets)
 				{
-					FormedWarFleet->AddShip(Ship);
+					if (PossibleFleets->GetShipCount() < PossibleFleets->GetMaxShipCount())
+					{
+						SelectedFleet = PossibleFleets;
+						break;
+					}
+				}
+
+				if (!SelectedFleet)
+				{
+					if (Ship->GetCurrentFleet()->GetShipCount() >= Ship->GetCurrentFleet()->GetMaxShipCount())
+					{
+						Ship->GetCompany()->CreateAutomaticFleet(Ship);
+					}
+					CompanyFleets.Emplace(Ship->GetCurrentFleet());
+				}
+				else
+				{
+					SelectedFleet->AddShip(Ship);
 				}
 			}
 			else
 			{
-				FormedWarFleet = Ship->GetCurrentFleet();
-				NewWarFleets.Add(Ship->GetCompany(), FormedWarFleet);
+				TArray<UFlareFleet*> CompanyFleets;
+				CompanyFleets.Emplace(Ship->GetCurrentFleet());
+				NewWarFleets.Add(Ship->GetCompany(), CompanyFleets);
 			}
 		}
 	}
@@ -2518,6 +2552,33 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 		return Enemies;
 	};
 
+	// Sort by fleet speeds
+	struct FSortBySlowestFleet
+	{
+		UFlareSimulatedSector* OriginatingSector;
+		UFlareSimulatedSector* TargetSector;
+
+		FSortBySlowestFleet(UFlareSimulatedSector* OriginatingSector, UFlareSimulatedSector* TargetSector)
+		: OriginatingSector(OriginatingSector), TargetSector(TargetSector)
+		{
+		}
+
+		FORCEINLINE bool operator()(UFlareFleet& A, UFlareFleet& B) const
+		{
+			int64 TravelDurationFleetA = UFlareTravel::ComputeTravelDuration(A.GetFleetCompany()->GetGame()->GetGameWorld(), OriginatingSector, TargetSector, A.GetFleetCompany(), &A);
+			int64 TravelDurationFleetB = UFlareTravel::ComputeTravelDuration(B.GetFleetCompany()->GetGame()->GetGameWorld(), OriginatingSector, TargetSector, B.GetFleetCompany(), &B);
+
+			if (TravelDurationFleetA < TravelDurationFleetB)
+			{
+				return false;
+			}
+			else if (TravelDurationFleetA > TravelDurationFleetB)
+			{
+				return true;
+			}
+		}
+	};
+
 	AIWarContext WarContext;
 
 	WarContext.Allies = GenerateAlliesList();
@@ -2538,24 +2599,49 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 	for (WarTarget& Target : TargetList)
 	{
 		TArray<DefenseSector> SortedDefenseSectorList = SortSectorsByDistance(Target.Sector, DefenseSectorList);
-		for (DefenseSector& Sector : SortedDefenseSectorList)
+
+		int64 IncomingFleetSlowestTravelDuration = -1;
+		int64 IncomingFleetTotalCombatPoints = 0;
+		int64 IncomingFleetArmyAntiLCombatPoints = 0;
+		int64 IncomingFleetArmyAntiSCombatPoints = 0;
+
+		for (WarTargetIncomingFleet& Fleet : Target.WarTargetIncomingFleets)
 		{
+			IncomingFleetTotalCombatPoints += Fleet.ArmyCombatPoints;
+			IncomingFleetArmyAntiLCombatPoints += Fleet.ArmyAntiLCombatPoints;
+			IncomingFleetArmyAntiSCombatPoints += Fleet.ArmyAntiSCombatPoints;
+
+			if (IncomingFleetSlowestTravelDuration == -1 || Fleet.TravelDuration > IncomingFleetSlowestTravelDuration)
+			{
+				IncomingFleetSlowestTravelDuration = Fleet.TravelDuration;
+			}
+		}
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-				FLOGV("check attack from %s to %s : CombatPoints=%d, EnemyArmyCombatPoints=%d",
-					*Sector.Sector->GetSectorName().ToString(),
-					*Target.Sector->GetSectorName().ToString(),
-					 Sector.CombatPoints, Target.EnemyArmyCombatPoints);
+		FLOGV("IncomingFleetSlowestTravelDuration set to %d",
+		IncomingFleetSlowestTravelDuration);
+#endif
+
+			for (DefenseSector& Sector : SortedDefenseSectorList)
+		{
+			// Check if there is an allied incoming fleet
+			int64 TotalCombatPoints = Sector.CombatPoints + IncomingFleetTotalCombatPoints;
+
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+			FLOGV("check attack from %s to %s : CombatPoints=%d (total = %d), EnemyArmyCombatPoints=%d",
+				*Sector.Sector->GetSectorName().ToString(),
+				*Target.Sector->GetSectorName().ToString(),
+				Sector.CombatPoints, TotalCombatPoints, Target.EnemyArmyCombatPoints);
 #endif
 
 			// Check if the army is strong enough
-			if (Sector.CombatPoints < Target.EnemyArmyCombatPoints * WarContext.AttackThreshold)
+			if (TotalCombatPoints < Target.EnemyArmyCombatPoints * WarContext.AttackThreshold)
 			{
 				// Army too weak
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 				FLOGV("army at %s too weak to attack %s : CombatPoints = %lld, EnemyArmyCombatPoints = %lld ",
 					*Sector.Sector->GetSectorName().ToString(),
 					*Target.Sector->GetSectorName().ToString(),
-					Sector.CombatPoints, Target.EnemyArmyCombatPoints);
+					TotalCombatPoints, Target.EnemyArmyCombatPoints);
 #endif
 
 				continue;
@@ -2574,65 +2660,42 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 			}
 
 			// Should go defend ! Assemble a fleet
-			TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector,Sector.PrisonersKeeper);
+//			TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector,Sector.PrisonersKeeper);
+			TMap<UFlareCompany*, TArray<UFlareFleet*>> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector,Sector.PrisonersKeeper);
+
+
+
+
+
 
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("Initial MovableFleets = %d", MovableFleets.Num());
 #endif
 			if (MovableFleets.Num() > 0)
 			{
-				int32 AntiLFleetCombatPoints = 0;
-				int32 AntiSFleetCombatPoints = 0;
+				int64 TotalArmyAntiLCombatPoints = Sector.ArmyAntiLCombatPoints + IncomingFleetArmyAntiLCombatPoints;
+				int64 TotalArmyAntiSCombatPoints = Sector.ArmyAntiSCombatPoints + IncomingFleetArmyAntiSCombatPoints;
+				int32 SentAntiLFleetCombatPoints = IncomingFleetArmyAntiLCombatPoints;
+				int32 SentAntiSFleetCombatPoints = IncomingFleetArmyAntiSCombatPoints;
+
 				int32 AntiLFleetCombatPointsLimit = Target.EnemyArmyLCombatPoints * WarContext.AttackThreshold * 1.5;
 				int32 AntiSFleetCombatPointsLimit = Target.EnemyArmySCombatPoints * WarContext.AttackThreshold * 1.5;
 
+				TArray<UFlareCompany*> InvolvedCompanies;
+				MovableFleets.GenerateKeyArray(InvolvedCompanies);
 				TArray<UFlareFleet*> UsableFleets;
-				MovableFleets.GenerateValueArray(UsableFleets);
-
-				bool DefenseFleetFound = false;
-				for (UFlareFleet* CurrentFleet : UsableFleets)
+				for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
 				{
-					if (DefenseFleetFound)
-					{
-						break;
-					}
-
-					int64 TravelDuration = UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), Sector.Sector, Target.Sector, Company, CurrentFleet);
-					// Check if there is an incoming fleet bigger than local
-					for (WarTargetIncomingFleet& Fleet : Target.WarTargetIncomingFleets)
-					{
-						// Incoming fleet will be late, ignore it
-						if (Fleet.TravelDuration > TravelDuration)
-						{
-							continue;
-						}
-
-						// Incoming fleet is too weak, ignore it
-						else if (Fleet.ArmyCombatPoints < Target.EnemyArmyCombatPoints * WarContext.AttackThreshold)
-						{
-							continue;
-						}
-
-						DefenseFleetFound = true;
-						break;
-					}
+					UsableFleets.Append(MovableFleets[InvolvedCompanies]);
 				}
 
-				// Defense already incoming
-				if (DefenseFleetFound)
-				{
-#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-					FLOGV("army at %s won't move to attack %s : another fleet is coming",
-						*Sector.Sector->GetSectorName().ToString(),
-						*Target.Sector->GetSectorName().ToString());
-#endif
-					continue;
-			}
+				UsableFleets.Sort(FSortBySlowestFleet(Sector.Sector,Target.Sector));
 
 				// Check if weapon are optimal
 				// Check if the army is strong enough
-				if (Sector.ArmyAntiLCombatPoints < Target.EnemyArmyLCombatPoints * WarContext.AttackThreshold ||
-					Sector.ArmyAntiSCombatPoints < Target.EnemyArmySCombatPoints * WarContext.AttackThreshold)
+
+				if (TotalArmyAntiLCombatPoints < Target.EnemyArmyLCombatPoints * WarContext.AttackThreshold ||
+					TotalArmyAntiSCombatPoints < Target.EnemyArmySCombatPoints * WarContext.AttackThreshold)
 				{
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 					FLOGV("army at %s want to attack %s after upgrade : ArmyAntiLCombatPoints=%d, EnemyArmyLCombatPoints=%d, ArmyAntiSCombatPoints=%d, EnemyArmySCombatPoints=%d",
@@ -2640,7 +2703,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						*Target.Sector->GetSectorName().ToString(),
 						Sector.ArmyAntiLCombatPoints, Target.EnemyArmyLCombatPoints, Sector.ArmyAntiSCombatPoints, Target.EnemyArmySCombatPoints);
 #endif
-					if (!UpgradeMilitaryFleet(WarContext, Target, Sector, MovableFleets))
+					if (!UpgradeMilitaryFleet(WarContext, Target, Sector, UsableFleets))
 					{
 						// cannot upgrade, don't attack
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -2651,44 +2714,71 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						continue;
 					}
 				}
-
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-				FLOGV("army at %s attack %s !",
+				FLOGV("army from %s launching attack %s !",
 					*Sector.Sector->GetSectorName().ToString(),
 					*Target.Sector->GetSectorName().ToString());
 #endif
 
-				// Send random ships
-				int32 MinShipToSend = FMath::Max(Target.EnemyCargoCount, Target.EnemyStationCount);
-				int32 SentShips = 0;
 				int32 SentCombatPoints = 0;
 
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+				int32 SentShips = 0;
 				FLOGV("- UsableFleets= %d", MovableFleets.Num());
-				FLOGV("- MinShipToSend= %d", MinShipToSend);
-				FLOGV("- AntiLFleetCombatPointsLimit= %d", AntiLFleetCombatPointsLimit);
-				FLOGV("- AntiSFleetCombatPointsLimit= %d", AntiSFleetCombatPointsLimit);
+				FLOGV("- AntiLFleetCombatPointsLimit = %d", AntiLFleetCombatPointsLimit);
+				FLOGV("- AntiSFleetCombatPointsLimit = %d", AntiSFleetCombatPointsLimit);
 #endif
-				TArray<UFlareFleet*> SentFleets;
-				while (UsableFleets.Num() > 0 &&
-					((SentShips < MinShipToSend) || (AntiLFleetCombatPoints < AntiLFleetCombatPointsLimit || AntiSFleetCombatPoints < AntiSFleetCombatPointsLimit)))
+				int64 SlowestTravelDuration = 0;
+				if (IncomingFleetSlowestTravelDuration > 0)
 				{
-					int32 FleetIndex = FMath::RandRange(0, UsableFleets.Num() - 1);
-					UFlareFleet* SelectedFleet = UsableFleets[FleetIndex];
-					UsableFleets.RemoveAt(FleetIndex);
+					SlowestTravelDuration = IncomingFleetSlowestTravelDuration;
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+					FLOGV("SlowestTravelDuration set from incoming fleet, %d");
+#endif
+				}
+				else
+				{
+					SlowestTravelDuration = UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), Sector.Sector, Target.Sector, UsableFleets[0]->GetFleetCompany(), UsableFleets[0]);
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+					FLOGV("No incoming fleets, SlowestTravelDuration set from travel time");
+#endif
+				}
+
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+				FLOGV("SlowestTravelDuration = %d", SlowestTravelDuration);
+#endif
+				for (UFlareFleet* SelectedFleet : UsableFleets)
+				{
+					int64 FleetTravelDuration = UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), Sector.Sector, Target.Sector, SelectedFleet->GetFleetCompany(), SelectedFleet);
+					if (FleetTravelDuration != SlowestTravelDuration)
+					{
+						continue;
+					}
+
+					if ((SentAntiLFleetCombatPoints > AntiLFleetCombatPointsLimit && SentAntiSFleetCombatPoints > AntiSFleetCombatPointsLimit))
+					{
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+						FLOG("Sent enough, stop sending.");
+						FLOGV("SentAntiLFleetCombatPoints %d/%d. AntiLFleetCombatPointsLimit",
+						SentAntiLFleetCombatPoints, AntiLFleetCombatPointsLimit);
+						FLOGV("SentAntiSFleetCombatPoints %d/%d. AntiSFleetCombatPointsLimit",
+						SentAntiSFleetCombatPoints, AntiSFleetCombatPointsLimit);
+#endif
+						break;
+					}
 
 					for (UFlareSimulatedSpacecraft* SelectedShip : SelectedFleet->GetShips())
 					{
 						int32 ShipCombatPoints = SelectedShip->GetCombatPoints(true);
 						if (SelectedShip->GetWeaponsSystem()->HasAntiLargeShipWeapon())
 						{
-							AntiLFleetCombatPoints += ShipCombatPoints;
+							SentAntiLFleetCombatPoints += ShipCombatPoints;
 							Sector.CombatPoints -= ShipCombatPoints;
 							Sector.ArmyAntiLCombatPoints -= ShipCombatPoints;
 						}
 						else if (SelectedShip->GetWeaponsSystem()->HasAntiSmallShipWeapon())
 						{
-							AntiSFleetCombatPoints += ShipCombatPoints;
+							SentAntiSFleetCombatPoints += ShipCombatPoints;
 							Sector.CombatPoints -= ShipCombatPoints;
 							Sector.ArmyAntiSCombatPoints -= ShipCombatPoints;
 						}
@@ -2699,26 +2789,29 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 							*SelectedShip->GetImmatriculation().ToString(),
 							*SelectedShip->GetCurrentSector()->GetSectorName().ToString(),
 							*Target.Sector->GetSectorName().ToString());
-						FLOGV("- AntiLFleetCombatPoints= %d", AntiLFleetCombatPoints);
-						FLOGV("- AntiSFleetCombatPoints= %d", AntiSFleetCombatPoints);
+						FLOGV("- AntiLFleetCombatPoints= %d", SentAntiLFleetCombatPoints);
+						FLOGV("- AntiSFleetCombatPoints= %d", SentAntiSFleetCombatPoints);
 #endif
 						SentCombatPoints += ShipCombatPoints;
 					}
 
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 					SentShips += SelectedFleet->GetShipCount();
-					SentFleets.Add(SelectedFleet);
-					}
-
-				for (UFlareFleet* SelectedFleet : SentFleets)
-				{
-					int64 TravelDuration = UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), Sector.Sector, Target.Sector, Company, SelectedFleet);
-					if (TravelDuration > 1)
-					{
-						Game->GetQuestManager()->GetQuestGenerator()->GenerateAttackQuests(Company, SentCombatPoints, Target, TravelDuration);
-					}
+#endif
 					Game->GetGameWorld()->StartTravel(SelectedFleet, Target.Sector);
+
+					if (FleetTravelDuration > 1)
+					{
+						Game->GetQuestManager()->GetQuestGenerator()->GenerateAttackQuests(SelectedFleet->GetFleetCompany(), SentCombatPoints, Target, FleetTravelDuration);
+					}
 				}
 
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+				FLOGV("- Attack Sent %d total ships", SentShips);
+				FLOGV("- Sent Total Combat Points = %d", SentCombatPoints);
+				FLOGV("- Sent AntiLFleetCombatPointsLimit= %d", SentAntiLFleetCombatPoints);
+				FLOGV("- Sent AntiSFleetCombatPointsLimit= %d", SentAntiSFleetCombatPoints);
+#endif
 				if (Sector.CombatPoints == 0)
 				{
 					DefenseSectorList.Remove(Sector);
@@ -2865,10 +2958,20 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 			}
 		}
 
+		TMap<UFlareCompany*, TArray<UFlareFleet*>> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector, Sector.PrisonersKeeper);
+		TArray<UFlareCompany*> InvolvedCompanies;
+		MovableFleets.GenerateKeyArray(InvolvedCompanies);
+
+		TArray<UFlareFleet*> UsableFleets;
+		for (UFlareCompany* InvolvedCompanies : InvolvedCompanies)
+		{
+			UsableFleets.Append(MovableFleets[InvolvedCompanies]);
+		}
+/*
 		TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector, Sector.PrisonersKeeper);
 		TArray<UFlareFleet*> UsableFleets;
 		MovableFleets.GenerateValueArray(UsableFleets);
-
+*/
 		for (UFlareFleet* SelectedFleet : UsableFleets)
 		{
 
@@ -3299,23 +3402,18 @@ int32 UFlareCompanyAI::GetBestPartWeightValue(FFlareSpacecraftComponentDescripti
 	return (Part->Cost * CostWeight) + (Part->HitPoints * HitPointsWeight) + (Part->EngineCharacteristics.EnginePower * EnginePowerWeight) + (Part->EngineCharacteristics.AngularAccelerationRate * AngularAccelerationWeight);
 }
 
-bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget Target, DefenseSector& Sector, TMap<UFlareCompany*, UFlareFleet*>& MovableFleets)
+bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget Target, DefenseSector& Sector, TArray<UFlareFleet*> MovableFleets)
 {
 	// First check if upgrade is possible in sector
 	// If not, find the closest sector where upgrade is possible and travel here
-
-	TArray<UFlareCompany*> Keys;
-	MovableFleets.GetKeys(Keys);
 
 	if (!CanUpgradeFromSector(Sector.Sector))
 	{
 		UFlareSimulatedSector* UpgradeSector = FindNearestSectorWithUpgradePossible(WarContext, Sector.Sector);
 		if (UpgradeSector)
 		{
-			for (int i = 0; i < Keys.Num(); i++)
+			for (UFlareFleet* AssignedFleet : MovableFleets)
 			{
-				UFlareCompany* IdentifierCompany = Keys[i];
-				UFlareFleet* AssignedFleet = MovableFleets[IdentifierCompany];
 
 				FLOGV("UpdateWarMilitaryMovement %s : move %s from %s to %s for upgrade",
 				*Company->GetCompanyName().ToString(),
@@ -3339,11 +3437,8 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 	bool UpgradeFailed = false;
 	CompanyValue TotalValue = Company->GetCompanyValue();
 
-	for (int i = 0; i < Keys.Num(); i++)
+	for (UFlareFleet* AssignedFleet : MovableFleets)
 	{
-		UFlareCompany* IdentifierCompany = Keys[i];
-		UFlareFleet* AssignedFleet = MovableFleets[IdentifierCompany];
-
 		//for each L ship
 		for (UFlareSimulatedSpacecraft* Ship : AssignedFleet->GetShips())
 		{
@@ -3493,11 +3588,8 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 	if ((Sector.ArmyAntiLCombatPoints >= Target.EnemyArmyLCombatPoints * WarContext.AttackThreshold) &&
 		(Sector.ArmyAntiSCombatPoints >= Target.EnemyArmySCombatPoints * WarContext.AttackThreshold))
 	{
-		for (int i = 0; i < Keys.Num(); i++)
+		for (UFlareFleet* AssignedFleet : MovableFleets)
 		{
-			UFlareCompany* IdentifierCompany = Keys[i];
-			UFlareFleet* AssignedFleet = MovableFleets[IdentifierCompany];
-
 			for (UFlareSimulatedSpacecraft* Ship : AssignedFleet->GetShips())
 			{
 				float AntiLRatio = (Target.EnemyArmyLCombatPoints > 0 ?

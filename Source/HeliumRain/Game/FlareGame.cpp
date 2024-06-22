@@ -49,7 +49,7 @@
 #include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FlareGame"
-
+//#define DEBUG_ACTIVATESECTORTIME
 
 /*----------------------------------------------------
 	Constructor
@@ -324,6 +324,10 @@ void AFlareGame::Logout(AController* Player)
 
 void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 {
+#ifdef DEBUG_ACTIVATESECTORTIME
+	double StartTs = FPlatformTime::Seconds();
+#endif
+
 	// No sector to activate
 	if (!Sector)
 	{
@@ -361,6 +365,11 @@ void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 	{
 		OnLevelLoaded();
 	}
+
+#ifdef DEBUG_ACTIVATESECTORTIME
+	double EndTs = FPlatformTime::Seconds();
+	FLOGV("** ActivateSector done in %.6fs", EndTs - StartTs);
+#endif
 }
 
 void AFlareGame::ActivateCurrentSector()
@@ -370,6 +379,10 @@ void AFlareGame::ActivateCurrentSector()
 
 UFlareSimulatedSector* AFlareGame::DeactivateSector()
 {
+#ifdef DEBUG_ACTIVATESECTORTIME
+	double StartTs = FPlatformTime::Seconds();
+#endif
+
 	if (!ActiveSector)
 	{
 		return NULL;
@@ -399,6 +412,10 @@ UFlareSimulatedSector* AFlareGame::DeactivateSector()
 	// Update the PC
 	GetPC()->OnSectorDeactivated();
 
+#ifdef DEBUG_ACTIVATESECTORTIME
+	double EndTs = FPlatformTime::Seconds();
+	FLOGV("** DeActivateSector done in %.6fs", EndTs - StartTs);
+#endif
 	return Sector;
 }
 

@@ -170,13 +170,13 @@ public:
 	FFlareSpacecraftComponentDescription* FindBestEngineOrRCS(TArray< FFlareSpacecraftComponentDescription*> PartListData, FFlareSpacecraftComponentDescription* BestPart, EFlareBudget::Type Budget, bool EngineOrRCS);
 	int32 GetBestPartWeightValue(FFlareSpacecraftComponentDescription* BestPart, EFlareBudget::Type Budget, bool EngineOrRCS);
 
-	bool UpgradeMilitaryFleet(AIWarContext& WarContext, WarTarget Target, DefenseSector& Sector, TMap<UFlareCompany*, UFlareFleet*>& MovableFleets);
+	bool UpgradeMilitaryFleet(AIWarContext& WarContext, WarTarget Target, DefenseSector& Sector, TArray<UFlareFleet*> MovableFleets);
 	TArray<WarTargetIncomingFleet> GenerateWarTargetIncomingFleets(AIWarContext& WarContext, UFlareSimulatedSector* DestinationSector, bool SkipEnemiesOrAllies = false);
 
 	TArray<WarTarget> GenerateWarTargetList(AIWarContext& WarContext);
 
 	TArray<UFlareSimulatedSpacecraft*> GenerateWarShipList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip = NULL);
-	TMap<UFlareCompany*, UFlareFleet*> GenerateWarFleetList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip = NULL);
+	TMap<UFlareCompany*, TArray<UFlareFleet*>> GenerateWarFleetList(AIWarContext& WarContext, UFlareSimulatedSector* Sector, UFlareSimulatedSpacecraft* ExcludeShip = NULL);
 
 	TArray<DefenseSector> SortSectorsByDistance(UFlareSimulatedSector* BaseSector, TArray<DefenseSector> SectorsToSort);
 

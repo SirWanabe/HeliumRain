@@ -17,7 +17,8 @@
 ----------------------------------------------------*/
 
 #define LOCTEXT_NAMESPACE "FlareSector"
-#define SHELL_TICK_RATE 0.025f
+//#define DEBUG_SECTORLOADTIME
+
 #define SHIP_LARGE_EXPLOSION_CHANCE 0.05f
 #define SHIP_SMALL_EXPLOSION_CHANCE 0.10f
 #define SHIP_DRONE_EXPLOSION_CHANCE 0.50f
@@ -35,6 +36,10 @@ UFlareSector::UFlareSector(const FObjectInitializer& ObjectInitializer)
 
 void UFlareSector::Load(UFlareSimulatedSector* Parent)
 {
+#ifdef DEBUG_SECTORLOADTIME
+	double StartTs = FPlatformTime::Seconds();
+#endif
+
 	DestroySector();
 	ParentSector = Parent;
 	LocalTime = Parent->GetData()->LocalTime;
@@ -65,22 +70,15 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	SectorStations.Reserve(ParentSector->GetSectorStations().Num());
 	SectorShips.Reserve(ParentSector->GetSectorShips().Num());
 
-	for (int i = 0; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
+	for (int i = 0; i < ParentSector->GetSectorStations().Num(); i++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
-		if (Spacecraft->IsStation())
-		{
-			LoadSpacecraft(Spacecraft);
-		}
+		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorStations()[i];
+		LoadSpacecraft(Spacecraft);
 	}
 
-	for (int i = 0 ; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
+	for (int i = 0 ; i < ParentSector->GetSectorShips().Num(); i++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
-		if (Spacecraft->IsStation())
-		{
-			continue;
-		}
+		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorShips()[i];
 		if (Spacecraft->GetData().SpawnMode == EFlareSpawnMode::Safe && (!Spacecraft->IsReserve() ||  Parent->GetGame()->GetPC()->GetPlayerShip() == Spacecraft))
 		{
 			LoadSpacecraft(Spacecraft);
@@ -90,13 +88,9 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	SectorRepartitionCache = false;
 
 	// Load unsafe location spacecrafts
-	for (int i = 0; i < ParentSector->GetSectorSpacecrafts().Num(); i++)
+	for (int i = 0; i < ParentSector->GetSectorShips().Num(); i++)
 	{
-		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorSpacecrafts()[i];
-		if (Spacecraft->IsStation())
-		{
-			continue;
-		}
+		UFlareSimulatedSpacecraft* Spacecraft = ParentSector->GetSectorShips()[i];
 		if (Spacecraft->GetData().SpawnMode != EFlareSpawnMode::Safe && Spacecraft->GetData().SpawnMode != EFlareSpawnMode::InternalDocked && (!Spacecraft->IsReserve() ||  Parent->GetGame()->GetPC()->GetPlayerShip() == Spacecraft))
 		{
 			LoadSpacecraft(Spacecraft);
@@ -122,6 +116,10 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	{
 		Company->NewSectorLoaded();
 	}
+#ifdef DEBUG_SECTORLOADTIME
+	double EndTs = FPlatformTime::Seconds();
+	FLOGV("** SectorLoadTime Done in %.6fs", EndTs - StartTs);
+#endif
 }
 
 void UFlareSector::Tick(float DeltaSeconds)
@@ -139,7 +137,7 @@ void UFlareSector::Tick(float DeltaSeconds)
 
 	for (AFlareSpacecraft* Ship : SectorSpacecrafts)
 	{
-		if (!Ship || Ship == nullptr || Ship->IsSafeDestroying())
+		if (!Ship || Ship->IsSafeDestroying())
 		{
 			continue;
 		}
@@ -373,8 +371,8 @@ void UFlareSector::DestroySector()
 
 AFlareAsteroid* UFlareSector::LoadAsteroid(const FFlareAsteroidSave& AsteroidData)
 {
-    FActorSpawnParameters Params;
-    Params.bNoFail = true;
+	FActorSpawnParameters Params;
+	Params.bNoFail = true;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 	AFlareAsteroid* Asteroid = GetGame()->GetCacheSystem()->RetrieveCachedAsteroid();
@@ -390,7 +388,7 @@ AFlareAsteroid* UFlareSector::LoadAsteroid(const FFlareAsteroidSave& AsteroidDat
 	} 
 	Asteroid->Load(AsteroidData);
 	SectorAsteroids.AddUnique(Asteroid);
-    return Asteroid;
+	return Asteroid;
 }
 
 AFlareMeteorite* UFlareSector::LoadMeteorite(FFlareMeteoriteSave& MeteoriteData)
@@ -677,43 +675,43 @@ void UFlareSector::FinishLoadSpacecraft(AFlareSpacecraft* Spacecraft)
 
 AFlareBomb* UFlareSector::LoadBomb(const FFlareBombSave& BombData)
 {
-    AFlareBomb* Bomb = NULL;
-    FLOG("UFlareSector::LoadBomb");
+	AFlareBomb* Bomb = NULL;
+	FLOG("UFlareSector::LoadBomb");
 
-    AFlareSpacecraft* ParentSpacecraft = NULL;
+	AFlareSpacecraft* ParentSpacecraft = NULL;
 
 	for (int i = 0 ; i < SectorShips.Num(); i++)
 	{
 		AFlareSpacecraft* SpacecraftCandidate = SectorShips[i];
 		if (SpacecraftCandidate->GetImmatriculation() == BombData.ParentSpacecraft)
-        {
-            ParentSpacecraft = SpacecraftCandidate;
-            break;
-        }
-    }
+		{
+			ParentSpacecraft = SpacecraftCandidate;
+			break;
+		}
+	}
 
-    if (ParentSpacecraft)
-    {
-        UFlareWeapon* ParentWeapon = NULL;
-        TArray<UActorComponent*> Components = ParentSpacecraft->GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-        for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
-        {
-            UFlareWeapon* WeaponCandidate = Cast<UFlareWeapon>(Components[ComponentIndex]);
-            if (WeaponCandidate && WeaponCandidate->SlotIdentifier == BombData.WeaponSlotIdentifier)
-            {
+	if (ParentSpacecraft)
+	{
+		UFlareWeapon* ParentWeapon = NULL;
+		TArray<UActorComponent*> Components = ParentSpacecraft->GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+		{
+			UFlareWeapon* WeaponCandidate = Cast<UFlareWeapon>(Components[ComponentIndex]);
+			if (WeaponCandidate && WeaponCandidate->SlotIdentifier == BombData.WeaponSlotIdentifier)
+			{
 
-                ParentWeapon = WeaponCandidate;
-                break;
-            }
-        }
+				ParentWeapon = WeaponCandidate;
+				break;
+			}
+		}
 
-        if (ParentWeapon)
-        {
-            // Spawn parameters
-            FActorSpawnParameters Params;
-            Params.bNoFail = true;
+		if (ParentWeapon)
+		{
+			// Spawn parameters
+			FActorSpawnParameters Params;
+			Params.bNoFail = true;
 
-            // Create and configure the ship
+			// Create and configure the ship
 			Bomb = GetGame()->GetCacheSystem()->RetrieveCachedBomb();
 			if (IsValid(Bomb))
 			{
@@ -726,29 +724,29 @@ AFlareBomb* UFlareSector::LoadBomb(const FFlareBombSave& BombData)
 			}
 			
 			if (Bomb)
-            {
-                Bomb->Initialize(&BombData, ParentWeapon);
-                UPrimitiveComponent* RootComponent = Cast<UPrimitiveComponent>(Bomb->GetRootComponent());
-                RootComponent->SetPhysicsLinearVelocity(BombData.LinearVelocity, false);
-                RootComponent->SetPhysicsAngularVelocityInDegrees(BombData.AngularVelocity, false);
+			{
+				Bomb->Initialize(&BombData, ParentWeapon);
+				UPrimitiveComponent* RootComponent = Cast<UPrimitiveComponent>(Bomb->GetRootComponent());
+				RootComponent->SetPhysicsLinearVelocity(BombData.LinearVelocity, false);
+				RootComponent->SetPhysicsAngularVelocityInDegrees(BombData.AngularVelocity, false);
 				SectorBombs.Add(Bomb);
-            }
-            else
-            {
-                FLOG("UFlareSector::LoadBomb fail to create AFlareBomb");
-            }
-        }
-        else
-        {
-            FLOG("UFlareSector::LoadBomb failed (no parent weapon)");
-        }
-    }
-    else
-    {
-        FLOG("UFlareSector::LoadBomb failed (no parent ship)");
-    }
+			}
+			else
+			{
+				FLOG("UFlareSector::LoadBomb fail to create AFlareBomb");
+			}
+		}
+		else
+		{
+			FLOG("UFlareSector::LoadBomb failed (no parent weapon)");
+		}
+	}
+	else
+	{
+		FLOG("UFlareSector::LoadBomb failed (no parent ship)");
+	}
 
-    return Bomb;
+	return Bomb;
 }
 
 void UFlareSector::RegisterBomb(AFlareBomb* Bomb)
