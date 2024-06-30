@@ -312,7 +312,7 @@ void UFlareSoundManager::Update(float DeltaSeconds)
 		int32 EngineCount = 0;
 
 		// Check all engines for engine alpha values
-		TArray<UActorComponent*> Engines = ShipPawn->GetComponentsByClass(UFlareEngine::StaticClass());
+		TArray<UActorComponent*> Engines = ShipPawn->GetActiveSpacecraftEngineComponents();
 		for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
 		{
 			UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);

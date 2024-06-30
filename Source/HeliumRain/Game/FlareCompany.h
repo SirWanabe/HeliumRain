@@ -102,7 +102,7 @@ public:
 	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation);
 
 	/** Set whether this company is hostile to an other company */
-	virtual void SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile);
+	virtual void SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile, bool SuppressMessages = false);
 
 
 	/** Get an info string for this company */

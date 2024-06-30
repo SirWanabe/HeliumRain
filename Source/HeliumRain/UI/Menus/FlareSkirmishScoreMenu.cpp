@@ -273,4 +273,3 @@ void SFlareSkirmishScoreMenu::OnSkirmishMenu()
 
 
 #undef LOCTEXT_NAMESPACE
-

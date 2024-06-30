@@ -237,11 +237,11 @@ void AFlareHUD::SetInteractive(bool Status)
 	IsInteractive = Status;
 }
 
-void AFlareHUD::SetWheelMenu(bool State, bool EnableActionOnClose)
+void AFlareHUD::SetWheelMenu(bool State, bool EnableActionOnClose, int32 NewSelectedWidget)
 {
 	if (State)
 	{
-		MouseMenu->Open();
+		MouseMenu->Open(NewSelectedWidget);
 	}
 	else
 	{
@@ -339,12 +339,19 @@ void AFlareHUD::Tick(float DeltaSeconds)
 		return;
 	}
 
+	bool PlayerShipIsAlive = false;
 	// Power timer
-	if (PlayerShip
-		&& PlayerShip->GetParent()->GetDamageSystem()->IsAlive()
-		&& !PlayerShip->GetParent()->GetDamageSystem()->HasPowerOutage())
+	if (PlayerShip)
 	{
-		CurrentPowerTime += DeltaSeconds;
+		PlayerShipIsAlive = PlayerShip->GetParent()->GetDamageSystem()->IsAlive();
+		if (PlayerShipIsAlive && !PlayerShip->GetParent()->GetDamageSystem()->HasPowerOutage())
+		{
+			CurrentPowerTime += DeltaSeconds;
+		}
+		else
+		{
+			CurrentPowerTime -= DeltaSeconds;
+		}
 	}
 	else
 	{
@@ -432,7 +439,7 @@ void AFlareHUD::Tick(float DeltaSeconds)
 		}
 		else
 		{
-			DrawRenderTarget = PlayerShip && !PC->IsInMenu() && PlayerShip->GetParent()->GetDamageSystem()->IsAlive();
+			DrawRenderTarget = PlayerShip && !PC->IsInMenu() && PlayerShipIsAlive;
 		}
 
 		// Paint the render target
@@ -479,7 +486,7 @@ void AFlareHUD::DrawCockpitInstruments(UCanvas* TargetCanvas, int32 Width, int32
 		IsDrawingHUD = false;
 
 		// Draw instruments
-		if (PlayerShip && PlayerShip->IsValidLowLevel() && PlayerShip->GetParent()->GetDamageSystem()->IsAlive())
+		if (IsValid(PlayerShip) && PlayerShip->GetParent()->GetDamageSystem()->IsAlive())
 		{
 			// Regular case
 			if (!PlayerShip->GetParent()->GetDamageSystem()->HasPowerOutage())
@@ -860,7 +867,7 @@ FText AFlareHUD::GetCarrierText(AFlareSpacecraft* PlayerShip)
 		if (!OwnedShips->IsReserve() && !OwnedShips->GetDamageSystem()->IsUncontrollable())
 		{
 			TotalDrones++;
-			if (!OwnedShips->IsActive() && OwnedShips->IsInternalDockedTo(PlayerShip->GetParent()))
+			if (OwnedShips->IsInternalDockedTo(PlayerShip->GetParent()))
 			{
 				DockedDrones++;
 			}
@@ -906,7 +913,7 @@ void AFlareHUD::DrawCockpitTarget(AFlareSpacecraft* PlayerShip)
 	{
 		// Get sector name
 		FText SectorText;
-		if (PlayerShip->GetParent()->GetCurrentFleet()->IsTraveling())
+		if (PlayerShip->GetParent()->GetCurrentFleet() && PlayerShip->GetParent()->GetCurrentFleet()->IsTraveling())
 		{
 			SectorText = PlayerShip->GetParent()->GetCurrentFleet()->GetStatusInfo();
 		}
@@ -1121,7 +1128,7 @@ void AFlareHUD::UpdateContextMenu(AFlareSpacecraft* PlayerShip)
 		for (int SpacecraftIndex = 0; SpacecraftIndex < ActiveSector->GetSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			AFlareSpacecraft* Spacecraft = ActiveSector->GetSpacecrafts()[SpacecraftIndex];
-			if (Spacecraft->IsValidLowLevel() && Spacecraft != PlayerShip && !Spacecraft->IsComplexElement())
+			if (IsValid(Spacecraft) && Spacecraft != PlayerShip && !Spacecraft->IsComplexElement())
 			{
 				// Calculation data
 				FVector2D ScreenPosition;
@@ -1228,6 +1235,7 @@ void AFlareHUD::DrawHUDInternal()
 	AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
 	UFlareSector* ActiveSector = PC->GetGame()->GetActiveSector();
 	bool IsExternalCamera = PlayerShip->GetStateManager()->IsExternalCamera();
+	bool IsPlayerShipAlive = PlayerShip->GetParent()->GetDamageSystem()->IsAlive();
 	EFlareWeaponGroupType::Type WeaponType = PlayerShip->GetWeaponsSystem()->GetActiveWeaponType();
 
 	// Draw combat mouse pointer
@@ -1268,7 +1276,7 @@ void AFlareHUD::DrawHUDInternal()
 
 			// Draw search markers for alive ships or highlighted stations when not in external camera
 			if (!IsExternalCamera && ShouldDrawSearchMarker
-				&& PlayerShip->GetParent()->GetDamageSystem()->IsAlive()
+				&& IsPlayerShipAlive
 				&& Spacecraft->GetParent()->GetDamageSystem()->IsAlive()
 				&& (Highlighted || IsObjective || !Spacecraft->IsStation())
 			)

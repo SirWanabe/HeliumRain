@@ -63,9 +63,9 @@ void UFlareSpacecraftSpinningComponent::Initialize(FFlareSpacecraftComponentSave
 	PrimaryComponentTick.TickInterval = HIGH_ATTENTION_RATE;
 }
 
-void UFlareSpacecraftSpinningComponent::TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UFlareSpacecraftSpinningComponent::TickForComponent(float DeltaSeconds)
 {
-	Super::TickComponent(DeltaSeconds, TickType, ThisTickFunction);
+	Super::TickForComponent(DeltaSeconds);
 	AFlareSpacecraft* Ship = GetSpacecraft();
 	if (!Ship)
 	{

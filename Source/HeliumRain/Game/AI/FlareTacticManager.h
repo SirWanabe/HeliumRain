@@ -40,6 +40,7 @@ public:
 	/** Reset this ship group */
 	void ResetShipGroup(EFlareCombatTactic::Type Tactic);
 
+	TEnumAsByte<EFlareCombatGroup::Type> GetCurrentShipGroup();
 
 protected:
 
@@ -57,7 +58,4 @@ protected:
 	int32                                             CurrentCapitalShipCount;
 	int32                                             CurrentFighterCount;
 	int32                                             CurrentCivilianShipCount;
-	
-
 };
-

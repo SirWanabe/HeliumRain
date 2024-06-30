@@ -1,16 +1,13 @@
 
 #include "FlareMouseMenu.h"
-#include "../../Flare.h"
-
-#include "../../Player/FlareMenuManager.h"
-#include "../../Player/FlarePlayerController.h"
-
-#include "../Components/FlareRoundButton.h"
-
 #include "SBackgroundBlur.h"
 #include "Runtime/Engine/Classes/Engine/UserInterfaceSettings.h"
 #include "Runtime/Engine/Classes/Engine/RendererSettings.h"
-
+#include "../Components/FlareRoundButton.h"
+#include "../../Flare.h"
+#include "../../Player/FlareMenuManager.h"
+#include "../../Player/FlarePlayerController.h"
+#include "../../Game/FlareGameUserSettings.h"
 
 #define LOCTEXT_NAMESPACE "FlareMouseMenu"
 
@@ -26,7 +23,7 @@ void SFlareMouseMenu::Construct(const FArguments& InArgs)
 	WidgetSize = 200;
 	AnimTime = 0.20f;
 	ColinearityPower = 4.0f;
-	AutoResetTime = 1.0f;
+	AutoResetTime = 1.5f;
 	Sensitivity = 10.0f;
 
 	// Init
@@ -63,39 +60,54 @@ void SFlareMouseMenu::Construct(const FArguments& InArgs)
 	Interaction
 ----------------------------------------------------*/
 
-void SFlareMouseMenu::AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action)
+void SFlareMouseMenu::AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault)
 {
 	int32 Index = Actions.Num();
+
 	Actions.Add(Action);
-
 	AddWidgetInternal(Icon, Legend, Index);
-}
-
-void SFlareMouseMenu::AddDefaultWidget(FString Icon, FText Legend)
-{
-	AddWidgetInternal(Icon, Legend, -1);
-}
-
-void SFlareMouseMenu::AddDefaultWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action)
-{
-	DefaultAction = Action;
-	AddWidgetInternal(Icon, Legend, -1);
+	if (SelectDefault)
+	{
+		SelectedWidget = Index;
+	}
 }
 
 void SFlareMouseMenu::ClearWidgets()
 {
 	HUDCanvas->ClearChildren();
 	Actions.Empty();
-	DefaultAction.Unbind();
 }
 
-void SFlareMouseMenu::Open()
+void SFlareMouseMenu::Open(int32 NewSelectedWidget)
 {
-	SelectedWidget = 1000; // Arbitrary large value
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MouseMenuAutoReset = MyGameSettings->MouseMenuAutoReset;
+
+	if(NewSelectedWidget >= -1)
+	{
+		SelectedWidget = NewSelectedWidget;
+	}
+
 	MouseOffset = FVector2D::ZeroVector;
 	SetVisibility(EVisibility::HitTestInvisible);
 	SetAnimDirection(true);
 	TimeSinceActive = 0;
+}
+
+void SFlareMouseMenu::SelectOption(int32 IndexOverride)
+{
+	if (IndexOverride >= 0)
+	{
+		SelectedIndex = IndexOverride;
+	}
+
+	if (SelectedIndex >= 0 && SelectedIndex < Actions.Num() && SelectedWidget != SelectedIndex)
+	{
+		FLOGV("SFlareMouseMenu::SelectOption : index %d", SelectedIndex);
+		SelectedWidget = SelectedIndex;
+		Actions[SelectedIndex].ExecuteIfBound();
+		PC->ClientPlaySound(PC->GetSoundManager()->InfoSound);
+	}
 }
 
 void SFlareMouseMenu::Close(bool EnableAction)
@@ -103,18 +115,11 @@ void SFlareMouseMenu::Close(bool EnableAction)
 	// Result extraction
 	if (HasSelection() && EnableAction)
 	{
-		if (SelectedIndex >= 0 && SelectedIndex < Actions.Num())
-		{
-			FLOGV("SFlareMouseMenu::Close : index %d", SelectedIndex);
-			Actions[SelectedIndex].ExecuteIfBound();
-			SelectedWidget = SelectedIndex;
-			PC->ClientPlaySound(PC->GetSoundManager()->InfoSound);
-		}
+		SelectOption();
 	}
 	else
 	{
 		FLOG("SFlareMouseMenu::Close : no action taken");
-		DefaultAction.ExecuteIfBound();
 		SelectedWidget = -1;
 	}
 
@@ -135,10 +140,12 @@ void SFlareMouseMenu::SetWheelCursorMove(FVector2D Move)
 		PreviousMove = Move;
 
 		MouseOffset += Move * Sensitivity;
+	
 		if (MouseOffset.Size() > WidgetDistance)
 		{
 			MouseOffset /= MouseOffset.Size() / (float)WidgetDistance;
 		}
+	
 	}
 }
 
@@ -163,7 +170,7 @@ void SFlareMouseMenu::Tick(const FGeometry& AllottedGeometry, const double InCur
 	}
 
 	// Auto-reset
-	else
+	else if (MouseMenuAutoReset)
 	{
 		TimeSinceActive += InDeltaTime;
 		if (TimeSinceActive > AutoResetTime && MouseOffset != FVector2D::ZeroVector)
@@ -171,6 +178,7 @@ void SFlareMouseMenu::Tick(const FGeometry& AllottedGeometry, const double InCur
 			FLOG("SFlareMouseMenu::Tick : auto reset");
 			MouseOffset = FVector2D::ZeroVector;
 		}
+
 	}
 
 	// Selection
@@ -201,7 +209,7 @@ void SFlareMouseMenu::Tick(const FGeometry& AllottedGeometry, const double InCur
 	}
 	else
 	{
-		SelectedIndex = -1;
+		SelectedIndex = 0;
 	}
 
 	// Switch sound
@@ -232,7 +240,6 @@ FVector2D SFlareMouseMenu::GetWidgetPosition(int32 Index) const
 {
 	FVector2D ViewportSize = FVector2D(GEngine->GameViewport->Viewport->GetSizeXY());
 	float ViewportScale = GetDefault<UUserInterfaceSettings>(UUserInterfaceSettings::StaticClass())->GetDPIScaleBasedOnSize(FIntPoint(ViewportSize.X, ViewportSize.Y));
-
 	return (ViewportCenter + GetDirection(Index)) / ViewportScale;
 }
 
@@ -268,7 +275,7 @@ FSlateColor SFlareMouseMenu::GetWidgetColor(int32 Index) const
 		// Compute basic data
 		float Colinearity = GetColinearity(Index);
 		float DistanceRatio = FMath::Clamp(2 * (MouseOffset.Size() / WidgetDistance - 0.5f), 0.0f, 1.0f);
-		if (Index < 0)
+		if (Index <= 0)
 		{
 			DistanceRatio = 1.0f - DistanceRatio;
 			Colinearity = 1.0f;
@@ -328,9 +335,9 @@ void SFlareMouseMenu::AddWidgetInternal(FString Icon, FText Legend, int32 Index)
 
 FVector2D SFlareMouseMenu::GetDirection(int32 Index) const
 {
-	if (Index >= 0)
+	if (Index >= 1)
 	{
-		return FVector2D(0, -WidgetDistance).GetRotated((Index * 360.0f) / (float)Actions.Num());
+		return FVector2D(0, -WidgetDistance).GetRotated(((Index - 1) * 360.0f) / (float)(Actions.Num() - 1));
 	}
 	else
 	{

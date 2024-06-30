@@ -260,6 +260,7 @@ public:
 
 	void CancelShipyardOrder(int32 OrderIndex);
 
+	TArray<FFlareShipyardOrderSave> GetShipyardCurrentOrderQueue();
 	TArray<FFlareShipyardOrderSave>& GetShipyardOrderQueue();
 
 	TArray<FFlareShipyardOrderSave> GetOngoingProductionList();

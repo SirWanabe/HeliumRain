@@ -502,7 +502,6 @@ void SFlareList::RefreshList(bool DisableSort)
 						FleetToEdit = MenuManager->GetFleetMenu()->GetFleetEditing();
 					}
 
-					//todo: lot of redundancy here, gotta clean this trash up!
 					if (GroupFleetsButton->IsActive() && FleetToEdit)
 					{
 						if (FleetToEdit->GetCurrentSector() == ObjectFleet->GetCurrentSector())
@@ -514,17 +513,7 @@ void SFlareList::RefreshList(bool DisableSort)
 							}
 							else if (ShowMilitaryButton->IsActive())
 							{
-								//todo: the fleet itself should know its cargo capacity
-								bool FoundFreighter = false;
-								for (UFlareSimulatedSpacecraft* Ship : ObjectFleet->GetShips())
-								{
-									if (Ship->GetActiveCargoBay()->GetCapacity() > 0)
-									{
-										FoundFreighter = true;
-										break;
-									}
-								}
-								if (FoundFreighter)
+								if (ObjectFleet->GetFleetCapacity() > 0)
 								{
 									FilteredObjectList.Add(Object);
 								}
@@ -539,17 +528,7 @@ void SFlareList::RefreshList(bool DisableSort)
 					}
 					else if (ShowMilitaryButton->IsActive())
 					{
-						//todo: the fleet itself should know its cargo capacity
-						bool FoundFreighter = false;
-						for (UFlareSimulatedSpacecraft* Ship : ObjectFleet->GetShips())
-						{
-							if (Ship->GetActiveCargoBay()->GetCapacity() > 0)
-							{
-								FoundFreighter = true;
-								break;
-							}
-						}
-						if (FoundFreighter)
+						if (ObjectFleet->GetFleetCapacity() > 0)
 						{
 							FilteredObjectList.Add(Object);
 						}

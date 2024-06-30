@@ -38,7 +38,7 @@ public:
 	/** Enter this menu */
 	void Enter(UFlareSimulatedSector* ParentSector, UFlareSimulatedSpacecraft* LeftSpacecraft, UFlareSimulatedSpacecraft* RightSpacecraft);
 
-	/** Fill a content pane with the trading information for Target spacecraft to deal with Other */
+		/** Fill a content pane with the trading information for Target spacecraft to deal with Other */
 	void FillTradeBlock(UFlareSimulatedSpacecraft* TargetSpacecraft, UFlareSimulatedSpacecraft* OtherSpacecraft,
 		TSharedPtr<SHorizontalBox> CargoBay1, TSharedPtr<SHorizontalBox> CargoBay2);
 
@@ -48,6 +48,8 @@ public:
 //	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 
 protected:
+
+	bool CheckIsActiveSector();
 
 	/*----------------------------------------------------
 		Callbacks
@@ -193,7 +195,6 @@ protected:
 	uint32                                          TransactionQuantity;
 	uint32											PreviousTradeDirection;
 
-	bool											WasActiveSector;
 	bool											MultipleOwnedShipsOrFleets;
 
 public:

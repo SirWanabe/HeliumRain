@@ -521,6 +521,7 @@ void SFlareSpacecraftInfo::Show()
 		UFlareSimulatedSpacecraft* PlayerShip = PC->GetPlayerShip();
 		AFlareSpacecraft* DockedStation = NULL;
 		AFlareSpacecraft* ActiveTargetSpacecraft = NULL;
+
 		if (TargetSpacecraft->IsActive())
 		{
 			ActiveTargetSpacecraft = TargetSpacecraft->GetActive();
@@ -528,18 +529,19 @@ void SFlareSpacecraftInfo::Show()
 		}
 
 		// Helpers
+		bool InActiveSector = (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == TargetSpacecraft->GetCurrentSector());
 		bool Owned = TargetSpacecraft->GetCompany()->GetPlayerHostility() == EFlareHostility::Owned;
 		bool OwnedAndNotSelf = Owned && TargetSpacecraft != PlayerShip;
 		bool IsFriendly = !TargetSpacecraft->IsPlayerHostile();
 		bool IsOutsidePlayerFleet = (TargetSpacecraft->GetCurrentFleet() != PlayerShip->GetCurrentFleet()) || !ActiveTargetSpacecraft;
-		bool IsDocked = ActiveTargetSpacecraft && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(PlayerShip->GetActive()));
+		bool IsDocked = ActiveTargetSpacecraft && InActiveSector && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(PlayerShip->GetActive()));
 		bool IsStation = TargetSpacecraft->IsStation();
 		bool IsCargoShip = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
 		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned;
 		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking");
 
 		// Permissions
-		bool CanDock =     !IsDocked && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(PlayerShip->GetActive());
+		bool CanDock =     !IsDocked && InActiveSector && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(PlayerShip->GetActive());
 		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector() && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
 		bool CanUpgradeDocked = ActiveTargetSpacecraft && DockedStation && DockedStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade);
 		bool CanUpgrade = !TargetSpacecraft->IsStation() && (CanUpgradeDistant || CanUpgradeDocked);
@@ -582,9 +584,8 @@ void SFlareSpacecraftInfo::Show()
 		InspectButton->SetVisibility(NoInspect ?           EVisibility::Collapsed : EVisibility::Visible);
 		UpgradeButton->SetVisibility(Owned && !IsStation ? EVisibility::Visible : EVisibility::Collapsed);
 		FlyButton->SetVisibility(!Owned || IsStation ?     EVisibility::Collapsed : EVisibility::Visible);
-		TargetButton->SetVisibility(TargetSpacecraft->IsActive() ? EVisibility::Visible : EVisibility::Collapsed);
+		TargetButton->SetVisibility(InActiveSector && TargetSpacecraft->IsActive() ? EVisibility::Visible : EVisibility::Collapsed);
 
-//		TradeButton->SetVisibility(Owned && IsCargoShip ?                            EVisibility::Visible : EVisibility::Collapsed);
 		TradeButton->SetVisibility((Owned && IsCargoShip) || IsCargoStation ?                            EVisibility::Visible : EVisibility::Collapsed);
 
 		DockButton->SetVisibility(CanDock ?                                      EVisibility::Visible : EVisibility::Collapsed);
@@ -1200,20 +1201,34 @@ void SFlareSpacecraftInfo::OnUndock()
 {
 	if (PC && TargetSpacecraft)
 	{
-		if (TargetSpacecraft->IsActive() && TargetSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
+		if (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == TargetSpacecraft->GetCurrentSector())
 		{
-			TargetSpacecraft->GetActive()->GetNavigationSystem()->Undock();
-			if (TargetSpacecraft == PC->GetPlayerShip())
+			if (TargetSpacecraft->IsActive())
 			{
-				PC->GetMenuManager()->CloseMenu();
-			}
-		}
-		else if(TargetSpacecraft->IsActive() && TargetSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
-		{
-			PC->GetShipPawn()->GetNavigationSystem()->Undock();
-			if (TargetSpacecraft == PC->GetPlayerShip())
-			{
-				PC->GetMenuManager()->CloseMenu();
+				if (TargetSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
+				{
+					TargetSpacecraft->GetActive()->GetNavigationSystem()->Undock();
+					if (TargetSpacecraft == PC->GetPlayerShip())
+					{
+						PC->GetMenuManager()->CloseMenu();
+					}
+					else
+					{
+						Show();
+					}
+				}
+				else if (TargetSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
+				{
+					PC->GetShipPawn()->GetNavigationSystem()->Undock();
+					if (TargetSpacecraft == PC->GetPlayerShip())
+					{
+						PC->GetMenuManager()->CloseMenu();
+					}
+					else
+					{
+						Show();
+					}
+				}
 			}
 		}
 	}
@@ -1656,6 +1671,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 		{
 			AFlareSpacecraft* PlayerShipPawn = PC->GetPlayerShip()->GetActive();
 			AFlareSpacecraft* TargetSpacecraftPawn = TargetSpacecraft->GetActive();
+
 			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 			{
 				UFlareSimulatedSpacecraft* TradeLeftShip = PC->GetMenuManager()->GetTradeMenu()->GetTargetLeftShip();
@@ -1669,7 +1685,8 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 				}
 			}
 
-			if (PlayerShipPawn && TargetSpacecraftPawn)
+			bool InActiveSector = (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == TargetSpacecraft->GetCurrentSector());
+			if (PlayerShipPawn && TargetSpacecraftPawn && InActiveSector)
 			{
 				if (PlayerShipPawn->GetNavigationSystem()->GetDockStation() == TargetSpacecraftPawn)
 				{
@@ -1790,7 +1807,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfoAdditional() const
 	}
 
 	// Fleet info
-	if (TargetSpacecraft && TargetSpacecraft->IsValidLowLevel())
+	if (IsValid(TargetSpacecraft))
 	{
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
 		UFlareFleet* Fleet = TargetSpacecraft->GetCurrentFleet();
@@ -1842,7 +1859,8 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 			if (!TargetSpacecraft->IsStation())
 			{
 				AFlareSpacecraft* ActiveShip = TargetSpacecraft->GetActive();
-				if (ActiveShip)
+				bool InActiveSector = (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == TargetSpacecraft->GetCurrentSector());
+				if (ActiveShip && InActiveSector)
 				{
 					UFlareSpacecraftNavigationSystem* Spacecraftnavigation = ActiveShip->GetNavigationSystem();
 					if (Spacecraftnavigation)

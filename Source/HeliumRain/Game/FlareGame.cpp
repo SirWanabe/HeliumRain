@@ -463,8 +463,7 @@ void AFlareGame::SetWorldPause(bool Pause)
 
 void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatriculation)
 {
-
-	UFlareSimulatedSpacecraft* ShipToScrap = World->FindSpacecraft(ShipImmatriculation);
+		UFlareSimulatedSpacecraft* ShipToScrap = World->FindSpacecraft(ShipImmatriculation);
 	UFlareSimulatedSpacecraft* ScrapingStation = World->FindSpacecraft(TargetStationImmatriculation);
 
 	if(!ShipToScrap || !ScrapingStation)

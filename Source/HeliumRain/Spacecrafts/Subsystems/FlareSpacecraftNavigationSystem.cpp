@@ -165,7 +165,8 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 	TransactionDestinationDock = NULL;
 	TransactionDonation = NULL;
 
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+//	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 	for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
 	{
 		UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
@@ -407,7 +408,7 @@ void UFlareSpacecraftNavigationSystem::BreakDock()
 	if(DockConstraint)
 	{
 		DockConstraint->BreakConstraint();
-		DockConstraint->DestroyComponent();
+//		DockConstraint->DestroyComponent();
 		DockConstraint = NULL;
 	}
 }
@@ -417,26 +418,19 @@ bool UFlareSpacecraftNavigationSystem::Undock()
 	// Try undocking
 	if (IsDocked())
 	{
-/*
-		if(Spacecraft->GetParent()->IsTrading())
+		AFlareSpacecraft* DockStation = GetDockStation();
+		if (!DockStation)
 		{
-			FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' is trading", *Spacecraft->GetParent()->GetImmatriculation().ToString());
-			return false;
+			return true;
 		}
-*/
+
 		FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' undocking from '%s'",
 			*Spacecraft->GetParent()->GetImmatriculation().ToString(),
 			*Data->DockedTo.ToString());
 
 		// Detach from station
-		if(DockConstraint)
-		{
-			DockConstraint->BreakConstraint();
-			DockConstraint->DestroyComponent();
-			DockConstraint = NULL;
-		}
+		BreakDock();
 
-		AFlareSpacecraft* DockStation = GetDockStation();
 		DockStation->GetDockingSystem()->ReleaseDock(Spacecraft, Data->DockedAt);
 
 		// Update data
@@ -480,7 +474,7 @@ bool UFlareSpacecraftNavigationSystem::Undock()
 
 AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation()
 {
-	if (IsDocked())
+	if (IsDocked() && (Spacecraft->GetGame()->GetActiveSector() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector()))
 	{
 		AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->FindSpacecraft(Data->DockedTo);
 		return Station;
@@ -956,34 +950,21 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	}
 }
 
-
-
-
 void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
 {
 	FFlareShipCommandData CurrentCommand;
-	if (CommandData.Peek(CurrentCommand))
+	while (CommandData.Dequeue(CurrentCommand))
 	{
-		if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
+		if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock && !Spacecraft->GetParent()->GetCurrentFleet()->IsTraveling())
 		{
 			AFlareSpacecraft* DockStation = CurrentCommand.ActionTarget;
 			int32 DockId = CurrentCommand.ActionTargetParam;
-/*
-			AFlarePlayerController* PC = Spacecraft->GetPC();
-			FText Formatted = FText::Format(LOCTEXT("Message1", "Navigation system is autopilot {0}"),
-				DockId);
-			PC->Notify(
-				LOCTEXT("Test 1", "Test 2"),
-				Formatted,
-				"upgrade-success1",
-				EFlareNotification::NT_Info);
-*/
+
 			if (DockStation)
 			{
 				Data->DockedTo = DockStation->GetImmatriculation();
 				Data->DockedAt = DockId;
-//Technicaly RedockTo doesn't quite calculate the proper location and either needs to be fixed or called twice in this situation. However, upon sector reload it's called again on normal Redock() anyway so "everything is fine *fire in background*"
-				Spacecraft->RedockTo(DockStation);
+//				Spacecraft->RedockTo(DockStation);
 				ConfirmDock(DockStation, DockId, false);
 			}
 		}
@@ -1011,12 +992,7 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 	Data->DockedAngle = OutputAngle;
 	DockStation->GetDockingSystem()->Dock(Spacecraft, DockId);
 
-	if(DockConstraint)
-	{
-		DockConstraint->BreakConstraint();
-		DockConstraint->DestroyComponent();
-		DockConstraint = NULL;
-	}
+	BreakDock();
 
 	// Attach to station
 	FConstraintInstance ConstraintInstance;
@@ -1034,7 +1010,11 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 	ConstraintInstance.ProfileInstance.bAngularBreakable = 0;
 	ConstraintInstance.AngularRotationOffset = FRotator::ZeroRotator;
 
-	DockConstraint = NewObject<UPhysicsConstraintComponent>(Spacecraft->Airframe);
+	if (!DockConstraint)
+	{
+		DockConstraint = NewObject<UPhysicsConstraintComponent>(Spacecraft->Airframe);
+	}
+
 	DockConstraint->ConstraintInstance = ConstraintInstance;
 	DockConstraint->SetWorldLocation(Spacecraft->GetActorLocation());
 	DockConstraint->AttachToComponent(Spacecraft->GetRootComponent(), FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
@@ -1049,7 +1029,7 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 	DockConstraint->SetConstrainedComponents(Spacecraft->Airframe, NAME_None, AttachStation->Airframe,NAME_None);
 
 	// Cut engines
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 	for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
 	{
 		UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
@@ -1154,7 +1134,7 @@ FFlareShipCommandData UFlareSpacecraftNavigationSystem::GetCurrentCommand()
 	return CurrentCommand;
 }
 
-void UFlareSpacecraftNavigationSystem::AbortAllCommands()
+void UFlareSpacecraftNavigationSystem::AbortAllCommands(bool AttemptUndock, bool ClearTransactionInfo)
 {
 	FFlareShipCommandData Command;
 
@@ -1171,21 +1151,24 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands()
 			Station->GetDockingSystem()->ReleaseDock(Spacecraft, Command.ActionTargetParam);
 		}
 	}
-	if(IsDocked())
+
+	if(AttemptUndock && IsDocked())
 	{
 		Undock();
 	}
 
 	SetStatus(EFlareShipStatus::SS_Manual);
-	TransactionNewPartDesc = NULL;
-	TransactionNewPartWeaponGroupIndex = NULL;
-	TransactionResource = NULL;
-	TransactionQuantity = NULL;
-	TransactionSourceShip = NULL;
-	TransactionDestination = NULL;
-	TransactionDestinationDock = NULL;
-	TransactionDonation = NULL;
-
+	if (ClearTransactionInfo)
+	{
+		TransactionNewPartDesc = NULL;
+		TransactionNewPartWeaponGroupIndex = NULL;
+		TransactionResource = NULL;
+		TransactionQuantity = NULL;
+		TransactionSourceShip = NULL;
+		TransactionDestination = NULL;
+		TransactionDestinationDock = NULL;
+		TransactionDonation = NULL;
+	}
 }
 
 FVector UFlareSpacecraftNavigationSystem::GetDockLocation()
@@ -1262,8 +1245,7 @@ AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetNearestShip(AFlareSpacecr
 bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSeconds, FVector TargetLocation, FVector TargetVelocity, float MaxVelocity, float SecurityRatio)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_UpdateLinearAttitudeAuto);
-
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 
 	FVector DeltaPosition = (TargetLocation - Spacecraft->GetActorLocation()) / 100; // Distance in meters
 	FVector DeltaPositionDirection = DeltaPosition;
@@ -1345,7 +1327,7 @@ bool UFlareSpacecraftNavigationSystem::UpdateLinearBraking(FFlareShipCommandData
 
 void UFlareSpacecraftNavigationSystem::OnControlLost()
 {
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 
 	if (Spacecraft->GetParent()->GetDamageSystem()->IsUncontrollable())
 	{
@@ -1366,7 +1348,7 @@ bool UFlareSpacecraftNavigationSystem::UpdateAngularAttitudeAuto(FFlareShipComma
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_UpdateAngularAttitudeAuto);
 
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 
 	// Rotation data
 	FVector TargetAxis = Command.RotationTarget;
@@ -1446,7 +1428,7 @@ FVector UFlareSpacecraftNavigationSystem::GetAngularVelocityToAlignAxis(FVector 
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_GetAngularVelocityToAlignAxis);
 
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
 
 	FVector AngularVelocity = Spacecraft->Airframe->GetPhysicsAngularVelocityInDegrees();
 	FVector WorldShipAxis = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LocalShipAxis);
@@ -1537,7 +1519,8 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 		return;
 	}
 
-	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
+	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
+
 	TArray<float> EnginesAlpha;
 
 	EnginesAlpha.Reserve(Engines.Num());

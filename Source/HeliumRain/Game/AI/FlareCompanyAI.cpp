@@ -510,6 +510,12 @@ bool UFlareCompanyAI::IsAboveMinimumMoney()
 
 void UFlareCompanyAI::CreateWorldResourceVariations()
 {
+	if (CreatedWorldResourceVariations)
+	{
+		return;
+	}
+
+	CreatedWorldResourceVariations = true;
 	// Compute input and output ressource equation (ex: 100 + 10/ day)
 // TODO
 	WorldResourceVariation.Empty();
@@ -529,6 +535,7 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 	if (Game && Company != Game->GetPC()->GetCompany())
 	{
 		CheckedBuildingShips = false;
+		CreatedWorldResourceVariations = false;
 
 		GlobalReservedResources = TotalReservedResources;
 		AutoScrap();
@@ -542,7 +549,6 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		Shipyards = GetGame()->GetGameWorld()->GetShipyardsFor(Company);
 		UndiscoveredSectors = Company->GetUndiscoveredSectors();
 		CanUpgradeSectors.Empty();
-		CreateWorldResourceVariations();
 
 		if (!AIData.CalculatedDefaultBudget)
 		{
@@ -1457,6 +1463,8 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 	FFlareSpacecraftDescription* BestStationDescription = NULL;
 	UFlareSimulatedSpacecraft* BestStation = NULL;
 	TArray<UFlareSpacecraftCatalogEntry*>& StationCatalog = Game->GetSpacecraftCatalog()->StationCatalog;
+
+	CreateWorldResourceVariations();
 
 	// Loop on sector list
 	while (KnownSectors.Num())
@@ -2576,6 +2584,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 			{
 				return true;
 			}
+			return false;
 		}
 	};
 
@@ -3896,14 +3905,20 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 		ProductionSensitivity = Behavior->DailyProductionCostSensitivityEconomic;
 }
 
-	//FLOGV("OrderOneShip %s", *ShipDescription->Name.ToString());
+	// FLOGV("OrderOneShip %s", *ShipDescription->Name.ToString());
 
 	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
 	{
 		UFlareSimulatedSpacecraft* Shipyard = Shipyards[ShipyardIndex];
+/*
+		FLOGV("UFlareCompanyAI::UpdateShipAcquisition : CanOrder, looking at: '%s' for %s",
+			*Shipyard->GetImmatriculation().ToString(),
+			*ShipDescription->Identifier.ToString());
+*/
 		if (Shipyard->CanOrder(ShipDescription, Company, true))
 		{
 			int64 ShipPrice;
+
 			if (Shipyard->GetCompany() != Company)
 			{
 				ShipPrice = UFlareGameTools::ComputeSpacecraftPrice(ShipDescription->Identifier, Shipyard->GetCurrentSector(), true);
@@ -3912,12 +3927,18 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 			{
 				ShipPrice = ShipDescription->CycleCost.ProductionCost;
 			}
-
+/*
+			FLOGV("UFlareCompanyAI::UpdateShipAcquisition : CanOrder, looking at: '%s', price %d", 
+				*Shipyard->GetImmatriculation().ToString(),
+				ShipPrice);
+*/
 			if (((ShipPrice * CostSafetyMargin) + (TotalValue.TotalDailyProductionCost * ProductionSensitivity) < CompanyMoney) && CanSpendBudget(IsMilitary ? EFlareBudget::Military : EFlareBudget::Trade, ShipPrice))
 
 			{
 				FName ShipClassToOrder = ShipDescription->Identifier;
-				FLOGV("UFlareCompanyAI::UpdateShipAcquisition : Ordering spacecraft : '%s'", *ShipClassToOrder.ToString());
+				FLOGV("UFlareCompanyAI::UpdateShipAcquisition : Ordering spacecraft : '%s' from '%s'", 
+					*ShipClassToOrder.ToString()
+					,*Shipyard->GetImmatriculation().ToString());
 				Shipyard->ShipyardOrderShip(Company, ShipClassToOrder);
 
 				SpendBudget((IsMilitary ? EFlareBudget::Military : EFlareBudget::Trade), ShipPrice);

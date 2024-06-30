@@ -8,6 +8,15 @@ class UFlareSimulatedSector;
 class AFlareShell;
 class AFlareBomb;
 class AFlareAsteroid;
+class AFlareMeteorite;
+
+USTRUCT()
+struct FFlareSpacecraftCacheHelper
+{
+	GENERATED_USTRUCT_BODY()
+
+	TArray<AFlareSpacecraft*> TrackedSpacecraft;
+};
 
 UCLASS()
 class HELIUMRAIN_API UFlareCacheSystem : public UObject
@@ -21,6 +30,9 @@ public:
 	----------------------------------------------------*/
 	void InitialSetup(AFlareGame* GameMode);
 
+	void StoreCachedSpacecraft(AFlareSpacecraft* Spacecraft);
+	AFlareSpacecraft* RetrieveCachedSpacecraft(UClass* SpacecraftType);
+
 	void StoreCachedShell(AFlareShell* Shell);
 	AFlareShell* RetrieveCachedShell();
 
@@ -29,6 +41,9 @@ public:
 
 	void StoreCachedAsteroid(AFlareAsteroid* Asteroid);
 	AFlareAsteroid* RetrieveCachedAsteroid();
+
+	void StoreCachedMeteorite(AFlareMeteorite* Meteorite);
+	AFlareMeteorite* RetrieveCachedMeteorite();
 
 	void StoreCachedDebris(AStaticMeshActor* Debris);
 	AStaticMeshActor* RetrieveCachedDebris();
@@ -60,5 +75,11 @@ protected:
 	TArray<AFlareAsteroid*>					   CachedAsteroids;
 
 	UPROPERTY()
+	TArray<AFlareMeteorite*>				   CachedMeteorites;
+
+	UPROPERTY()
 	TArray<AStaticMeshActor*>				   CachedDebris;
+
+	UPROPERTY()
+	TMap<UClass*, FFlareSpacecraftCacheHelper> CachedSpacecraft;
 };

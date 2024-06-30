@@ -31,22 +31,20 @@ public:
 	void Construct(const FArguments& InArgs);
 
 	/** Add a widget */
-	void AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action);
+	void AddWidget(FString Icon, FText Legend);
+	void AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault = false);
 
-	/** Add a widget for the "default" action */
-	void AddDefaultWidget(FString Icon, FText Legend);
+	void SetPendingMenu(FFlareMouseMenuClicked NewPendingMenu);
 
-	/** Add a widget for the "default" action */
-	void AddDefaultWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action);
-	
 	/** Remove all widgets */
 	void ClearWidgets();
 
 	/** Open the menu */
-	void Open();
+	void Open(int32 NewSelectedWidget = -1);
 
 	/** Hide the menu */
 	void Close(bool EnableAction = true);
+	void SelectOption(int32 IndexOverride = -1);
 
 	/** Check if the menu is open */
 	bool IsOpen() const;
@@ -54,6 +52,10 @@ public:
 	/** Move wheel cursor */
 	void SetWheelCursorMove(FVector2D Move);
 
+	inline int32 GetSelectedWidget() const
+	{
+		return SelectedWidget;
+	}
 
 protected:
 
@@ -122,7 +124,6 @@ protected:
 	float                                Sensitivity;
 
 	// HUD data
-	FFlareMouseMenuClicked               DefaultAction;
 	TArray<FFlareMouseMenuClicked>       Actions;
 	FVector2D                            ViewportCenter;
 	FVector2D                            MouseOffset;
@@ -132,6 +133,5 @@ protected:
 	float                                CurrentTime;
 	float                                TimeSinceActive;
 	float                                IsOpening;
-
-
+	bool								 MouseMenuAutoReset;
 };

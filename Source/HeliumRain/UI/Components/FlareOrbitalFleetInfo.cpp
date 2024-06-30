@@ -73,32 +73,13 @@ void SFlareOrbitalFleetInfo::Update()
 	FleetList->SetVisibility(EVisibility::Visible);
 
 	int32 FleetCount = MenuManager->GetPC()->GetCompany()->GetCompanyFleets().Num();
-	FLOGV("SFlareFleetMenu::UpdateFleetList : found %d fleets", FleetCount);
+	FLOGV("SFlareOrbitalFleetInfo::Update : found %d fleets", FleetCount);
 
 	for (int32 FleetIndex = 0; FleetIndex < FleetCount; FleetIndex++)
 	{
 		UFlareFleet* Fleet = MenuManager->GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
-
-		if (Fleet && Fleet->GetShips().Num() && !Fleet->IsAutoTrading() && !Fleet->IsHiddenTravel())
+		if (Fleet->IsVisibleForOrbitalFleetList())
 		{
-			if (Fleet->IsTraveling())
-			{
-				if (!Fleet->GetCurrentTravel()->CanChangeDestination())
-				{
-					continue;
-				}
-			}
-			
-			if (Fleet->GetCurrentTradeRoute() && !Fleet->GetCurrentTradeRoute()->IsPaused())
-			{
-				continue;
-			}
-
-			if (Fleet->GetImmobilizedShipCount() == Fleet->GetShipCount())
-			{
-				continue;
-			}
-
 			FleetList->AddFleet(Fleet);
 		}
 	}

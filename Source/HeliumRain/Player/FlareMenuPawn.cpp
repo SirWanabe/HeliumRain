@@ -183,16 +183,23 @@ void AFlareMenuPawn::Tick(float DeltaSeconds)
 	Resource loading
 ----------------------------------------------------*/
 
+void AFlareMenuPawn::UpdateShip(UFlareSimulatedSpacecraft* Spacecraft)
+{
+	if (!CurrentSpacecraft)
+	{
+		return;
+	}
+
+	if (CurrentSpacecraft->GetDescription()->SpacecraftTemplate == Spacecraft->GetDescription()->SpacecraftTemplate)
+	{
+		CurrentSpacecraft->Load(Spacecraft);
+	}
+}
+
 void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 {
 	// Clean up
 	ResetContent();
-
-	// Spawn parameters
-	FActorSpawnParameters Params;
-	Params.bNoFail = true;
-	Params.Instigator = this;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	// Spawn and setup the ship
 	FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, false);
@@ -213,6 +220,12 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	if(!CurrentSpacecraft)
 	{
 		CreatedNew = true;
+		// Spawn parameters
+		FActorSpawnParameters Params;
+		Params.bNoFail = true;
+		Params.Instigator = this;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
 		CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
 		CurrentSpacecraft->AttachToComponent(ShipContainer, AttachRules, NAME_None);
 	}

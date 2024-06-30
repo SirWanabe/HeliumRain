@@ -72,13 +72,13 @@ protected:
 		bool SpeedCorrectionOnly;
 	};
 
-	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* TargetShip, FVector InitialVelocity, float PreventionDuration, PilotHelper::AnticollisionConfig IgnoreConfig, float DeltaSeconds);
+	virtual FVector TryAnticollisionCorrection(AFlareSpacecraft* TargetShip, FVector InitialVelocity, PilotHelper::AnticollisionConfig IgnoreConfig, float DeltaSeconds);
 
 	virtual void SelectedNewLeader(AFlareSpacecraft* OldLeaderShip);
 
 	virtual void GetNewLeaderShip();
 
-	virtual void FollowLeaderShip(int32 DefaultRadius = 75000);
+	virtual void FollowLeaderShip(int32 DefaultRadius = 500);
 
 public:
 	/*----------------------------------------------------
@@ -225,6 +225,7 @@ protected:
 	bool										 RunningExitAvoidance;
 	bool										 InitiatedCombat;
 	bool										 FoundOutOfCombatLeader;
+	bool										 RequiredAntiCollisionPreviousTick;
 
 	float										 PreviousTick;
 

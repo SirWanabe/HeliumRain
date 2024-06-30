@@ -215,7 +215,7 @@ public:
 	FFlareShipCommandData GetCurrentCommand();
 
 	/** Abort all the current pushed autopilot commands */
-	void AbortAllCommands();
+	void AbortAllCommands(bool AttemptUndock = true, bool ClearTransactionInfo = true);
 
 	/** Get the dock offset from the origin of the ship in local space */
 	virtual FVector GetDockOffset();

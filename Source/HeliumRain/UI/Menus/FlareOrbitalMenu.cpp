@@ -454,14 +454,16 @@ void SFlareOrbitalMenu::Tick(const FGeometry& AllottedGeometry, const double InC
 				RefreshTrackedButtons();
 			}
 
+			if (OrbitalFleetsUpdateRequested)
+			{
+				OrbitalFleetsUpdateRequested = false;
+				OrbitalFleetsInfo->Update();
+			}
+
 			// Stop request
 			if (FastForwardStopRequested)
 			{
 				StopFastForward();
-			}
-			else if (OrbitalFleetsUpdateRequested)
-			{
-				OrbitalFleetsInfo->Update();
 			}
 		}
 	}
@@ -871,6 +873,11 @@ void SFlareOrbitalMenu::OnStartSelectedFleetTravelCanceled()
 
 void SFlareOrbitalMenu::OnFastForwardClicked()
 {
+	if (MenuManager->GetPC()->GetSimulatedConfirmed())
+	{
+		return;
+	}
+
 	// Confirm and go on
 	bool CanGoAhead = MenuManager->GetPC()->ConfirmFastForward(FSimpleDelegate::CreateSP(this, &SFlareOrbitalMenu::OnFastForwardConfirmed, false), FSimpleDelegate(), false);
 	if (CanGoAhead)

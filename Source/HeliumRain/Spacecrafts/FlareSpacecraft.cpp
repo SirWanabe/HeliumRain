@@ -47,7 +47,6 @@ DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Hit"), STAT_FlareSpacecraft_Hit, STATGR
 DECLARE_CYCLE_STAT(TEXT("FlareSpacecraft Aim"), STAT_FlareSpacecraft_Aim, STATGROUP_Flare);
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraft"
-#define DELETION_DELAYCRAFT 3
 
 /*----------------------------------------------------
 	Constructor
@@ -87,7 +86,6 @@ AFlareSpacecraft::AFlareSpacecraft(const class FObjectInitializer& PCIP)
 	// Gameplay
 	HasExitedSector = false;
 	Paused = false;
-	LoadedAndReady = false;
 	AttachedToParentActor = false;
 	TargetIndex = 0;
 	TimeSinceSelection = 0;
@@ -159,6 +157,20 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 		// Tick systems
 		{
 			SCOPE_CYCLE_COUNTER(STAT_FlareSpacecraft_Systems);
+
+			//Johnny 5 need input
+			bool IsNumberFiveAlive = GetParent()->GetDamageSystem()->IsAlive();
+
+			for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
+			{
+				UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
+				Component->TickForComponent(DeltaSeconds);
+				if (IsNumberFiveAlive)
+				{
+					Component->TickForComponentAlive(DeltaSeconds);
+				}
+			}
+
 			StateManager->Tick(DeltaSeconds);
 			if(!IsStation())
 			{
@@ -380,13 +392,16 @@ void AFlareSpacecraft::CarrierReleaseInternalDockShips(float DeltaSeconds)
 		bool UndockedAShip = false;
 		for (UFlareSimulatedSpacecraft* OwnedShips : GetParent()->GetShipChildren())
 		{
-			if (!OwnedShips->IsActive() && OwnedShips->IsInternalDockedTo(GetParent()) && !OwnedShips->IsReserve())
+			if (OwnedShips->IsInternalDockedTo(GetParent()) && !OwnedShips->IsReserve())
 			{
 				if (OwnedShips->GetGame()->GetActiveSector() && OwnedShips->GetGame()->GetActiveSector()->GetSimulatedSector() == OwnedShips->GetCurrentSector())
 				{
-					OwnedShips->GetGame()->GetActiveSector()->LoadSpacecraft(OwnedShips);
-					UndockedAShip = true;
-					break;
+					if (OwnedShips->GetGame()->GetActiveSector()->LoadSpacecraft(OwnedShips, true))
+					{
+						OwnedShips->GetActive()->SetLoadedAndReady();
+						UndockedAShip = true;
+						break;
+					}
 				}
 			}
 		}
@@ -997,23 +1012,41 @@ void AFlareSpacecraft::SafeHide(bool ShowExplosion)
 	SafeDestroy();
 }
 
+void AFlareSpacecraft::UnSafeDestroy()
+{
+	if (IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = false;
+		this->SetActorHiddenInGame(false);
+		this->SetActorEnableCollision(true);
+		Airframe->SetSimulatePhysics(true);
+		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+		{
+			UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+			Component->UnSafeDestroy();
+		}
+	}
+}
+
 void AFlareSpacecraft::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
 	{
+		IsSafeDestroyingRunning = true;
+
 		if (GetGame()->GetActiveSector() && !GetGame()->GetActiveSector()->GetIsDestroyingSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == GetParent()->GetCurrentSector())
 		{
 			GetGame()->GetActiveSector()->RemoveSpacecraft(this,true);
 		}
 
 		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		IsSafeDestroyingRunning = true;
 		this->SetActorTickEnabled(false);
 		Airframe->SetSimulatePhysics(false);
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
 
-		SetLifeSpan(DELETION_DELAYCRAFT);
 		IsExploding = false;
 
 		StopFire();
@@ -1026,29 +1059,17 @@ void AFlareSpacecraft::SafeDestroy()
 		ResetCurrentTarget();
 		SignalIncomingBombsDeadTarget();
 		InSectorSquad.Empty();
-
-		// Notify PC
-		if (!IsPresentationMode() && Parent)
-		{
-			if (Parent->GetActive() == this)
-			{
-				Parent->SetActiveSpacecraft(NULL);
-			}
-		}
-
 		UnTrackAllIncomingBombs();
 
 		TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
 		{
 			UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
-			Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Component->SafeDestroy();
 		}
 
 		//disable the collision of former dynamic components (primarily for the shipyard representation of a ship being built) just encase it still exists when entering a sector which would 
 		//cause it to collide with the new version of itself. this wouldn't be neccessary if the active spaceship was reused
-
 		TArray<UActorComponent*> DynamicComponents = GetComponentsByClass(UChildActorComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < DynamicComponents.Num(); ComponentIndex++)
 		{
@@ -1071,16 +1092,6 @@ void AFlareSpacecraft::SafeDestroy()
 	}
 }
 
-void AFlareSpacecraft::LifeSpanExpired()
-{
-	FinishSafeDestroy();
-}
-
-void AFlareSpacecraft::FinishSafeDestroy()
-{
-	BegunSafeDestroy = this->Destroy();
-}
-
 void AFlareSpacecraft::Destroyed()
 {
 	Super::Destroyed();
@@ -1097,10 +1108,9 @@ void AFlareSpacecraft::Destroyed()
 	}
 
 	// Clear bombs
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
+		UFlareWeapon* Weapon = Cast<UFlareWeapon>(ActiveSpacecraftComponents[ComponentIndex]);
 		if (Weapon)
 		{
 			Weapon->ClearBombs();
@@ -1154,27 +1164,6 @@ void AFlareSpacecraft::UnTrackIncomingBomb(AFlareBomb* Bomb)
 	}
 }
 
-//FinishAutoDocks()
-void AFlareSpacecraft::FinishAutoPilots()
-{
-	if (NavigationSystem)
-	{
-		if (NavigationSystem->IsAutoPilot())
-		{
-			NavigationSystem->ForceFinishAutoPilots();
-			GetData().Location = GetActorLocation();
-			GetData().Rotation = GetActorRotation();
-		}
-	}
-	if(GetDescription()->IsDroneShip)
-	{
-		if (GetParent()->GetShipMaster() && GetParent()->GetShipMaster()->GetActive() &&  !GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
-		{
-			GetParent()->SetInternalDockedTo(GetParent()->GetShipMaster());
-		}
-	}
-}
-
 void AFlareSpacecraft::AddToInsectorSquad(AFlareSpacecraft* Adding)
 {
 	InSectorSquad.AddUnique(Adding);
@@ -1215,86 +1204,6 @@ void AFlareSpacecraft::SetPause(bool Pause)
 	}
 }
 
-void AFlareSpacecraft::Redock()
-{
-	// Re-dock if we were docked
-	if (GetData().DockedTo != NAME_None && !IsPresentationMode())
-	{
-		// TODO use sector iterator
-		FLOGV("AFlareSpacecraft::Redock : Looking for station '%s'", *GetData().DockedTo.ToString());
-
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
-		{
-			AFlareSpacecraft* Station = GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
-
-			if (Station->GetImmatriculation() == GetData().DockedTo)
-			{
-				FLOGV("AFlareSpacecraft::Redock : Found dock station '%s'", *Station->GetImmatriculation().ToString());
-
-				if(Station->GetDockingSystem()->GetDockCount() <= GetData().DockedAt)
-				{
-					FLOGV("WARNING !!! AFlareSpacecraft::Redock : invalid port index %d (%d docking port in station)", GetData().DockedAt, Station->GetDockingSystem()->GetDockCount());
-					break;
-				}
-
-				RedockTo(Station);
-				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, false);
-
-				// Replace ship at docking port
-/*
-				FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
-				FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
-				FTransform DockedTransform;
-				FQuat DockRotation = FQuat(UKismetMathLibrary::MakeRotFromXZ(-DockingParameters.StationDockAxis, DockingParameters.StationDockTopAxis));
-				DockedTransform.SetRotation(DockRotation);
-
-				FRotator RollRotation = FRotator::ZeroRotator;
-				RollRotation.Roll = GetData().DockedAngle;
-				DockedTransform.ConcatenateRotation(FQuat(RollRotation));
-
-				FVector ShipLocalDockOffset = GetActorTransform().GetRotation().Inverse().RotateVector(DockingParameters.ShipDockOffset);
-				FVector RotatedOffset = DockRotation.RotateVector(ShipLocalDockOffset);
-				FVector DockLocation = DockingParameters.StationDockLocation - RotatedOffset;
-				DockedTransform.SetTranslation(DockLocation);
-
-				SetActorTransform(DockedTransform, false, nullptr, ETeleportType::TeleportPhysics);
-				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, false);
-*/
-				break;
-			}
-		}
-	}
-}
-
-void AFlareSpacecraft::RedockTo(AFlareSpacecraft* Station)
-{
-	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
-	FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
-/*
-	FVector ShipDockPosition = GetRootComponent()->GetSocketLocation(FName("Dock"));
-	FVector ShipDockOffset =  ShipDockPosition - GetActorLocation();
-*/
-
-	FVector LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
-	FVector AxisTarget = -DockingParameters.StationDockAxis;
-	FRotator AxisRotation = AxisTarget.ToOrientationRotator();
-	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
-}
-
-/*
-	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
-	FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
-
-	FVector LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
-	FVector AxisTarget = -DockingParameters.StationDockAxis;
-	FRotator AxisRotation = AxisTarget.ToOrientationRotator();
-	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
-
-	DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
-	LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
-	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
-*/
-
 float AFlareSpacecraft::GetSpacecraftMass() const
 {
 	float Mass = GetDescription()->Mass;
@@ -1302,7 +1211,8 @@ float AFlareSpacecraft::GetSpacecraftMass() const
 	{
 		return Mass;
 	}
-	else if (AttachedToParentActor)
+//	AttachedToParentActor
+	else if (GetAttachParentActor())
 	{
 		return Cast<UPrimitiveComponent>(GetAttachParentActor()->GetRootComponent())->GetMass();
 	}
@@ -1335,12 +1245,12 @@ void AFlareSpacecraft::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget
 
 	GetPilot()->ClearInvalidTarget(InvalidTarget);
 
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
-	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
 
-		UFlareTurret* Turret = Cast<UFlareTurret>(Components[ComponentIndex]);
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
+	{
+		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
+
+		UFlareTurret* Turret = Cast<UFlareTurret>(ActiveSpacecraftComponents[ComponentIndex]);
 		if (Turret)
 		{
 			Turret->GetTurretPilot()->ClearInvalidTarget(InvalidTarget);
@@ -1350,15 +1260,7 @@ void AFlareSpacecraft::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget
 
 PilotHelper::PilotTarget AFlareSpacecraft::GetCurrentTarget()
 {
-	// Crash "preventer" - ensure we've got a really valid target, this isn't a solution, but it seems to only happen when using CreateShip commands
-	if (IsValidLowLevel() && CurrentTarget.IsValid())
-	{
-		return CurrentTarget;
-	}
-	else
-	{
-		return PilotHelper::PilotTarget();
-	}
+	return CurrentTarget;
 }
 
 bool AFlareSpacecraft::IsInScanningMode()
@@ -1567,10 +1469,15 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 {
 	// Update local data
 	SetMeshBox = false;
+	LoadedAndReady = false;
 	Parent = ParentSpacecraft;
+	ResetCurrentTarget();
+
 	if (!IsPresentationMode())
 	{
 		Airframe->SetSimulatePhysics(true);
+//		Airframe->SetSimulatePhysics(false);
+//		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Parent->SetActiveSpacecraft(this);
 	}
 
@@ -1585,31 +1492,12 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	// Load ship description
 	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 
-	// Unload
-/*
-	if(NavigationSystem)
-	{
-		NavigationSystem->BreakDock();
-	}
-*/
 	// Initialize damage system
 	if (!DamageSystem)
 	{
 		DamageSystem = NewObject<UFlareSpacecraftDamageSystem>(this, UFlareSpacecraftDamageSystem::StaticClass());
 	}
 	DamageSystem->Initialize(this, &GetData());
-
-	// Initialize navigation system
-	if (!NavigationSystem)
-	{
-		NavigationSystem = NewObject<UFlareSpacecraftNavigationSystem>(this, UFlareSpacecraftNavigationSystem::StaticClass());
-	}
-	else
-	{
-		NavigationSystem->BreakDock();
-	}
-
-	NavigationSystem->Initialize(this, &GetData());
 
 	// Initialize docking system
 	if (!DockingSystem)
@@ -1632,10 +1520,26 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	UpdateDynamicComponents();
 
 	// Initialize components
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	TArray<UActorComponent*> InternalComponents = GetComponentsByClass(UFlareInternalComponent::StaticClass());
+	TArray<UActorComponent*> SpacecraftComponents = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+
+	ActiveSpacecraftInternalComponents.Empty();
+	ActiveSpacecraftInternalComponents.Reserve(InternalComponents.Num());
+	for (int32 ComponentIndex = 0; ComponentIndex < InternalComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+		UFlareInternalComponent* InternalComponent = Cast<UFlareInternalComponent>(InternalComponents[ComponentIndex]);
+		if (InternalComponent)
+		{
+			ActiveSpacecraftInternalComponents.Add(InternalComponent);
+		}
+	}
+
+	ActiveSpacecraftComponents.Empty();
+	ActiveSpacecraftEngineComponents.Empty();
+	FFlareSpacecraftComponentDescription* RCSDescription = nullptr;
+	for (int32 ComponentIndex = 0; ComponentIndex < SpacecraftComponents.Num(); ComponentIndex++)
+	{
+		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(SpacecraftComponents[ComponentIndex]);
 		FFlareSpacecraftComponentSave* ComponentData = NULL;
 
 		// Find component the corresponding component data comparing the slot id
@@ -1656,14 +1560,22 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 			continue;
 		}
 
+		UFlareSpacecraftComponent* ComponentEngine = Cast<UFlareEngine>(SpacecraftComponents[ComponentIndex]);
+
 		// Reload the component
 		ReloadPart(Component, ComponentData);
+
+		ActiveSpacecraftComponents.Add(Component);
+		if (ComponentEngine)
+		{
+			ActiveSpacecraftEngineComponents.Add(Component);
+		}
 
 		// Set RCS description
 		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 		if (ComponentDescription->Type == EFlarePartType::RCS)
 		{
-			SetRCSDescription(ComponentDescription);
+			RCSDescription = ComponentDescription;
 		}
 
 		// Set orbital engine description
@@ -1679,6 +1591,20 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		}
 	}
 
+	// Initialize navigation system
+	if (!NavigationSystem)
+	{
+		NavigationSystem = NewObject<UFlareSpacecraftNavigationSystem>(this, UFlareSpacecraftNavigationSystem::StaticClass());
+	}
+	else
+	{
+		NavigationSystem->BreakDock();
+	}
+
+	NavigationSystem->Initialize(this, &GetData());
+
+	SetRCSDescription(RCSDescription);
+
 	// Look for an asteroid component
 	ApplyAsteroidData();
 
@@ -1688,8 +1614,8 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		ShipNameTexture = UCanvasRenderTarget2D::CreateCanvasRenderTarget2D(this, UCanvasRenderTarget2D::StaticClass(), 384, 384);// 256, 256);
 		FCHECK(ShipNameTexture);
 		ShipNameTexture->OnCanvasRenderTargetUpdate.AddDynamic(this, &AFlareSpacecraft::DrawShipName);
+		ShipNameTexture->ClearColor = FLinearColor::Black;
 	}
-	ShipNameTexture->ClearColor = FLinearColor::Black;
 
 	// Customization
 	UpdateCustomization();
@@ -1730,26 +1656,121 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		Airframe->SetSimulatePhysics(false);
 	}
 
-	CurrentTarget.Clear();
+	FirstTimeSetupRun = true;
 }
 
-void AFlareSpacecraft::FinishLoadandReady()
+void AFlareSpacecraft::SimulateDayRun()
 {
+	DamageSystem->UpdateCurrentHeatValue(30);
+}
 
-	Redock();
+void AFlareSpacecraft::ReattachAndRedock()
+{
 	// Attach to parent actor, if any
-	if (GetData().AttachActorName != NAME_None && !GetAttachedToParentActor())
+	if (GetData().AttachActorName != NAME_None)// && !GetAttachParentActor())//!GetAttachedToParentActor())
 	{
 		TryAttachParentActor();
 	}
 
 	// Attach to parent complex station, if any
-	if (IsComplexElement() && !GetAttachedToParentActor())
+	if (IsComplexElement())// && !GetAttachParentActor())//!GetAttachedToParentActor())
 	{
 		TryAttachParentComplex();
 	}
 
+	if (NavigationSystem)
+	{
+		NavigationSystem->AbortAllCommands(false, false);
+	}
+
+	Redock();
+}
+
+void AFlareSpacecraft::FinishLoadandReady()
+{
+	if (!GetNavigationSystem()->IsDocked() && !GetAttachParentActor())
+	{
+		Airframe->SetSimulatePhysics(true);
+		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	SetLoadedAndReady();
+}
+
+void AFlareSpacecraft::SetLoadedAndReady()
+{
 	LoadedAndReady = true;
+}
+
+void AFlareSpacecraft::Redock()
+{
+	// Re-dock if we were docked
+	if (GetData().DockedTo != NAME_None && !IsPresentationMode()
+		&& (GetGame()->GetActiveSector() && !GetGame()->GetActiveSector()->GetIsDestroyingSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == GetParent()->GetCurrentSector()))
+	{
+		FLOGV("AFlareSpacecraft::Redock : Looking for station '%s'", *GetData().DockedTo.ToString());
+
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetStations().Num(); SpacecraftIndex++)
+		{
+			AFlareSpacecraft* Station = GetGame()->GetActiveSector()->GetStations()[SpacecraftIndex];
+
+			if (Station->GetImmatriculation() == GetData().DockedTo)
+			{
+				FLOGV("AFlareSpacecraft::Redock : Found dock station '%s'", *Station->GetImmatriculation().ToString());
+
+				if (Station->GetDockingSystem()->GetDockCount() <= GetData().DockedAt)
+				{
+					FLOGV("WARNING !!! AFlareSpacecraft::Redock : invalid port index %d (%d docking port in station)", GetData().DockedAt, Station->GetDockingSystem()->GetDockCount());
+					break;
+				}
+				// Replace ship at docking port
+				RedockTo(Station);
+
+				Airframe->SetSimulatePhysics(true);
+				Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, true);
+				break;
+			}
+		}
+	}
+}
+
+//Todo: RedockTo doesn't calculate the proper location and needs to be fixed to prevent the redudant second movement/rotation call.
+//"everything is fine *fire in background*"
+void AFlareSpacecraft::RedockTo(AFlareSpacecraft* Station)
+{
+	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);
+	FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
+
+	FVector LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
+	FVector AxisTarget = -DockingParameters.StationDockAxis;
+	FRotator AxisRotation = AxisTarget.ToOrientationRotator();
+	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, FVector::ZeroVector);
+	LocationTarget = DockingParameters.StationDockLocation - DockingParameters.ShipDockOffset;
+	SetActorLocationAndRotation(LocationTarget, AxisRotation, false, nullptr, ETeleportType::TeleportPhysics);
+}
+
+void AFlareSpacecraft::FinishAutoPilots()
+{
+	if (NavigationSystem)
+	{
+		if (NavigationSystem->IsAutoPilot())
+		{
+			NavigationSystem->ForceFinishAutoPilots();
+		}
+	}
+
+	if (GetDescription()->IsDroneShip)
+	{
+		if (GetParent()->GetShipMaster() && GetParent()->GetShipMaster()->GetActive() && !GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
+		{
+			GetParent()->SetInternalDockedTo(GetParent()->GetShipMaster());
+		}
+	}
+
+	GetData().Location = GetActorLocation();
+	GetData().Rotation = GetActorRotation();
 }
 
 void AFlareSpacecraft::Save()
@@ -1764,10 +1785,9 @@ void AFlareSpacecraft::Save()
 	}
 
 	// Save all components datas
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
 		Component->Save();
 	}
 }
@@ -1868,7 +1888,6 @@ void AFlareSpacecraft::TryAttachParentComplex()
 				AttachedToParentActor = true;
 			}
 		}
-
 	}
 }
 
@@ -1897,7 +1916,7 @@ void AFlareSpacecraft::TryAttachParentActor()
 
 void AFlareSpacecraft::ApplyAsteroidData()
 {
-	if (GetData().AsteroidData.Identifier != NAME_None)
+	if (GetData().AsteroidData.Identifier != NAME_None && !FirstTimeSetupRun)
 	{
 		TArray<UActorComponent*> Components = GetComponentsByClass(UActorComponent::StaticClass());
 		for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
@@ -1966,7 +1985,7 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 			FLOGV("AFlareSpacecraft::UpdateDynamicComponents : no construction state template for '%s'", *GetData().DynamicComponentStateIdentifier.ToString());
 		}
 	}
-	
+
 	// Apply construction template to all dynamic components
 	TArray<UActorComponent*> DynamicComponents = GetComponentsByClass(UChildActorComponent::StaticClass());
 	for (int32 ComponentIndex = 0; ComponentIndex < DynamicComponents.Num(); ComponentIndex++)
@@ -1983,12 +2002,9 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 					Component->SetChildActorClass(ConstructionTemplate);
 				}
 			}
-			else
+			else if (Component->GetChildActorClass() != IdleShipyardTemplate)
 			{
-				if (Component->GetChildActorClass() != IdleShipyardTemplate)
-				{
-					Component->SetChildActorClass(IdleShipyardTemplate);
-				}
+				Component->SetChildActorClass(IdleShipyardTemplate);
 			}
 
 			// Setup children
@@ -2003,6 +2019,7 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 					{
 						SubDynamicComponent->GetChildActor()->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), NAME_None);
 						SubDynamicComponent->GetChildActor()->SetOwner(this);
+						SubDynamicComponent->GetChildActor()->SetActorEnableCollision(true);
 
 						UFlareSpacecraftComponent* ChildRootComponent = Cast<UFlareSpacecraftComponent>(SubDynamicComponent->GetChildActor()->GetRootComponent());
 						if (ChildRootComponent)
@@ -2029,6 +2046,7 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 						}
 					}
 				}
+				Component->GetChildActor()->SetActorEnableCollision(true);
 			}
 		}
 	}
@@ -2039,10 +2057,9 @@ UFlareInternalComponent* AFlareSpacecraft::GetInternalComponentAtLocation(FVecto
 	float MinDistance = 100000; // 1km
 	UFlareInternalComponent* ClosestComponent = NULL;
 
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareInternalComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftInternalComponents.Num(); ComponentIndex++)
 	{
-		UFlareInternalComponent* InternalComponent = Cast<UFlareInternalComponent>(Components[ComponentIndex]);
+		UFlareInternalComponent* InternalComponent = ActiveSpacecraftInternalComponents[ComponentIndex];
 
 		FVector ComponentLocation;
 		float ComponentSize;
@@ -2190,10 +2207,9 @@ void AFlareSpacecraft::DrawShipName(UCanvas* TargetCanvas, int32 Width, int32 He
 
 void AFlareSpacecraft::OnRepaired()
 {
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
+		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
 		Component->OnRepaired();
 	}
 }
@@ -2201,12 +2217,10 @@ void AFlareSpacecraft::OnRepaired()
 void AFlareSpacecraft::OnRefilled()
 {
 	// Reload and repair
-	TArray<UActorComponent*> Components = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-	for (int32 ComponentIndex = 0; ComponentIndex < Components.Num(); ComponentIndex++)
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(Components[ComponentIndex]);
-
-		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Components[ComponentIndex]);
+		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
+		UFlareWeapon* Weapon = Cast<UFlareWeapon>(ActiveSpacecraftComponents[ComponentIndex]);
 		if (Weapon)
 		{
 			Weapon->OnRefilled();
@@ -2351,13 +2365,6 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 
 		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 		{
-/*
-			TransactionResource = NULL;
-			TransactionQuantity = NULL;
-			SourceSpacecraft = NULL;
-			DestinationSpacecraft = NULL;
-			TransactionDonation = 0;
-*/
 			UFlareSimulatedSpacecraft* TradeMenuLeftTargetShip = PlayerMenu->GetTradeMenu()->GetTargetLeftShip();
 			UFlareSimulatedSpacecraft* TradeMenuRightTargetShip = PlayerMenu->GetTradeMenu()->GetTargetRightShip();
 
@@ -2372,13 +2379,16 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 void AFlareSpacecraft::OnUndocked(AFlareSpacecraft* DockStation)
 {
 	// Signal the PC
+	if (Airframe)
+	{
+		Airframe->SetSimulatePhysics(true);
+		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
 	AFlarePlayerController* PC = GetGame()->GetPC();
 	if (IsFlownByPlayer() && PC)
 	{
-		if (StateManager->IsExternalCamera())
-		{
-			PC->SetExternalCamera(false);
-		}
+		PC->SetExternalCamera(PC->GetPlayerSetCameraMode());
 
 		PC->Notify(
 			LOCTEXT("Undocked", "Undocked"),
@@ -2424,13 +2434,7 @@ void AFlareSpacecraft::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	PlayerInputComponent->BindAction("LockDirection", EInputEvent::IE_Pressed, this, &AFlareSpacecraft::LockDirectionOn);
 	PlayerInputComponent->BindAction("LockDirection", EInputEvent::IE_Released, this, &AFlareSpacecraft::LockDirectionOff);
 
-	PlayerInputComponent->BindAction("StartFire", EInputEvent::IE_Pressed, this, &AFlareSpacecraft::StartFire);
-	PlayerInputComponent->BindAction("StartFire", EInputEvent::IE_Released, this, &AFlareSpacecraft::StopFire);
-
 	PlayerInputComponent->BindAction("FindTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::FindTarget);
-
-	PlayerInputComponent->BindAction("LeftMouse", EInputEvent::IE_Pressed, this, &AFlareSpacecraft::LeftMousePress);
-	PlayerInputComponent->BindAction("LeftMouse", EInputEvent::IE_Released, this, &AFlareSpacecraft::LeftMouseRelease);
 
 	PlayerInputComponent->BindAction("NextWeapon", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextWeapon);
 	PlayerInputComponent->BindAction("PreviousWeapon", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousWeapon);
@@ -2514,6 +2518,30 @@ void AFlareSpacecraft::ActivateWeaponGroupByIndex(int32 Index)
 
 	if (IsMilitaryArmed() && Index < GetWeaponsSystem()->GetWeaponGroupCount())
 	{
+		if (GetNavigationSystem()->IsDocked())
+		{
+			return;
+		}
+
+		EFlareWeaponGroupType::Type WeaponType = GetWeaponsSystem()->GetWeaponGroup(Index)->Type;
+		if (WeaponType == EFlareWeaponGroupType::WG_TURRET)
+		{
+			int32 TurretsIgnoringAim = 0;
+			for (auto Weapon : GetWeaponsSystem()->GetWeaponGroup(Index)->Weapons)
+			{
+				UFlareTurret* Turret = Cast<UFlareTurret>(Weapon);
+				if (Turret && Turret->IsIgnoreManualAim())
+				{
+					TurretsIgnoringAim++;
+				}
+			}
+
+			if (TurretsIgnoringAim >= GetWeaponsSystem()->GetWeaponGroup(Index)->Weapons.Num())
+			{
+				return;
+			}
+		}
+
 		GetStateManager()->EnablePilot(false);
 
 		// Fighters have a loading sound
@@ -2529,7 +2557,7 @@ void AFlareSpacecraft::ActivateWeaponGroupByIndex(int32 Index)
 		GetWeaponsSystem()->ActivateWeaponGroup(Index);
 		if (GetWeaponsSystem()->GetActiveWeaponType() != EFlareWeaponGroupType::WG_NONE)
 		{
-			StateManager->SetExternalCamera(false);
+			StateManager->SetExternalCamera(false,false);
 		}
 
 		if (GetGame()->GetQuestManager() && GetParent() == GetGame()->GetPC()->GetPlayerShip())
@@ -3012,7 +3040,7 @@ FText AFlareSpacecraft::GetShipStatus() const
 		ModeText = FText::Format(LOCTEXT("DockedFormat", "Docked in {0}"),
 			CurrentSector->GetSimulatedSector()->GetSectorName());
 	}
-	else if (Parent->GetCurrentFleet()->IsTraveling())
+	else if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
 	{
 		ModeText = FText::Format(LOCTEXT("TravelingAtFormat", "Traveling to {0}"),
 			Parent->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector()->GetSectorName());
@@ -3025,8 +3053,13 @@ FText AFlareSpacecraft::GetShipStatus() const
 		FFlareDockingParameters DockingParameters = Nav->GetDockingParameters(StationDockInfo, FVector::ZeroVector);
 		FText DockingPhase = Nav->GetDockingPhaseName(DockingParameters.DockingPhase);
 */
+		UFlareSimulatedSpacecraft* DockingStation = Target->GetParent();
+		if (DockingStation->IsComplexElement())
+		{
+			DockingStation = DockingStation->GetComplexMaster();
+		}
 		ModeText = FText::Format(LOCTEXT("DockingAtFormat", "Docking at {0}"),
-		UFlareGameTools::DisplaySpacecraftName(Target->GetParent(), true));
+		UFlareGameTools::DisplaySpacecraftName(DockingStation, true));
 	}
 /*
 	else if (Command.Type == EFlareCommandDataType::CDT_Location && Command.ActionTarget)
@@ -3062,6 +3095,11 @@ FVector AFlareSpacecraft::GetLinearVelocity() const
 	return Airframe->GetPhysicsLinearVelocity() / 100;
 }
 
+float AFlareSpacecraft::GetCautiousAnticollisionTime() const
+{
+	return GetTimeToStop() * 3.f;
+}
+
 float AFlareSpacecraft::GetPreferedAnticollisionTime() const
 {
 	return GetTimeToStop() * 1.5f;
@@ -3069,7 +3107,7 @@ float AFlareSpacecraft::GetPreferedAnticollisionTime() const
 
 float AFlareSpacecraft::GetAgressiveAnticollisionTime() const
 {
-	return GetTimeToStop() * 0.3f;
+	return GetTimeToStop() * 0.5f;
 }
 
 float AFlareSpacecraft::GetTimeToStop() const
@@ -3090,8 +3128,7 @@ float AFlareSpacecraft::GetTimeToStop() const
 	else
 	{
 		FVector CurrentVelocityAxis = CurrentVelocity.GetUnsafeNormal();
-		TArray<UActorComponent*> Engines = GetComponentsByClass(UFlareEngine::StaticClass());
-
+		TArray<UActorComponent*> Engines = GetActiveSpacecraftEngineComponents();
 		FVector Acceleration = GetNavigationSystem()->GetTotalMaxThrustInAxis(Engines, CurrentVelocityAxis, false) / GetSpacecraftMass();
 		float AccelerationInAngleAxis =  FMath::Abs(FVector::DotProduct(Acceleration, CurrentVelocityAxis));
 
@@ -3102,14 +3139,27 @@ float AFlareSpacecraft::GetTimeToStop() const
 
 bool AFlareSpacecraft::IsOutsideSector() const
 {
-	float Distance = GetActorLocation().Size();
-	float Limits = GetGame()->GetActiveSector()->GetSectorLimits();
-	return Distance > Limits;
+	if (IsInActiveSector())
+	{
+		float Distance = GetActorLocation().Size();
+		float Limits = GetGame()->GetActiveSector()->GetSectorLimits();
+		return Distance > Limits;
+	}
+	return false;
+}
+
+bool AFlareSpacecraft::IsInActiveSector() const
+{
+	if (GetGame()->GetActiveSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == GetParent()->GetCurrentSector())
+	{
+		return true;
+	}
+	return false;
 }
 
 AFlareSpacecraft* AFlareSpacecraft::GetComplex() const
 {
-	for (AFlareSpacecraft* StationCandidate: GetGame()->GetActiveSector()->GetSpacecrafts())
+	for (AFlareSpacecraft* StationCandidate: GetGame()->GetActiveSector()->GetStations())
 	{
 		if (StationCandidate->GetImmatriculation() == GetConstData().AttachComplexStationName)
 		{

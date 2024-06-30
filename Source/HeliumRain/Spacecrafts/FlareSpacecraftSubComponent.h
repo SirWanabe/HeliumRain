@@ -21,7 +21,8 @@ public:
 
 	virtual float ApplyDamage(float Energy, EFlareDamage::Type DamageType, UFlareSimulatedSpacecraft* DamageSource) override;
 
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+//	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	void TickForComponent(float DeltaTime) override;
 
 	protected:
 

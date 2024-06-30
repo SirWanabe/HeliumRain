@@ -3,6 +3,7 @@
 #include "FlareSpacecraftComponent.h"
 #include "FlareEngine.generated.h"
 
+DECLARE_DELEGATE(FFlareMouseMenuClicked)
 
 UCLASS(Blueprintable, ClassGroup = (Flare, Ship), meta = (BlueprintSpawnableComponent))
 class UFlareEngine : public UFlareSpacecraftComponent
@@ -16,7 +17,8 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+//	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickForComponent(float DeltaTime) override;
 
 	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualShip) override;
 

@@ -24,8 +24,8 @@ public:
 
 	virtual void BeginPlay() override;
 
-	virtual void Tick(float DeltaSeconds) override;
-
+	void TickMeteorite(float DeltaSeconds);
+//	virtual void Tick(float DeltaSeconds) override;
 
 	/** Properties setup */
 	virtual void Load(FFlareMeteoriteSave* Data, UFlareSector* ParentSector);
@@ -53,9 +53,8 @@ public:
 	UPROPERTY(Category = Mesh, VisibleDefaultsOnly, BlueprintReadOnly)
 	class UStaticMeshComponent*                  Meteorite;
 
-	virtual void SafeDestroy();
-
-	virtual void FinishSafeDestroy();
+	void UnSafeDestroy();
+	void SafeDestroy();
 
 protected:
 	
@@ -75,7 +74,6 @@ protected:
 	FFlareMeteoriteSave*                          MeteoriteData;
 	bool                                          Paused;
 	bool										  IsSafeDestroyingRunning;
-	bool										  SafeDestroyed;
 	UFlareSector*                                 Parent;
 	AFlareSpacecraft*                             Target;
 

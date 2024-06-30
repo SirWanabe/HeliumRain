@@ -485,7 +485,7 @@ void UFlareFleet::RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove)
 	}
 }
 
-void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed, bool reformfleet)
+void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool Destroyed, bool ReformFleet)
 {
 	if (IsTraveling())
 	{
@@ -502,9 +502,9 @@ void UFlareFleet::RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed, bo
 		FleetCount--;
 	}
 
-	if (!destroyed)
+	if (!Destroyed)
 	{
-		if (reformfleet)
+		if (ReformFleet)
 		{
 			Ship->GetCompany()->CreateAutomaticFleet(Ship);
 		}
@@ -603,6 +603,11 @@ void UFlareFleet::SetCurrentSector(UFlareSimulatedSector* Sector)
 
 	CurrentSector = Sector;
 	InitShipList();
+
+	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
+	{
+		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
+	}
 }
 
 void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
@@ -615,6 +620,8 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 		UFlareSimulatedSpacecraft* FleetShip = FleetShips[ShipIndex];
 		if (FleetShip)
 		{
+			FleetShip->ForceUndock();
+
 			if (FleetShip->GetShipMaster())
 			{
 				FleetShip->SetInternalDockedTo(FleetShip->GetShipMaster());
@@ -624,6 +631,52 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 				FleetShip->SetSpawnMode(EFlareSpawnMode::Travel);
 			}
 		}
+	}
+	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
+	{
+		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
+	}
+}
+
+bool UFlareFleet::IsVisibleForOrbitalFleetList()
+{
+	if (GetShips().Num() && !IsAutoTrading() && !IsHiddenTravel())
+	{
+		if (IsTraveling())
+		{
+			if (!GetCurrentTravel()->CanChangeDestination())
+			{
+				return false;
+			}
+		}
+
+		if (GetCurrentTradeRoute() && !GetCurrentTradeRoute()->IsPaused())
+		{
+			return false;
+		}
+
+		if (GetImmobilizedShipCount() == GetShipCount())
+		{
+			return false;
+		}
+
+		return true;
+	}
+	return false;
+}
+
+void UFlareFleet::FleetShipDied(UFlareSimulatedSpacecraft* Ship)
+{
+	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
+	{
+		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
+	}
+}
+void UFlareFleet::FleetShipUncontrollable(UFlareSimulatedSpacecraft* Ship)
+{
+	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
+	{
+		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
 	}
 }
 
@@ -712,6 +765,18 @@ bool UFlareFleet::FleetNeedsRefill() const
 
 	return false;
 }
+
+void UFlareFleet::RepairFleet()
+{
+	SectorHelper::RepairFleets(GetCurrentSector(), GetFleetCompany(), this);
+}
+
+void UFlareFleet::RefillFleet()
+{
+	SectorHelper::RefillFleets(GetCurrentSector(), GetFleetCompany(), this);
+}
+
+
 
 /*----------------------------------------------------
 	Getters
@@ -980,6 +1045,165 @@ FText UFlareFleet::GetTravelConfirmText()
 			ReasonNotTravelText);
 	}
 	return FText();
+}
+FText UFlareFleet::GetRepairText()
+{
+	UFlareSimulatedSector* TargetSector = GetCurrentSector();
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRepairFleetSupplyNeeds(TargetSector, GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, this);
+
+	if (TotalNeededFS > 0)
+	{
+		// Repair needed
+		if (TargetSector->IsInDangerousBattle(GetFleetCompany()))
+		{
+			return LOCTEXT("CantRepairBattle", "Can't repair here : battle in progress!");
+		}
+		else if (AvailableFS == 0) {
+			return LOCTEXT("CantRepairNoFS", "Can't repair here : no fleet supply available !");
+		}
+		else if (AffordableFS == 0)
+		{
+			return LOCTEXT("CantRepairNoMoney", "Can't repair here : not enough money !");
+		}
+		else
+		{
+			int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+			int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+			int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+			FFlareResourceDescription* FleetSupply = GetGame()->GetScenarioTools()->FleetSupply;
+
+			int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+
+			FText OwnedCostText;
+			FText CostSeparatorText;
+			FText NotOwnedCostText;
+
+			if (UsedOwnedFs > 0)
+			{
+				OwnedCostText = FText::Format(LOCTEXT("RepairOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+			}
+
+			if (UsedNotOwnedFsCost > 0)
+			{
+				NotOwnedCostText = FText::Format(LOCTEXT("RepairNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+			}
+
+			if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+			{
+				CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+			}
+
+			FText CostText = FText::Format(LOCTEXT("RepairCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+			return FText::Format(LOCTEXT("RepairOkayFormat", "Repair all ships ({0}, {1} days)"),
+				CostText,
+				FText::AsNumber(MaxDuration));
+		}
+	}
+	else if (SectorHelper::HasShipRepairing(GetShips(), GetFleetCompany()))
+	{
+		// Repair in progress
+		return LOCTEXT("RepairInProgress", "Repair in progress...");
+	}
+	else
+	{
+		// No repair needed
+		return LOCTEXT("NoShipToRepair", "No ship needs repairing");
+	}
+}
+FText UFlareFleet::GetRefillText()
+
+{
+	UFlareSimulatedSector* TargetSector = GetCurrentSector();
+	if (!TargetSector)
+	{
+		return FText();
+	}
+
+	int32 AvailableFS;
+	int32 OwnedFS;
+	int32 AffordableFS;
+	int32 NeededFS;
+	int32 TotalNeededFS;
+	int64 MaxDuration;
+
+	SectorHelper::GetRefillFleetSupplyNeeds(TargetSector, GetShips(), NeededFS, TotalNeededFS, MaxDuration, true);
+	SectorHelper::GetAvailableFleetSupplyCount(TargetSector, GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, this);
+
+	if (TotalNeededFS > 0)
+	{
+		// Refill needed
+		if (TargetSector->IsInDangerousBattle(GetFleetCompany()))
+		{
+			return LOCTEXT("CantRefillBattle", "Can't refill : battle in progress!");
+		}
+		else if (AvailableFS == 0) {
+			return LOCTEXT("CantRefillNoFS", "Can't refill : no fleet supply available !");
+		}
+		else if (AffordableFS == 0)
+		{
+			return LOCTEXT("CantRefillNoMoney", "Can't refill : not enough money !");
+		}
+		else
+		{
+			int32 UsedFs = FMath::Min(AffordableFS, TotalNeededFS);
+			int32 UsedOwnedFs = FMath::Min(OwnedFS, UsedFs);
+			int32 UsedNotOwnedFs = UsedFs - UsedOwnedFs;
+			FFlareResourceDescription* FleetSupply = TargetSector->GetGame()->GetScenarioTools()->FleetSupply;
+
+			int64 UsedNotOwnedFsCost = UsedNotOwnedFs * TargetSector->GetResourcePrice(FleetSupply, EFlareResourcePriceContext::MaintenanceConsumption);
+
+			FText OwnedCostText;
+			FText CostSeparatorText;
+			FText NotOwnedCostText;
+
+			if (UsedOwnedFs > 0)
+			{
+				OwnedCostText = FText::Format(LOCTEXT("RefillOwnedCostFormat", "{0} fleet supplies"), FText::AsNumber(UsedOwnedFs));
+			}
+
+			if (UsedNotOwnedFsCost > 0)
+			{
+				NotOwnedCostText = FText::Format(LOCTEXT("RefillNotOwnedCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(UsedNotOwnedFsCost)));
+			}
+
+			if (UsedOwnedFs > 0 && UsedNotOwnedFsCost > 0)
+			{
+				CostSeparatorText = UFlareGameTools::AddLeadingSpace(LOCTEXT("CostSeparatorText", "+ "));
+			}
+
+			FText CostText = FText::Format(LOCTEXT("RefillCostFormat", "{0}{1}{2}"), OwnedCostText, CostSeparatorText, NotOwnedCostText);
+
+			return FText::Format(LOCTEXT("RefillOkayFormat", "Refill ({0}, {1} days)"),
+			CostText,
+			FText::AsNumber(MaxDuration));
+		}
+	}
+	else if (SectorHelper::HasShipRefilling(GetShips(), GetFleetCompany()))
+	{
+
+		// Refill in progress
+		return LOCTEXT("RefillInProgress", "Refill in progress...");
+	}
+	else
+	{
+		// No refill needed
+		return LOCTEXT("NoFleetToRefill", "No ship needs refilling");
+	}
 }
 
 void UFlareFleet::SelectWhiteListDefault(FName IdentifierSearch)

@@ -103,7 +103,7 @@ public:
 
 	int32 InterceptShips();
 
-	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool destroyed = false, bool reformfleet = true);
+	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool Destroyed = false, bool ReformFleet = true);
 
 	/**Remove multiple ships simultaniously, moving them all to the same fleet*/
 	virtual void RemoveShips(TArray<UFlareSimulatedSpacecraft*> ShipsToRemove);
@@ -134,6 +134,11 @@ public:
 	virtual void SetCurrentSector(UFlareSimulatedSector* Sector);
 
 	void SetCurrentTravel(UFlareTravel* Travel);
+
+	bool IsVisibleForOrbitalFleetList();
+
+	void FleetShipUncontrollable(UFlareSimulatedSpacecraft* Ship);
+	void FleetShipDied(UFlareSimulatedSpacecraft* Ship);
 
 	virtual void SetCurrentTradeRoute(UFlareTradeRoute* TradeRoute)
 	{
@@ -171,6 +176,8 @@ public:
 
 	int32 GetRefillDuration() const;
 	FText GetTravelConfirmText();
+	FText GetRepairText();
+	FText GetRefillText();
 
 	void SelectWhiteListDefault(FName IdentifierSearch);
 	void SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList);
@@ -315,4 +322,7 @@ public:
 	bool IsRefilling() const;
 	bool FleetNeedsRepair() const;
 	bool FleetNeedsRefill() const;
+
+	void RepairFleet();
+	void RefillFleet();
 };

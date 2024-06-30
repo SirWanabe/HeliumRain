@@ -61,7 +61,7 @@ public:
 	
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 
-	virtual void LifeSpanExpired() override;
+//	virtual void LifeSpanExpired() override;
 
 	virtual void Destroyed() override;
 
@@ -119,6 +119,7 @@ public:
 	/** Are we currently docking ? */
 	bool GetManualDockingProgress(AFlareSpacecraft*& OutStation, FFlareDockingParameters& OutParameters, FText& OutInfo) const;
 
+	void SimulateDayRun();
 
 	/*----------------------------------------------------
 		Ship interface
@@ -128,7 +129,9 @@ public:
 
 	virtual void Save();
 
-	virtual void FinishLoadandReady();
+	void ReattachAndRedock();
+	void FinishLoadandReady();
+	void SetLoadedAndReady();
 
 	virtual void SetOwnerCompany(UFlareCompany* Company);
 	
@@ -168,10 +171,9 @@ public:
 
 	/** Slower actor destruction*/
 	void SafeDestroy();
+	void UnSafeDestroy();
 
 	void FinishAutoPilots();
-
-	void FinishSafeDestroy();
 
 	bool IsSafeEither();
 
@@ -393,6 +395,14 @@ protected:
 	TArray<AFlareSpacecraft*>					   InSectorSquad;
 	TArray<AFlareBomb*>							   IncomingBombs;
 
+	UPROPERTY()
+	TArray<UActorComponent*>					   ActiveSpacecraftEngineComponents;
+	UPROPERTY()
+	TArray<UFlareSpacecraftComponent*>			   ActiveSpacecraftComponents;
+	UPROPERTY()
+	TArray<UFlareInternalComponent*>			   ActiveSpacecraftInternalComponents;
+
+
 	/*----------------------------------------------------
 		Target selection
 	----------------------------------------------------*/
@@ -423,6 +433,7 @@ protected:
 	int32										   ExplodingTimes;
 	int32										   ExplodingTimesMax;
 	bool										   IsExploding;
+	bool										   FirstTimeSetupRun;
 
 public:
 	TArray<AFlareBomb*> GetIncomingBombs();
@@ -451,6 +462,11 @@ public:
 	bool GetHasUndockedInternalShips() const
 	{
 		return HasUndockedAllInternalShips;
+	}
+
+	TArray<UActorComponent*> GetActiveSpacecraftEngineComponents() const
+	{
+		return ActiveSpacecraftEngineComponents;
 	}
 
 	bool GetWantUndockInternalShips() const
@@ -484,6 +500,7 @@ public:
 		return Parent;
 	}
 
+	bool IsInActiveSector() const;
 	bool IsOutsideSector() const;
 
 	inline bool IsLoadedAndReady() const
@@ -632,7 +649,7 @@ public:
 		return TimeSinceUncontrollable;
 	}
 
+	float GetCautiousAnticollisionTime() const;
 	float GetPreferedAnticollisionTime() const;
-
 	float GetAgressiveAnticollisionTime() const;
 };

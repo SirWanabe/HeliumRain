@@ -1027,7 +1027,7 @@ void PilotHelper::PilotTarget::SetBomb(AFlareBomb* Bomb)
 
 FVector PilotHelper::PilotTarget::GetActorLocation() const
 {
-	if(SpacecraftTarget&&SpacecraftTarget!=nullptr)
+	if(SpacecraftTarget)
 	{
 		if (!SpacecraftTarget->IsActorBeingDestroyed() && !SpacecraftTarget->IsPendingKill())
 		{
@@ -1035,7 +1035,7 @@ FVector PilotHelper::PilotTarget::GetActorLocation() const
 		}
 	}
 
-	if(BombTarget&&BombTarget!=nullptr)
+	if(BombTarget)
 	{
 		if (!BombTarget->IsSafeDestroying() && !BombTarget->IsActorBeingDestroyed() && !BombTarget->IsPendingKill())
 		{

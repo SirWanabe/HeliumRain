@@ -1833,7 +1833,7 @@ void UFlareSimulatedSector::GenerateMeteorites(bool MeteorShowerInProgress)
 			continue;
 		}
 
-		float PowerFactor = 0.002f;
+		float PowerFactor = 0.003f;
 		if (MeteorShowerInProgress)
 		{
 			PowerFactor *= 3;

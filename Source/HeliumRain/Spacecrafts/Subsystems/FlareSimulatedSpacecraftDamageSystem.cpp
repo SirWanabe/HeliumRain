@@ -292,7 +292,7 @@ float UFlareSimulatedSpacecraftDamageSystem::Repair(FFlareSpacecraftComponentDes
 
 		Spacecraft->GetCompany()->InvalidateCompanyValueCache();
 
-		if (Spacecraft->IsActive())
+		if (Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector())
 		{
 			Spacecraft->GetActive()->OnRepaired();
 		}
@@ -348,7 +348,7 @@ float UFlareSimulatedSpacecraftDamageSystem::Refill(FFlareSpacecraftComponentDes
 */
 		Spacecraft->GetCompany()->InvalidateCompanyValueCache();
 
-		if (Spacecraft->IsActive())
+		if (Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector())
 		{
 			Spacecraft->GetActive()->OnRefilled();
 		}
@@ -456,7 +456,7 @@ float UFlareSimulatedSpacecraftDamageSystem::ApplyDamage(FFlareSpacecraftCompone
 
 
 				}
-				else if(Spacecraft->IsActive() && Spacecraft->GetActive()->GetTimeSinceUncontrollable() > 5.f && !Spacecraft->GetGame()->GetQuestManager()->IsAllowedToDestroy(Spacecraft))
+				else if(Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector() && Spacecraft->GetActive()->GetTimeSinceUncontrollable() > 5.f && !Spacecraft->GetGame()->GetQuestManager()->IsAllowedToDestroy(Spacecraft))
 				{
 					// If an attack on a prisoner, lower attacker's reputation on everyone, give rep to victim
 
@@ -835,6 +835,11 @@ void UFlareSimulatedSpacecraftDamageSystem::NotifyDamage()
 	{
 		WasControllable = false;
 
+		if (Spacecraft->GetCurrentFleet())
+		{
+			Spacecraft->GetCurrentFleet()->FleetShipUncontrollable(Spacecraft);
+		}
+
 		if (Spacecraft->GetGame()->GetQuestManager())
 		{
 			Spacecraft->GetGame()->GetQuestManager()->OnSpacecraftDestroyed(Spacecraft, true, LastDamageCause);
@@ -850,6 +855,10 @@ void UFlareSimulatedSpacecraftDamageSystem::NotifyDamage()
 	if (WasAlive && !IsAlive())
 	{
 		WasAlive = false;
+		if (Spacecraft->GetCurrentFleet())
+		{
+			Spacecraft->GetCurrentFleet()->FleetShipDied(Spacecraft);
+		}
 
 		if (Spacecraft->GetGame()->GetQuestManager())
 		{

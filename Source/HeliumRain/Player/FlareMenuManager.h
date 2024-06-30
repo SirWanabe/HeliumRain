@@ -355,7 +355,7 @@ public:
 		return OrbitMenu;
 	}
 
-	void UpdateOrbitMenuFleets();
+	void UpdateOrbitMenuFleets(bool Instant = true);
 
 	/** Get sector menu */
 	TSharedPtr<SFlareSectorMenu> GetSectorMenu()

@@ -32,7 +32,8 @@ public:
 
 	/** Load a new ship to visualize */
 	void ShowShip(UFlareSimulatedSpacecraft* Spacecraft);
-	
+	void UpdateShip(UFlareSimulatedSpacecraft* Spacecraft);
+
 	/** Load a new part to visualize */
 	void ShowPart(const FFlareSpacecraftComponentDescription* PartDesc);
 

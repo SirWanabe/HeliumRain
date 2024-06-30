@@ -32,10 +32,10 @@ void UFlareEngine::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany
 	}
 }
 
-void UFlareEngine::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UFlareEngine::TickForComponent(float DeltaTime)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
+	Super::TickForComponent(DeltaTime);
+
 	// Smooth the alpha value. Half-life time : 1/20 second
 	float AverageCoeff = 20 * DeltaTime;
 

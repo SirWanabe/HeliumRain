@@ -68,6 +68,8 @@ public:
 	virtual void NotifyHeatProductionChange(float HeatProductionChange);
 	virtual void NotifyHeatSinkChange(float HeatSinkChange);
 
+	void UpdateCurrentHeatValue(float DeltaSeconds);
+
 protected:
 
 	/** The ship is uncontrollable */

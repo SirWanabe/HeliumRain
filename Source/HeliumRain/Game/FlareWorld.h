@@ -268,7 +268,7 @@ public:
 		return Sectors;
 	}
 
-	inline TArray<UFlareSimulatedSpacecraft*>& GetShipyards()
+	inline TArray<UFlareSimulatedSpacecraft*> GetShipyards()
 	{
 		return Shipyards;
 	}

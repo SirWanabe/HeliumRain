@@ -147,6 +147,13 @@ void UFlareSkirmishManager::EndPlay()
 		{
 			Result.PlayerVictory = false;
 		}
+
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
+		{
+			UFlareSimulatedSpacecraft* Spacecraft = GetGame()->GetActiveSector()->GetSimulatedSector()->GetSectorSpacecrafts()[SpacecraftIndex];
+			Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
+		}
+
 		// Reset phase
 		CurrentPhase = EFlareSkirmishPhase::End;
 	}

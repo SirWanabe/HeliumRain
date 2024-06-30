@@ -36,6 +36,11 @@ void UFlareTacticManager::SetCurrentShipGroup(EFlareCombatGroup::Type Type)
 	CurrentShipGroup = Type;
 }
 
+TEnumAsByte<EFlareCombatGroup::Type> UFlareTacticManager::GetCurrentShipGroup()
+{
+	return CurrentShipGroup;
+}
+
 void UFlareTacticManager::SetTacticForCurrentShipGroup(EFlareCombatTactic::Type Tactic)
 {
 	FCHECK(CurrentShipGroup < CurrentCombatTactics.Num());
@@ -128,4 +133,3 @@ void UFlareTacticManager::ResetShipGroup(EFlareCombatTactic::Type Tactic)
 		CurrentCombatTactics.Add(Tactic);
 	}
 }
-

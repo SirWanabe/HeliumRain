@@ -373,7 +373,8 @@ public:
 
 	virtual void OnRegister() override;
 
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickForComponent(float DeltaTime);
+	virtual void TickForComponentAlive(float DeltaTime);
 
 	/** Initialize this component and register the master ship object */
 	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr);
@@ -496,10 +497,11 @@ public:
 
 	virtual void SafeDestroy();
 	virtual void UnSafeDestroy();
-	virtual void FinishSafeDestroy();
 
 	bool GetIsSafeDestroyingRunning();
-	bool GetSafeDestroyed();
+
+//	virtual void FinishSafeDestroy();
+//	bool GetSafeDestroyed();
 
 	virtual void SetHeatSinkSurface(float NewHeatsinkValue);
 	virtual	void SetHeatProduction(float NewHeatProduction);
@@ -562,6 +564,8 @@ protected:
 	UPROPERTY()
 	UParticleSystemComponent*               DestroyedEffects;
 
+	UPROPERTY()
+	TArray<UParticleSystemComponent*>	    DamagedEffects;
 
 	/*----------------------------------------------------
 		Effects
@@ -573,14 +577,12 @@ protected:
 	UPROPERTY()
 	UParticleSystem*                        ImpactEffectTemplateL;
 
-	int32                                   ImpactCount;
-
 	int32                                   MaxImpactCount;
 
 	float                                   ImpactEffectChance;
 
 	bool									IsSafeDestroyingRunning;
-	bool									SafeDestroyed;
+//	bool									SafeDestroyed;
 	bool									HasCreatedDestroyedDebris;
 
 public:

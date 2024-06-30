@@ -185,19 +185,22 @@ void UFlareQuest::UpdateState()
 				return;
 			}
 
+			bool UpdateMenu = false;
 			CurrentStep->UpdateState();
 
 			if (CurrentStep->IsFailed())
 			{
 				Fail();
+				UpdateMenu = true;
 			}
 			else if (CurrentStep->IsCompleted())
 			{
 				EndStep();
+				UpdateMenu = true;
 			}
 
 			UpdateObjectiveTracker();
-			if (QuestManager->GetGame()->GetPC()->GetMenuManager()->IsMenuOpen() && QuestManager->GetGame()->GetPC()->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Quest)
+			if (UpdateMenu && QuestManager->GetGame()->GetPC()->GetMenuManager()->IsMenuOpen() && QuestManager->GetGame()->GetPC()->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Quest)
 			{
 				QuestManager->GetGame()->GetPC()->GetMenuManager()->OpenMenu(EFlareMenu::MENU_Quest, FFlareMenuParameterData(), false, true, false);
 			}

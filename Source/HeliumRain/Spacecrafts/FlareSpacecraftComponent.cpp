@@ -43,7 +43,6 @@ UFlareSpacecraftComponent::UFlareSpacecraftComponent(const class FObjectInitiali
 	, FlickerMaxOnPeriod(1)
 	, FlickerMaxOffPeriod(3)
 	, DestroyedEffects(NULL)
-	, ImpactCount(0)
 	, MaxImpactCount(3)
 	, ImpactEffectChance(0.1)
 {
@@ -70,105 +69,6 @@ void UFlareSpacecraftComponent::OnRegister()
 {
 	Super::OnRegister();
 	Activate(true);
-}
-
-void UFlareSpacecraftComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{
-	if (IsSafeDestroyingRunning)
-	{
-		if (!SafeDestroyed)
-		{
-			FinishSafeDestroy();
-		}
-		return;
-	}
-
-	if (IsPendingKill())
-	{
-		return;
-	}
-
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
-	// Graphical updates
-	if (ComponentMaterial && SpacecraftPawn)
-	{
-		// Update the light status
-		if (HasFlickeringLights && IsComponentVisible())
-		{
-			float GlowAlpha = 0;
-
-			switch (LightFlickeringStatus)
-			{
-				// Flickering light
-				case EFlareLightStatus::Flickering:
-				{
-					if (TimeLeftUntilFlicker > 0)
-					{
-						TimeLeftUntilFlicker -= DeltaTime;
-						GlowAlpha = 0;
-					}
-					else
-					{
-						if (TimeLeftInFlicker > 0)
-						{
-							TimeLeftInFlicker -= DeltaTime;
-							if (TimeLeftInFlicker > CurrentFlickerMaxPeriod / 2)
-							{
-								GlowAlpha = FMath::InterpEaseInOut(0.0f, 1.0f, 2 * (TimeLeftInFlicker / CurrentFlickerMaxPeriod), 2);
-							}
-							else
-							{
-								GlowAlpha = FMath::InterpEaseInOut(1.0f, 0.0f, 2 * (TimeLeftInFlicker / CurrentFlickerMaxPeriod) - 1, 2);
-							}
-						}
-						else
-						{
-							TimeLeftInFlicker = FMath::FRandRange(0, FlickerMaxOnPeriod);
-							TimeLeftUntilFlicker = FMath::FRandRange(0, FlickerMaxOffPeriod);
-							CurrentFlickerMaxPeriod = TimeLeftInFlicker;
-							GlowAlpha = 0;
-						}
-					}
-				}
-				break;
-
-				// Fully dark
-				case EFlareLightStatus::Dark:
-					GlowAlpha = 0;
-					break;
-
-				// Fully lit
-				default:
-				case EFlareLightStatus::Lit:
-					GlowAlpha = 1;
-					break;
-			}
-
-			ComponentMaterial->SetScalarParameterValue("GlowAlpha", GlowAlpha);
-		}
-	}
-
-	// Need even if no ComponentDescription to heat airframes
-	if (Spacecraft)
-	{
-		if (LocalHeatEffect && HeatProduction > 0.f)
-		{
-			float Alpha = GetHeatProduction() / HeatProduction;
-			float TargetTemperature = (1.f- Alpha) * (Spacecraft->GetParent()->GetDamageSystem()->GetTemperature() * 0.3f)
-						+ Alpha * (Spacecraft->GetParent()->GetDamageSystem()->GetTemperature() * 1.8f);
-			float HalfLife = 3;
-			float Variation = DeltaTime / HalfLife;
-			LocalTemperature = (LocalTemperature + (TargetTemperature * Variation)) / (1+Variation);
-		}
-		else
-		{
-			LocalTemperature = Spacecraft->GetParent()->GetDamageSystem()->GetTemperature();
-		}
-
-		SetTemperature(Spacecraft->IsPresentationMode() ? 290 : LocalTemperature);
-		SetHealth(     Spacecraft->IsPresentationMode() ? 1 :   FMath::Clamp(1 + (GetDamageRatio()-1) / (1 -BROKEN_RATIO) , 0.f , 1.f));
-	}
 }
 
 void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
@@ -218,6 +118,94 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 	SetupComponentMesh();
 	UpdateCustomization();
 	UpdateLight();
+}
+
+void UFlareSpacecraftComponent::TickForComponent(float DeltaTime)
+{
+
+	// Graphical updates
+	if (ComponentMaterial && SpacecraftPawn)
+	{
+		// Update the light status
+		if (HasFlickeringLights && IsComponentVisible())
+		{
+			float GlowAlpha = 0;
+
+			switch (LightFlickeringStatus)
+			{
+				// Flickering light
+			case EFlareLightStatus::Flickering:
+			{
+				if (TimeLeftUntilFlicker > 0)
+				{
+					TimeLeftUntilFlicker -= DeltaTime;
+					GlowAlpha = 0;
+				}
+				else
+				{
+					if (TimeLeftInFlicker > 0)
+					{
+						TimeLeftInFlicker -= DeltaTime;
+						if (TimeLeftInFlicker > CurrentFlickerMaxPeriod / 2)
+						{
+							GlowAlpha = FMath::InterpEaseInOut(0.0f, 1.0f, 2 * (TimeLeftInFlicker / CurrentFlickerMaxPeriod), 2);
+						}
+						else
+						{
+							GlowAlpha = FMath::InterpEaseInOut(1.0f, 0.0f, 2 * (TimeLeftInFlicker / CurrentFlickerMaxPeriod) - 1, 2);
+						}
+					}
+					else
+					{
+						TimeLeftInFlicker = FMath::FRandRange(0, FlickerMaxOnPeriod);
+						TimeLeftUntilFlicker = FMath::FRandRange(0, FlickerMaxOffPeriod);
+						CurrentFlickerMaxPeriod = TimeLeftInFlicker;
+						GlowAlpha = 0;
+					}
+				}
+			}
+			break;
+
+			// Fully dark
+			case EFlareLightStatus::Dark:
+				GlowAlpha = 0;
+				break;
+
+				// Fully lit
+			default:
+			case EFlareLightStatus::Lit:
+				GlowAlpha = 1;
+				break;
+			}
+
+			ComponentMaterial->SetScalarParameterValue("GlowAlpha", GlowAlpha);
+		}
+	}
+
+	// Need even if no ComponentDescription to heat airframes
+	if (Spacecraft)
+	{
+		if (LocalHeatEffect && HeatProduction > 0.f)
+		{
+			float Alpha = GetHeatProduction() / HeatProduction;
+			float TargetTemperature = (1.f - Alpha) * (Spacecraft->GetParent()->GetDamageSystem()->GetTemperature() * 0.3f)
+				+ Alpha * (Spacecraft->GetParent()->GetDamageSystem()->GetTemperature() * 1.8f);
+			float HalfLife = 3;
+			float Variation = DeltaTime / HalfLife;
+			LocalTemperature = (LocalTemperature + (TargetTemperature * Variation)) / (1 + Variation);
+		}
+		else
+		{
+			LocalTemperature = Spacecraft->GetParent()->GetDamageSystem()->GetTemperature();
+		}
+
+		SetTemperature(Spacecraft->IsPresentationMode() ? 290 : LocalTemperature);
+		SetHealth(Spacecraft->IsPresentationMode() ? 1 : FMath::Clamp(1 + (GetDamageRatio() - 1) / (1 - BROKEN_RATIO), 0.f, 1.f));
+	}
+}
+
+void UFlareSpacecraftComponent::TickForComponentAlive(float DeltaTime)
+{
 }
 
 FFlareSpacecraftComponentSave* UFlareSpacecraftComponent::Save()
@@ -383,7 +371,7 @@ void UFlareSpacecraftComponent::SetupComponentMesh()
 
 void UFlareSpacecraftComponent::UpdateCustomization()
 {
-	if (Spacecraft && Spacecraft->IsStation() && Spacecraft->GetParent()->IsUnderConstruction(true) && Spacecraft->GetParent()->GetLevel() == 1)
+	if (IsValid(Spacecraft) && Spacecraft->IsStation() && Spacecraft->GetParent()->IsUnderConstruction(true) && Spacecraft->GetParent()->GetLevel() == 1)
 	{
 		return;
 	}
@@ -737,7 +725,7 @@ void UFlareSpacecraftComponent::StartDamagedEffect(FVector Location, FRotator Ro
 	}
 
 	// Limiters
-	if (ImpactCount >= MaxImpactCount)
+	if (DamagedEffects.Num() >= MaxImpactCount)
 	{
 		return;
 	}
@@ -777,8 +765,8 @@ void UFlareSpacecraftComponent::StartDamagedEffect(FVector Location, FRotator Ro
 
 	if (PSC)
 	{
-		ImpactCount++;
 		PSC->SetWorldScale3D(FVector(1, 1, 1));
+		DamagedEffects.Add(PSC);
 	}
 }
 
@@ -820,37 +808,30 @@ bool UFlareSpacecraftComponent::GetIsSafeDestroyingRunning()
 	return IsSafeDestroyingRunning;
 }
 
-bool UFlareSpacecraftComponent::GetSafeDestroyed()
-{
-	return SafeDestroyed;
-}
-
 void UFlareSpacecraftComponent::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
 	{
-		PrimaryComponentTick.bCanEverTick = false;
 		IsSafeDestroyingRunning = true;
-		UnregisterComponent();
-	}
-}
-
-void UFlareSpacecraftComponent::UnSafeDestroy()
-{
-	PrimaryComponentTick.bCanEverTick = true;
-	RegisterComponent();
-}
-
-void UFlareSpacecraftComponent::FinishSafeDestroy()
-{
-	if (!SafeDestroyed)
-	{
-		SafeDestroyed = true;
 		HasCreatedDestroyedDebris = false;
+
+		if (DamagedEffects.Num() > 0)
+		{
+			for (UParticleSystemComponent* DamageEffect : DamagedEffects)
+			{
+				DamageEffect->Deactivate();
+			}
+			DamagedEffects.Empty();
+		}
 
 		if (DestroyedEffects)
 		{
 			DestroyedEffects->Deactivate();
 		}
 	}
+}
+
+void UFlareSpacecraftComponent::UnSafeDestroy()
+{
+	IsSafeDestroyingRunning = false;
 }

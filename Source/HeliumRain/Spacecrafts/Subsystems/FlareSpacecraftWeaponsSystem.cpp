@@ -64,22 +64,10 @@ void UFlareSpacecraftWeaponsSystem::TickSystem(float DeltaSeconds)
 			FVector Location = Weapon->GetMuzzleLocation(0) + CameraAimDirection * 100000;
 			FVector Velocity = FVector::ZeroVector;
 			
-			// todo: need proper clean deletion/garbage collection to avoid these slow low level safety checks
-			if (HitTarget && HitTarget != nullptr)
+			if (IsValid(HitTarget) && IsValid(HitTarget->GetRootComponent()))
 			{
-				if (HitTarget->IsValidLowLevel() && IsValid(HitTarget))
-				{
-					if (HitTarget->GetRootComponent() && HitTarget->GetRootComponent() != nullptr && IsValid(HitTarget->GetRootComponent()))
-					{
-						UPrimitiveComponent* RootCompCast = Cast<UPrimitiveComponent>(HitTarget->GetRootComponent());
-						//during forced ship deletion, Rootcomp could be null or partially null
-						if (RootCompCast)
-						{
-							Velocity = RootCompCast->GetPhysicsLinearVelocity() / 100;
-							Location = HitTarget->GetActorLocation();
-						}
-					}
-				}
+				Velocity = Velocity = Cast<UPrimitiveComponent>(HitTarget->GetRootComponent())->GetPhysicsLinearVelocity() / 100;
+				Location = HitTarget->GetActorLocation();
 			}
 			Weapon->SetTarget(Location, Velocity);
 		}
@@ -87,7 +75,7 @@ void UFlareSpacecraftWeaponsSystem::TickSystem(float DeltaSeconds)
 
 	// Are we firing ?
 	bool WantFire = false;
-	if (Spacecraft->GetNavigationSystem()->IsManualPilot() && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
+	if (Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
 	{
 		WantFire = Spacecraft->GetStateManager()->IsWantFire();
 	}
@@ -362,7 +350,6 @@ void UFlareSpacecraftWeaponsSystem::StopAllWeapons()
 
 void UFlareSpacecraftWeaponsSystem::ActivateWeaponGroup(int32 Index)
 {
-
 	if (Index >= 0 && Index < WeaponGroupList.Num() && ActiveWeaponGroupIndex != Index)
 	{
 		StopAllWeapons();

@@ -67,6 +67,7 @@ void UFlareTurretPilot::Initialize(const FFlareTurretPilotSave* Data, UFlareComp
 	{
 		FireReactionTime = FMath::FRandRange(0.1, 0.2);
 	}
+	ClearTarget();
 }
 
 void UFlareTurretPilot::PlayerSetAim(FVector AimDirection, float AimDistance)

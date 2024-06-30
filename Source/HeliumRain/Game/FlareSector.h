@@ -48,12 +48,14 @@ public:
 	AFlareAsteroid* LoadAsteroid(const FFlareAsteroidSave& AsteroidData);
 
 	AFlareMeteorite* LoadMeteorite(FFlareMeteoriteSave& MeteoriteData);
+	void RemoveSectorMeteorite(AFlareMeteorite* Meteorite);
 
-	AFlareSpacecraft* LoadSpacecraft(UFlareSimulatedSpacecraft* ParentSpacecraft);
+	AFlareSpacecraft* LoadSpacecraft(UFlareSimulatedSpacecraft* ParentSpacecraft, bool Reposition = false);
 
 	void SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentSpacecraft, AFlareSpacecraft* Spacecraft);
 
-	void FinishLoadSpacecraft(AFlareSpacecraft* Spacecraft);
+	void FinishLoadSpacecraftReattachRedock(AFlareSpacecraft* Spacecraft);
+	void FinishLoadSpacecraft(AFlareSpacecraft* Spacecraft,bool Reposition);
 
 	AFlareBomb* LoadBomb(const FFlareBombSave& BombData);
 

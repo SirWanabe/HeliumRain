@@ -25,9 +25,9 @@ void UFlareSpacecraftSubComponent::SetParentSpacecraftComponent(UFlareSpacecraft
 }
 
 
-void UFlareSpacecraftSubComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UFlareSpacecraftSubComponent::TickForComponent(float DeltaTime)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Super::TickForComponent(DeltaTime);
 
 
 

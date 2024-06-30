@@ -29,7 +29,9 @@ public:
 
 	virtual FFlareSpacecraftComponentSave* Save() override;
 
-	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+//	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	void TickForComponent(float DeltaTime) override;
+	void TickForComponentAlive(float DeltaTime) override;
 
 	virtual void SetVisibleInUpgrade(bool Visible) override;
 

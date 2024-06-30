@@ -435,8 +435,6 @@ void SFlareTradeMenu::Setup()
 
 void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulatedSpacecraft* LeftSpacecraft, UFlareSimulatedSpacecraft* RightSpacecraft)
 {
-	FLOGV("SFlareTradeMenu::Enter ParentSector=%p LeftSpacecraft=%p RightSpacecraft=%p", ParentSector, LeftSpacecraft, RightSpacecraft);
-	
 	// Setup
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
@@ -444,42 +442,61 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	TargetSector = ParentSector;
 	TargetLeftSpacecraft = LeftSpacecraft;
 	RightShipList->Reset();
-	WasActiveSector = false;
+
+	FLOGV("SFlareTradeMenu::Enter ParentSector=%p LeftSpacecraft=%p RightSpacecraft=%p, WasActive =%d", ParentSector, LeftSpacecraft, RightSpacecraft, CheckIsActiveSector());
+
+	if (TargetLeftSpacecraft)
+	{
+		if (TargetLeftSpacecraft->GetActiveCargoBay()->GetSlotCount() == 0)
+		{
+			TargetLeftSpacecraft = nullptr;
+		}
+	}
 
 	// First-person trading override
 	if (TargetLeftSpacecraft)
 	{
-		AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
-		if (TargetLeftSpacecraft->IsActive())
+		if (CheckIsActiveSector() && TargetLeftSpacecraft->IsActive())
 		{
-			WasActiveSector = true;
+			AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
+
 			if (PhysicalSpacecraft->GetNavigationSystem()->IsDocked())
 			{
 				TargetRightSpacecraft = PhysicalSpacecraft->GetNavigationSystem()->GetDockStation()->GetParent();
 			}
-			else
+			else if(RightSpacecraft && RightSpacecraft->IsStation())
 			{
 				TargetRightSpacecraft = RightSpacecraft;
 			}
+			else
+			{
+				TargetRightSpacecraft = nullptr;
+			}
 		}
-		else
+		else if (RightSpacecraft && RightSpacecraft->IsStation())
 		{
 			TargetRightSpacecraft = RightSpacecraft;
 		}
+		else
+		{
+			TargetRightSpacecraft = nullptr;
+		}
+	}
+	else if (RightSpacecraft && RightSpacecraft->IsStation())
+	{
+		TargetRightSpacecraft = RightSpacecraft;
 	}
 	else
 	{
-		TargetRightSpacecraft = RightSpacecraft;
-		if (TargetRightSpacecraft->IsActive())
-		{
-			WasActiveSector = true;
-		}
+		TargetRightSpacecraft = nullptr;
+	}
+
+	if (TargetRightSpacecraft && TargetRightSpacecraft->IsComplexElement())
+	{
+		TargetRightSpacecraft = TargetRightSpacecraft->GetComplexMaster();
 	}
 
 	// Not first person - list spacecrafts
-	//	if (TargetLeftSpacecraft->GetCurrentFleet() != MenuManager->GetPC()->GetPlayerFleet())
-//	if (TargetLeftSpacecraft != MenuManager->GetPC()->GetPlayerShip())
-
 	UpdateLeftShips();
 
 // Add stations (right side)
@@ -525,6 +542,19 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 	DonationButton->SetActive(false);
 }
 
+bool SFlareTradeMenu::CheckIsActiveSector()
+{
+	bool IsActiveSector = false;
+	if (MenuManager->GetGame()->GetActiveSector())
+	{
+		UFlareSimulatedSector* CurrentActiveSector = MenuManager->GetGame()->GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector == TargetSector)
+		{
+			IsActiveSector = true;
+		}
+	}
+	return IsActiveSector;
+}
 
 void SFlareTradeMenu::FillTradeBlock(UFlareSimulatedSpacecraft* TargetSpacecraft, UFlareSimulatedSpacecraft* OtherSpacecraft,
 	TSharedPtr<SHorizontalBox> CargoBay1, TSharedPtr<SHorizontalBox> CargoBay2)
@@ -597,26 +627,13 @@ void SFlareTradeMenu::Exit()
 	RightShipList->SetVisibility(EVisibility::Collapsed);
 	SetVisibility(EVisibility::Collapsed);
 }
-/*
-void SFlareTradeMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
-{
-	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-	if (IsEnabled() && !WasActiveSector)
-	{
-		if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive())
-		{
-			Enter(TargetSector, TargetLeftSpacecraft, TargetRightSpacecraft);
-		}
-	}
-}
-*/
+
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
 
 EVisibility SFlareTradeMenu::GetCompanyFlagVisibility() const
 {
-
 	// Crash mitigation - If parent is hidden, so are we, don't try to use the target (#178)
 //	if ((OwnerWidget.IsValid() && OwnerWidget->GetVisibility() != EVisibility::Visible)
 	if (MenuManager->GetPC() && !MenuManager->GetPC()->GetMenuManager()->IsUIOpen())
@@ -655,7 +672,9 @@ EVisibility SFlareTradeMenu::GetSelectDockedVisibility() const
 {
 	if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->IsDocked())
 	{
-		if ((TargetRightSpacecraft && TargetRightSpacecraft->IsActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation() != TargetRightSpacecraft->GetActive()) || RightShipList->GetVisibility() == EVisibility::Visible)
+		if ((TargetRightSpacecraft && TargetRightSpacecraft->IsActive()
+			&& !TargetRightSpacecraft->GetActive()->GetDockingSystem()->IsDockedShip(TargetLeftSpacecraft->GetActive()))
+				|| RightShipList->GetVisibility() == EVisibility::Visible)
 		{
 			return EVisibility::Visible;
 		}
@@ -1277,11 +1296,10 @@ void SFlareTradeMenu::OnConfirmTransaction()
 	// Actual transaction
 	if (TransactionSourceSpacecraft->GetCurrentSector() && TransactionResource)
 	{
-		if (TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive() && TargetRightSpacecraft && TargetRightSpacecraft->IsActive())
+		if (CheckIsActiveSector() && TargetLeftSpacecraft && TargetLeftSpacecraft->IsActive() && TargetRightSpacecraft && TargetRightSpacecraft->IsActive())
 		{
 			AFlareSpacecraft* PhysicalSpacecraft = TargetLeftSpacecraft->GetActive();
 			AFlareSpacecraft* PhysicalSpacecraftDock = TargetRightSpacecraft->GetActive();
-			WasActiveSector = true;
 
 			if (PhysicalSpacecraftDock->GetDockingSystem()->IsDockedShip(PhysicalSpacecraft))
 			{
@@ -1343,7 +1361,13 @@ void SFlareTradeMenu::OnSelectDockedSelection()
 {
 	if (TargetLeftSpacecraft && TargetLeftSpacecraft->GetActive() && TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation())
 	{
-		SelectSpacecraftRight(TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation()->GetParent());
+		UFlareSimulatedSpacecraft* DockedSpacecraft = TargetLeftSpacecraft->GetActive()->GetNavigationSystem()->GetDockStation()->GetParent();
+		if (DockedSpacecraft && DockedSpacecraft->IsComplexElement())
+		{
+			DockedSpacecraft = DockedSpacecraft->GetComplexMaster();
+		}
+
+		SelectSpacecraftRight(DockedSpacecraft);
 	}
 }
 

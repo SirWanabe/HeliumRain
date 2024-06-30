@@ -291,6 +291,8 @@ protected:
 	bool									ActiveAIDesireRepairs;
 	TMap<UFlareSimulatedSector*, bool>		CanUpgradeSectors;
 
+	bool									CreatedWorldResourceVariations;
+
 public:
 
 	TArray<EFlareBudget::Type> AllBudgets;

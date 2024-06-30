@@ -61,18 +61,7 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 		HeatChange = false;
 	}
 
-// Heat up
-	Data->Heat += TotalHeatAfterSun * DeltaSeconds;
-
-// Radiate: Stefan-Boltzmann constant=5.670373e-8
-	float Temperature = Data->Heat / Description->HeatCapacity;
-	float HeatRadiation = 0.f;
-	if (Temperature > 0)
-	{
-		HeatRadiation = TotalHeatSink * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
-	}
-	// Don't radiate too much energy : negative temperature is not possible
-	Data->Heat -= FMath::Min(HeatRadiation * DeltaSeconds, Data->Heat);
+	UpdateCurrentHeatValue(DeltaSeconds);
 
 	// Power outage
 	if (Data->PowerOutageDelay > 0)
@@ -86,6 +75,22 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	}
 
 	TimeSinceLastExternalDamage += DeltaSeconds;
+}
+
+void UFlareSpacecraftDamageSystem::UpdateCurrentHeatValue(float DeltaSeconds)
+{
+	// Heat up
+	Data->Heat += TotalHeatAfterSun * DeltaSeconds;
+
+	// Radiate: Stefan-Boltzmann constant=5.670373e-8
+	float Temperature = Data->Heat / Description->HeatCapacity;
+	float HeatRadiation = 0.f;
+	if (Temperature > 0)
+	{
+		HeatRadiation = TotalHeatSink * 5.670373e-8 * FMath::Pow(Temperature, 4) / 1000;
+	}
+	// Don't radiate too much energy : negative temperature is not possible
+	Data->Heat -= FMath::Min(HeatRadiation * DeltaSeconds, Data->Heat);
 }
 
 void UFlareSpacecraftDamageSystem::Initialize(AFlareSpacecraft* OwnerSpacecraft, FFlareSpacecraftSave* OwnerData)
@@ -236,6 +241,10 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, 
 	if (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector())
 	{
 		PC->GetGame()->GetActiveSector()->AddDestroyedSpacecraft(Spacecraft, ForceExplosion);
+		if (Spacecraft->GetParent()->GetCurrentFleet())
+		{
+			Spacecraft->GetParent()->GetCurrentFleet()->FleetShipDied(Spacecraft->GetParent());
+		}
 	}
 
 	PC->OnSpacecraftDestroyed();
@@ -782,6 +791,11 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 				AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 				MakeUncontrolableDestroyed = true;
 
+				if (Spacecraft->GetParent()->GetCurrentFleet())
+				{
+					Spacecraft->GetParent()->GetCurrentFleet()->FleetShipUncontrollable(Spacecraft->GetParent());
+				}
+
 				// Player kill
 				if (PC && LastDamageCause.Spacecraft == PC->GetPlayerShip() && Spacecraft != PC->GetShipPawn())
 				{
@@ -870,7 +884,10 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		}
 
 		// Check skirmish victory
-		Spacecraft->GetOwnerSector()->CheckSkirmishEndCondition();
+		if (Spacecraft->GetOwnerSector())
+		{
+			Spacecraft->GetOwnerSector()->CheckSkirmishEndCondition();
+		}
 
 		if (MakeUncontrolableDestroyed)
 		{

@@ -180,7 +180,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Width(6)
 						]
 					]
-				
+
 					// Options line 2
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -229,7 +229,41 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 #endif
 					]
 
-					// FOV box
+					// Options line 3
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SHorizontalBox)
+						// Mouse Menu Confirm Sector
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SAssignNew(MouseMenuConfirmSectorChangeButton, SFlareButton)
+							.Text(LOCTEXT("MouseMenuConfirmSector", "Wheel Menu Confirm"))
+							.HelpText(LOCTEXT("MouseMenuConfirmSectorInfo", "If enabled the interactive mouse menu will present a confirmation option before moving to a different sector"))
+							.Toggle(true)
+							.OnClicked(this, &SFlareSettingsMenu::OnMouseMenuConfirmSectorToggle)
+							.Width(6)
+						]
+
+						// Mouse Menu Autoreset
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SAssignNew(MouseMenuAutoResetButton, SFlareButton)
+							.Text(LOCTEXT("MouseMenuAutoReset", "Wheel Menu Auto-Reset"))
+							.HelpText(LOCTEXT("MouseMenuAutoResetInfo", "If enabled the interactive mouse menu will automatically reset the position to center after a period of inactivity"))
+							.Toggle(true)
+							.OnClicked(this, &SFlareSettingsMenu::OnMouseMenuAutoResetToggle)
+							.Width(6)
+						]
+					]
+					
+						
+						// FOV box
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[
@@ -271,52 +305,6 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 								SAssignNew(FOVLabel, STextBlock)
 								.TextStyle(&Theme.TextFont)
 								.Text(GetFOVLabel(MyGameSettings->VerticalFOV))
-							]
-						]
-					]
-
-					// Gamma box
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					[
-						SNew(SHorizontalBox)
-
-						// Gamma text
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.ContentPadding)
-						[
-							SNew(SBox)
-							.WidthOverride(LabelSize)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("GammaLabel", "Gamma"))
-								.TextStyle(&Theme.TextFont)
-							]
-						]
-
-						// Gamma slider
-						+ SHorizontalBox::Slot()
-						.VAlign(VAlign_Center)
-						.Padding(Theme.ContentPadding)
-						[
-							SAssignNew(GammaSlider, SSlider)
-							.Value(CurrentGammaRatio)
-							.Style(&Theme.SliderStyle)
-							.OnValueChanged(this, &SFlareSettingsMenu::OnGammaSliderChanged)
-						]
-
-						// Gamma label
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.ContentPadding)
-						[
-							SNew(SBox)
-							.WidthOverride(ValueSize)
-							[
-								SAssignNew(GammaLabel, STextBlock)
-								.TextStyle(&Theme.TextFont)
-								.Text(GetGammaLabel(MyGameSettings->Gamma))
 							]
 						]
 					]
@@ -630,21 +618,53 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Toggle(true)
 							.OnClicked(this, &SFlareSettingsMenu::OnTemporalAAToggle)
 						]
-/*
-						// Supersampling
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.SmallContentPadding)
-						[
-							SAssignNew(SupersamplingButton, SFlareButton)
-							.Text(LOCTEXT("Supersampling", "2x Supersampling (!)"))
-							.HelpText(LOCTEXT("SupersamplingInfo", "Supersampling will render the scenes at double the resolution. This is a very demanding feature."))
-							.Toggle(true)
-							.OnClicked(this, &SFlareSettingsMenu::OnSupersamplingToggle)
-						]
-*/
 					]
 
+					// Gamma box
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						// Gamma text
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(LabelSize)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("GammaLabel", "Gamma"))
+								.TextStyle(&Theme.TextFont)
+							]
+						]
+
+						// Gamma slider
+						+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Center)
+						.Padding(Theme.ContentPadding)
+						[
+							SAssignNew(GammaSlider, SSlider)
+							.Value(CurrentGammaRatio)
+							.Style(&Theme.SliderStyle)
+							.OnValueChanged(this, &SFlareSettingsMenu::OnGammaSliderChanged)
+						]
+
+						// Gamma label
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(ValueSize)
+							[
+								SAssignNew(GammaLabel, STextBlock)
+								.TextStyle(&Theme.TextFont)
+								.Text(GetGammaLabel(MyGameSettings->Gamma))
+							]
+						]
+					]
+						
 					// Screen Percentage box
 					+ SVerticalBox::Slot()
 						.AutoHeight()
@@ -663,7 +683,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 							.Text(LOCTEXT("ScreenPercentageLabel", "Render Resolution"))
 						.TextStyle(&Theme.TextFont)
 						]
-						]
+					]
 
 					// Screen quantity slider
 					+ SHorizontalBox::Slot()
@@ -2293,6 +2313,25 @@ void SFlareSettingsMenu::OnLateralVelocityToggle()
 	MyGameSettings->ShowLateralVelocity = New;
 	MyGameSettings->ApplySettings(false);
 }
+
+void SFlareSettingsMenu::OnMouseMenuConfirmSectorToggle()
+{
+	bool New = MouseMenuConfirmSectorChangeButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->MouseMenuConfirmSectorChange = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnMouseMenuAutoResetToggle()
+{
+	bool New = MouseMenuAutoResetButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->MouseMenuAutoReset = New;
+	MyGameSettings->ApplySettings(false);
+}
+
 
 void SFlareSettingsMenu::OnForwardOnlyThrustToggle()
 {

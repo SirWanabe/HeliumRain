@@ -33,8 +33,8 @@ AFlareMeteorite::AFlareMeteorite(const class FObjectInitializer& PCIP) : Super(P
 	Meteorite->SetNotifyRigidBodyCollision(true);
 
 	// Settings
-	Meteorite->PrimaryComponentTick.bCanEverTick = true;
-	PrimaryActorTick.bCanEverTick = true;
+//	Meteorite->PrimaryComponentTick.bCanEverTick = true;
+//	PrimaryActorTick.bCanEverTick = true;
 	Paused = false;
 
 	// Content
@@ -49,7 +49,6 @@ AFlareMeteorite::AFlareMeteorite(const class FObjectInitializer& PCIP) : Super(P
 void AFlareMeteorite::Load(FFlareMeteoriteSave* Data, UFlareSector* ParentSector)
 {
 	Parent = ParentSector;
-
 	MeteoriteData = Data;
 	SetupMeteoriteMesh();
 	Meteorite->SetPhysicsLinearVelocity(Data->LinearVelocity);
@@ -76,16 +75,10 @@ void AFlareMeteorite::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AFlareMeteorite::Tick(float DeltaSeconds)
+void AFlareMeteorite::TickMeteorite(float DeltaSeconds)
 {
-	Super::Tick(DeltaSeconds);
-
 	if (IsSafeDestroyingRunning)
 	{
-		if (!SafeDestroyed)
-		{
-			FinishSafeDestroy();
-		}
 		return;
 	}
 
@@ -195,6 +188,16 @@ void AFlareMeteorite::OnCollision(class AActor* Other, FVector HitLocation)
 	}
 }
 
+void AFlareMeteorite::UnSafeDestroy()
+{
+	if (IsSafeDestroyingRunning)
+	{
+		IsSafeDestroyingRunning = false;
+		this->SetActorHiddenInGame(false);
+		this->SetActorEnableCollision(true);
+	}
+}
+
 void AFlareMeteorite::SafeDestroy()
 {
 	if (!IsSafeDestroyingRunning)
@@ -202,14 +205,12 @@ void AFlareMeteorite::SafeDestroy()
 		IsSafeDestroyingRunning = true;
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
-	}
-}
-
-void AFlareMeteorite::FinishSafeDestroy()
-{
-	if (!SafeDestroyed)
-	{
-		this->Destroy();
+		if (Parent)
+		{
+			Parent->RemoveSectorMeteorite(this);
+			Parent->GetGame()->GetCacheSystem()->StoreCachedMeteorite(this);
+		}
+		Parent = nullptr;
 	}
 }
 
@@ -318,4 +319,3 @@ void AFlareMeteorite::ApplyDamage(float Energy, float Radius, FVector Location, 
 }
 
 #undef LOCTEXT_NAMESPACE
-

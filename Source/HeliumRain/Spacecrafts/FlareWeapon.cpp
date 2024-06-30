@@ -125,9 +125,9 @@ FFlareSpacecraftComponentSave* UFlareWeapon::Save()
 	return Super::Save();
 }
 
-void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UFlareWeapon::TickForComponent(float DeltaTime)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Super::TickForComponent(DeltaTime);
 
 	if (LastTraceHandle._Data.FrameNumber != 0)
 	{
@@ -144,10 +144,16 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 	TimeSinceLastShell += DeltaTime;
 	UpdateHeatProduction();
 	UpdateHeatSinkSurface();
+}
 
-	if (Firing && IsReadyToFire() && GetUsableRatio() > 0.f && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
+void UFlareWeapon::TickForComponentAlive(float DeltaTime)
+{
+	Super::TickForComponentAlive(DeltaTime);
+
+	if (Firing && IsReadyToFire())
 	{
-		if (GetCurrentAmmo() > 0)
+		float UsableRatio = GetUsableRatio();
+		if (UsableRatio > 0.f && GetCurrentAmmo() > 0)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_Weapon_Firing);
 
@@ -155,7 +161,7 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 			{
 				if (ComponentDescription->WeaponCharacteristics.GunCharacteristics.AlternedFire)
 				{
-					LastFiredGun = (LastFiredGun + 1 ) % ComponentDescription->WeaponCharacteristics.GunCharacteristics.GunCount;
+					LastFiredGun = (LastFiredGun + 1) % ComponentDescription->WeaponCharacteristics.GunCharacteristics.GunCount;
 					FireGun(LastFiredGun);
 				}
 				else
@@ -172,7 +178,7 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 			}
 
 			// If damage the firerate is randomly reduced to a min of 10 times normal value
-			float DamageDelay = FMath::Square(1.f- GetUsableRatio()) * 10 * FiringPeriod * FMath::FRandRange(0.f, 1.f);
+			float DamageDelay = FMath::Square(1.f - UsableRatio) * 10 * FiringPeriod * FMath::FRandRange(0.f, 1.f);
 			TimeSinceLastShell = -DamageDelay;
 
 			if (GetCurrentAmmo() <= 0)
@@ -192,7 +198,6 @@ void UFlareWeapon::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
 			TimeSinceLastShell = 0;
 		}
 	}
-
 	if (FiringPeriod == 0)
 	{
 		Firing = false;

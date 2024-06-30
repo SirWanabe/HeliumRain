@@ -74,6 +74,7 @@ struct FFlareMenuParameterData
 		, WhiteList(NULL)
 		, Sector(NULL)
 		, Spacecraft(NULL)
+		, SecondarySpacecraft(NULL)
 		, Travel(NULL)
 		, Skirmish(NULL)
 		, Resource(NULL)
@@ -100,6 +101,7 @@ struct FFlareMenuParameterData
 	class UFlareCompanyWhiteList*				WhiteList;
 	class UFlareSimulatedSector*                Sector;
 	class UFlareSimulatedSpacecraft*            Spacecraft;
+	class UFlareSimulatedSpacecraft*			SecondarySpacecraft;
 	class UFlareTravel*                         Travel;
 	class UFlareSkirmishManager*                Skirmish;
 	struct FFlareResourceDescription*           Resource;

@@ -1490,16 +1490,75 @@ Companies are the factions which control the entire environment in Helium Rain. 
 				.TextStyle(&Theme.SubTitleFont)
 				]
 
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+								.WrapTextAt(TextWrappingBig)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("VersionHistoryHRFM1", "Created by Wanabe\n\
+https://github.com/SirWanabe/HeliumRain\n\n\
+1.4.1\n\n\
+(Feature) Fleet travel time is now effected by whichever the slowest ship contained in each fleet is.\n\
+(Feature) Out of sector battles will now include meteorites.Credit for meteorite contracts requires at least one combat capable player ship in the area.\n\
+(Feature) Added heightened meteor event\n\
+\n\
+AI Companies can now upgrade the engines and RCS on their trade ships in both simulation layers.\n\
+AI Companies can now form fleets when necessary to ensure travel times are the same.\n\
+AI Companies can now launch attacks from multiple sectors and coordinate the travel time so they all arrive simultaneously.\n\
+\n\
+(Performance) GetDamagedCargosCapacity() in CompanyAI less iteration.\n\
+(Performance) Checks for CanUpgrade() now cached for CompanyAI.\n\
+(Performance) Reuse active spacecraft. Significant improvements to late game active sector load times.\n\
+(Performance) Various for loops altered to look through smaller already constructed arrays.\n\
+(Performance/Fix) Fixed forgotten false boolean setting for OrbitalFleetsInfo->Update(); function in the tick of SFlareOrbitalMenu. Significant FPS improvements during day simulation (~30 FPS before, ~100 after)\n\
+\n\
+(UI) Fixed \"fleets/stations/ships/battles\" buttons moving their alignment in the orbital menu.\n\
+(UI) Missing resources for shipyard production are now outputted rather than \"(missing resources)\"\n\
+(UI) Tool - Tips for SectorButtons can now display the ETA of the selected fleet from the orbital menu.\n\
+(UI) Mouse menu can now accept left and right click as inputs. \"Fire\" bind will work as a selection option. \"Back Menu\" bind will work as close / back option.\n\
+(UI) Mouse menu now places \"Protect, Attack Military, Attack Stations, Attack Civilians\" fleet tactics into new \"Fleet\" sub menu.\n\
+(UI) Mouse menu - Added Repair / Rearm button in mouse menu Fleet sub menu.\n\
+(UI) Mouse menu - Added Travel sub - menu to initiate travel for player fleet.\n\
+(UI) Mouse menu - Added Contracts sub - menu.\n\
+(UI) Trade / Upgrade options will appear in the mouse - menu if auto - docking is unlocked.\n\
+(UI) During GlobalWar event individual messages of declaring war or peace will not be sent.\n\
+(UI) Moved \"Gamma\" setting to Graphics section\n\
+(UI) Added \"Wheel Menu Confirm\" and \"Wheel Menu Auto-Reset\" toggle options to game settings.\n\
+\n\
+(Modding) Added RCSCapableOfMainEngineThrust to FFlareSpacecraftDescription.Tells the game how many RCS thrusters are in position to assist primary engine / s during fleet travel.\n\
+\n\
+(Other) Added in basic timeout to docking anti - collision path - finding.If a ship gets stuck it can sometimes slowly move itself away.\n\
+(Other) During day simulation ships will simulate some heat change.\n\
+(Other) Increased allowable active ships from 20 / 100 to 25 / 125.\n\
+(Other) Game will now remember last manually set camera mode for player, when un-docking or changing ship camera mode will be set to the last mode the player set.\n\
+(Other) The end of game day \"FinishAutoPilots\" will look through all queued autopilot orders rather than the current one. Enabling ships which are still in the undocking process to finish their dock/trade when the day simulation is run.\n\
+\n\
+Fixed(HRFanMod): Main menu ship not updating when components were changed on a ship.\n\
+Fixed(HRFanMod): Ship told to upgrade a component wouldn't undock from an unviable station to then move to a different station.\n\
+Fixed(HRFanMod): Fixed crash when carrier drone attempting to redock.\n\
+Fixed(Vanilla): Basic anti-spam measure added for \"Skip Day\" button.\n\
+Fixed(Vanilla): Travels couldn't properly detect if they were an enemy of the player. This would stop Early Warning and Radar technologies from reporting enemies.\n\
+Fixed(Vanilla): Events section in Orbital menu would display empty events if there were meteorites coming that the player couldn't detect.\n\
+Fixed(Vanilla): AI trade ships will no longer consider starting a trade in dangerous locations\n\
+Fixed(Vanilla): Opening the ship Trade Menu while docked at a station complex would assign the \"right\" station as the complex substation rather than the complex itself, leading to issues such as the autopilot failing to dock other ships.\n\
+Fixed(Vanilla) : Checks to see if a ship is docked with a station would not consider looking at Complex Children.\n\
+Fixed(Vanilla) : Fixed \"fleets/stations/ships/battles\" buttons moving their alignment in the orbital menu.\n\
+Fixed(Vanilla) : Can no longer take control of a weapon fire - group if all turrets in the group are set to ignore manual aim.\n\
+Fixed(Vanilla) : Can no longer take manual control of weapon fire - groups if docked at a station.\n\
+Fixed(Vanilla) : Can now manually fire weapons while on an autopilot course.\n\
+Fixed(Vanilla) : Activating weapons while in third person camera mode would immediately deactivate them.\n\
+Fixed(Vanilla) : Docking message and HUD will now properly account for a station being attached to a complex.\n\
+Fixed(Vanilla) : Fixed several other issues with station complexes, including other companies not being able to properly initiate ship orders.\n\
+"))
+				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[
 					SNew(STextBlock)
 					.WrapTextAt(TextWrappingBig)
 					.TextStyle(&Theme.TextFont)
-					.Text(LOCTEXT("VersionHistoryHRFM1", "Created by Wanabe\n\
-https://github.com/SirWanabe/HeliumRain\n\
-\n\
-1.4.0\n\n\
+					.Text(LOCTEXT("VersionHistoryHRFM2", "1.4.0\n\n\
 (UI) Trade Route overhaul\n\
 (UI - Trade Route) Condensed \"Load\", \"Buy\" and \"Load / Buy\" operations into \"Load\"\n\
 (UI - Trade Route) Condensed \"Unload\", \"Sell\", \"Unload / Sell\", \"Donate\", \"Unload / Donate\" operations into \"Unload\"\n\
@@ -1567,7 +1626,7 @@ Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
 							SNew(STextBlock)
 								.WrapTextAt(TextWrappingBig)
 								.TextStyle(&Theme.TextFont)
-								.Text(LOCTEXT("VersionHistoryHRFM2", "1.3.9\n\n\
+								.Text(LOCTEXT("VersionHistoryHRFM3", "1.3.9\n\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
 (Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
 (Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\

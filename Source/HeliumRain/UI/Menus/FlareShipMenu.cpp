@@ -1076,7 +1076,6 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 						IsProducing = true;
 					}
 				}
-
 			}
 
 			FString FormattedNumber;
@@ -2306,9 +2305,9 @@ void SFlareShipMenu::ShowRCSs()
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	if (PC)
 	{
-		FFlareSpacecraftComponentDescription* PartDesc = NULL;
 		UFlareSpacecraftComponentsCatalog* Catalog = PC->GetGame()->GetShipPartsCatalog();
 
+		FFlareSpacecraftComponentDescription* PartDesc = NULL;
 		// Browse all the parts in the save until we find the right one
 		for (int32 Index = 0; Index < TargetSpacecraftData->Components.Num(); Index++)
 		{
@@ -2491,6 +2490,14 @@ void SFlareShipMenu::OnPartConfirmed()
 							&& StationInterface->HasCapability(EFlareSpacecraftCapability::Upgrade))
 						{
 							TargetSpacecraft->UpgradePart(NewPartDesc, CurrentWeaponGroupIndex);
+						}
+						else
+						{
+							bool DockingConfirmed = ActiveShip->GetNavigationSystem()->DockAtAndUpgrade(NewPartDesc, CurrentWeaponGroupIndex);
+							if (DockingConfirmed && ActiveShip->IsPlayerShip())
+							{
+								MenuManager->CloseMenu();
+							}
 						}
 					}
 				}

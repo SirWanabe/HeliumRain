@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../Flare.h"
+#include "../Data/FlareOrbitalMap.h"
 #include "../Game/FlareSaveGame.h"
 #include "../Game/FlareGameTypes.h"
+#include "../Quests/FlareQuest.h"
 #include "../UI/FlareUITypes.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "FlarePlayerController.generated.h"
@@ -13,7 +15,7 @@ class AFlareMenuPawn;
 class AFlareCockpitManager;
 class AFlareMenuManager;
 class UFlareCameraShakeCatalog;
-
+class UFlareOrbitalMap;
 
 UCLASS(MinimalAPI)
 class AFlarePlayerController : public APlayerController
@@ -31,7 +33,7 @@ public:
 	virtual void PlayerTick(float DeltaTime) override;
 	
 	/** Activate or deactivate the exterbal camera */
-	void SetExternalCamera(bool NewState);
+	void SetExternalCamera(bool NewState, bool SetFromPlayerInput = false);
 
 	/** Fly this ship */
 	void FlyShip(AFlareSpacecraft* Ship, bool PossessNow = true);
@@ -77,7 +79,9 @@ public:
 	/** Triggered when a ship has been destroyed */
 	void OnSpacecraftDestroyed();
 
-	/*----------------------------------------------------
+	void UpdateOrbitMenuFleets(bool Instant);
+
+		/*----------------------------------------------------
 		Data management
 	----------------------------------------------------*/
 
@@ -144,6 +148,7 @@ public:
 		return PlayerData.UnlockedScannables;
 	}
 
+	void UpdateMenuPawnShip(UFlareSimulatedSpacecraft* Ship);
 
 	/*----------------------------------------------------
 		Menus
@@ -356,6 +361,8 @@ public:
 	/** Joystick angular movement Y */
 	void JoystickPitchInput(float Val);
 
+	void LeftMouseButtonPressed();
+	void LeftMouseButtonReleased();
 
 	/** Hack for right mouse button triggering drag in external camera */
 	void RightMouseButtonPressed();
@@ -374,9 +381,24 @@ public:
 	/** Open the wheel menu */
 	void WheelPressed();
 
+	/** Show middle mouse menus*/
+	void WheelMenuShowMainMenu();
+	void WheelMenuShowFleetMenu();
+	void WheelMenuShowTravelMainMenu();
+	void WheelMenuShowTravelOrbitalMenu(FFlareSectorCelestialBodyDescription OrbitalBody);
+	void WheelMenuShowContracts();
+
+	void WheelMenuConfirmTravelSelection(FFlareSectorCelestialBodyDescription OrbitalBody, UFlareSimulatedSector* Sector);
+	void WheelMenuConfirmedTravel(UFlareSimulatedSector* Sector);
+	void WheelMenuRepairAndRefill();
+
+	FString GetQuestWheelIcon(UFlareQuest* Quest);
+	void WheelMenuSelectQuest(UFlareQuest* Quest);
+
 	/** Close the wheel menu */
 	void WheelReleased();
-	
+	void CloseWheelMenu(bool EnableActionOnClose = true);
+
 	/** Inspect the target */
 	void InspectTargetSpacecraft();
 
@@ -416,16 +438,7 @@ protected:
 	/** Camera shakes */
 	UPROPERTY()
 	UFlareCameraShakeCatalog*                CameraShakeCatalog;
-/*
-	// Sounds
-	UPROPERTY() USoundCue*                   NotificationInfoSound;
-	UPROPERTY() USoundCue*                   NotificationCombatSound;
-	UPROPERTY() USoundCue*                   NotificationQuestSound;
-	UPROPERTY() USoundCue*                   NotificationTradingSound;
-	UPROPERTY() USoundCue*                   CrashSound;
-	UPROPERTY() USoundCue*                   MissileWarningSound;
-	UPROPERTY() USoundCue*                   DockingSound;
-*/
+
 	// Sound manager
 	UPROPERTY()
 	UFlareSoundManager*                      SoundManager;
@@ -510,6 +523,8 @@ protected:
 	bool                                     RightMousePressed;
 	bool                                     HasCurrentObjective;
 	bool                                     IsBusy;
+	bool									 SimulatedConfirmed;
+	bool									 PlayerSetCameraMode;
 	float                                    LastSimulateTime;
 
 	FFlareMovingAverage<float>               JoystickHorizontalInputVal;
@@ -624,9 +639,19 @@ public:
 		return BackgroundDecorator;
 	}
 
+	bool GetSimulatedConfirmed() const
+	{
+		return SimulatedConfirmed;
+	}
+
 	bool IsGameBusy() const
 	{
 		return IsBusy;
+	}
+
+	bool GetPlayerSetCameraMode() const
+	{
+		return PlayerSetCameraMode;
 	}
 
 	/** Convert vertical to horizontal FOV - We want vertical for the cockpit, UE uses horizontal */

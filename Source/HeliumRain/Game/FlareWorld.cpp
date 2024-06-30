@@ -353,7 +353,7 @@ bool UFlareWorld::CheckIntegrity()
 			UFlareSimulatedSpacecraft* Ship = Company->GetCompanyShips()[ShipIndex];
 
 			UFlareSimulatedSector* ShipSector = Ship->GetCurrentSector();
-			if(IsValid(ShipSector) && ShipSector!=nullptr && ShipSector->IsValidLowLevel())
+			if(IsValid(ShipSector) && ShipSector->IsValidLowLevel())
 			{
 				if (Ship->GetCurrentFleet() == NULL)
 				{
@@ -533,23 +533,27 @@ void UFlareWorld::Simulate()
 		}
 
 		// Remove destroyed spacecraft
-		TArray<UFlareSimulatedSpacecraft*> SpacecraftToRemove;
-
+//		TArray<UFlareSimulatedSpacecraft*> SpacecraftToRemove;
 		for (int32 SpacecraftIndex = 0 ; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
 
 			if(!Spacecraft->GetDamageSystem()->IsAlive() && !Spacecraft->GetDescription()->IsSubstation)
 			{
-				SpacecraftToRemove.Add(Spacecraft);
+				Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
+			}
+			else if(Spacecraft->GetActive())
+			{
+				Spacecraft->GetActive()->SimulateDayRun();
 			}
 		}
-
+/*
 		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftToRemove.Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = SpacecraftToRemove[SpacecraftIndex];
 			Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
 		}
+		*/
 	}
 
 	FLOG("* Simulate > AI");
@@ -732,11 +736,11 @@ void UFlareWorld::Simulate()
 						}
 
 						OtherCompany->GetAI()->GetData()->Pacifism = 0;
-						OtherCompany->SetHostilityTo(MaxCombatPointCompany, true);
+						OtherCompany->SetHostilityTo(MaxCombatPointCompany, true, true);
 					}
 					else
 					{
-						OtherCompany->SetHostilityTo(MaxCombatPointCompany, false);
+						OtherCompany->SetHostilityTo(MaxCombatPointCompany, false, true);
 					}
 				}
 
@@ -1968,6 +1972,9 @@ void UFlareWorld::AddFactory(UFlareFactory* Factory)
 	if (Factory->GetParent()->IsShipyard() && !Factory->GetParent()->GetDescription()->IsDroneCarrier)
 	{
 		Shipyards.AddUnique(Factory->GetParent());
+		FLOGV("UFlareWorld::AddFactory : AddShipyard %s as factory for %s",
+		*Factory->GetDescription()->Name.ToString(),
+		*Factory->GetParent()->GetImmatriculation().ToString());
 	}
 }
 

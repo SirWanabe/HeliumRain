@@ -21,7 +21,8 @@ public:
 
 	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr) override;
 
-	virtual void TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+//	virtual void TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	void TickForComponent(float DeltaSeconds) override;
 
 
 	/*----------------------------------------------------

@@ -43,7 +43,7 @@ public:
 	bool GetIsPiloted();
 
 	/** Activate or deactivate the external camera */
-	virtual void SetExternalCamera(bool NewState);
+	virtual void SetExternalCamera(bool NewState, bool DeactivateWeapons = true);
 
 	inline bool IsExternalCamera() const
 	{

@@ -152,7 +152,7 @@ void AFlareBomb::OnLaunched(AFlareSpacecraft* Target)
 	}
 }
 
-void AFlareBomb::Tick(float DeltaSeconds)
+void AFlareBomb::TickBomb(float DeltaSeconds)
 {
 	if (IsSafeDestroyingRunning)
 	{
@@ -163,7 +163,7 @@ void AFlareBomb::Tick(float DeltaSeconds)
 		return;
 	}
 
-	Super::Tick(DeltaSeconds);
+//	Super::Tick(DeltaSeconds);
 
 	if(BombLockedInCollision > 0)
 	{
@@ -215,13 +215,6 @@ void AFlareBomb::Tick(float DeltaSeconds)
 				{
 					PC->SetAchievementProgression("ACHIEVEMENT_MISSILE_ESCAPE", 1);
 				}
-			}
-
-			// Parent removed destroy
-			if (!ParentWeapon || !ParentWeapon->IsValidLowLevel() || !ParentWeapon->GetSpacecraft()->IsValidLowLevel())
-			{
-				OnBombDetonated(NULL, NULL, FVector(), FVector(), DamageSourceCompany);
-				//DrawDebugSphere(GetWorld(), GetActorLocation(), 1000, 32, FColor::Red, true);
 			}
 		}
 	}
@@ -699,7 +692,6 @@ FFlareBombSave* AFlareBomb::Save()
 		BombData.AngularVelocity = BombComp->GetPhysicsAngularVelocityInDegrees();
 	}
 
-	// TODO Investigate on NULL ParentWeapon
 	if (ParentWeapon)
 	{
 		BombData.ParentSpacecraft = ParentWeapon->GetSpacecraft()->GetImmatriculation();

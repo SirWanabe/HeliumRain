@@ -671,7 +671,7 @@ void UFlareCompany::ResetLastTributeDate()
 	CompanyData.PlayerLastTributeDate = Game->GetGameWorld()->GetDate();
 }
 
-void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
+void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile, bool SuppressMessages)
 {
 	if (TargetCompany && TargetCompany != this)
 	{
@@ -683,17 +683,20 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 			CompanyData.HostileCompanies.AddUnique(TargetCompany->GetIdentifier());
 			if (TargetCompany == PlayerCompany)
 			{
-				if (PlayerCompany->GetHostility(this) != EFlareHostility::Hostile)
+				if (!SuppressMessages)
 				{
-					FString UniqueId = "war-declared-" + GetIdentifier().ToString();
-					FFlareMenuParameterData Data;
-					Game->GetPC()->Notify(LOCTEXT("CompanyDeclareWar", "War declared"),
-						FText::Format(LOCTEXT("CompanyDeclareWarFormat", "{0} declared war on you"), FText::FromString(GetCompanyName().ToString())),
-						FName(*UniqueId),
-						EFlareNotification::NT_Military,
-						false,
-						EFlareMenu::MENU_Leaderboard,
-						Data);
+					if (PlayerCompany->GetHostility(this) != EFlareHostility::Hostile)
+					{
+						FString UniqueId = "war-declared-" + GetIdentifier().ToString();
+						FFlareMenuParameterData Data;
+						Game->GetPC()->Notify(LOCTEXT("CompanyDeclareWar", "War declared"),
+							FText::Format(LOCTEXT("CompanyDeclareWarFormat", "{0} declared war on you"), FText::FromString(GetCompanyName().ToString())),
+							FName(*UniqueId),
+							EFlareNotification::NT_Military,
+							false,
+							EFlareMenu::MENU_Leaderboard,
+							Data);
+					}
 				}
 				PlayerCompany->SetHostilityTo(this, true);
 			}
@@ -775,27 +778,30 @@ void UFlareCompany::SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile)
 
 			if (TargetCompany == PlayerCompany)
 			{
-				if(PlayerCompany->GetHostility(this) == EFlareHostility::Hostile)
+				if (!SuppressMessages)
 				{
-					FFlareMenuParameterData Data;
-					Game->GetPC()->Notify(LOCTEXT("CompanyWantPeace", "Peace proposed"),
-						FText::Format(LOCTEXT("CompanyWantPeaceFormat", "{0} is offering peace with you"), FText::FromString(GetCompanyName().ToString())),
-						FName("peace-proposed"),
-						EFlareNotification::NT_Military,
-						false,
-						EFlareMenu::MENU_Leaderboard,
-						Data);
-				}
-				else
-				{
-					FFlareMenuParameterData Data;
-					Game->GetPC()->Notify(LOCTEXT("CompanyAcceptPeace", "Peace accepted"),
-						FText::Format(LOCTEXT("CompanyAcceptPeaceFormat", "{0} accepted to make peace with you"), FText::FromString(GetCompanyName().ToString())),
-						FName("peace-accepted"),
-						EFlareNotification::NT_Military,
-						false,
-						EFlareMenu::MENU_Leaderboard,
-						Data);
+					if (PlayerCompany->GetHostility(this) == EFlareHostility::Hostile)
+					{
+						FFlareMenuParameterData Data;
+						Game->GetPC()->Notify(LOCTEXT("CompanyWantPeace", "Peace proposed"),
+							FText::Format(LOCTEXT("CompanyWantPeaceFormat", "{0} is offering peace with you"), FText::FromString(GetCompanyName().ToString())),
+							FName("peace-proposed"),
+							EFlareNotification::NT_Military,
+							false,
+							EFlareMenu::MENU_Leaderboard,
+							Data);
+					}
+					else
+					{
+						FFlareMenuParameterData Data;
+						Game->GetPC()->Notify(LOCTEXT("CompanyAcceptPeace", "Peace accepted"),
+							FText::Format(LOCTEXT("CompanyAcceptPeaceFormat", "{0} accepted your peace offer"), FText::FromString(GetCompanyName().ToString())),
+							FName("peace-accepted"),
+							EFlareNotification::NT_Military,
+							false,
+							EFlareMenu::MENU_Leaderboard,
+							Data);
+					}
 				}
 
 				ClearLastWarDate();
@@ -1219,6 +1225,11 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 {
 	FLOGV("UFlareCompany::DestroySpacecraft : Remove %s from company %s", *Spacecraft->GetImmatriculation().ToString(), *GetCompanyName().ToString());
 
+	if (Spacecraft->GetActive())
+	{
+		GetGame()->GetCacheSystem()->StoreCachedSpacecraft(Spacecraft->GetActive());
+	}
+
 	// Destroy child first
 	if(Spacecraft->IsComplex())
 	{
@@ -1270,7 +1281,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 
 	if (Spacecraft->GetCurrentFleet())
 	{
-		Spacecraft->GetCurrentFleet()->RemoveShip(Spacecraft, true);
+		Spacecraft->GetCurrentFleet()->RemoveShip(Spacecraft, true, false);
 	}
 
 	if (Spacecraft->GetCurrentSector())
@@ -2231,11 +2242,6 @@ bool UFlareCompany::IsTechnologyUnlockedShip(const FFlareSpacecraftDescription* 
 
 bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescription* Description) const
 {
-	if (Description->IsSubstation)
-	{
-		return false;
-	}
-
 	FName Identifier = Description->Identifier;
 	if (Description->RequiredTechnologies.Num() > 0)
 	{
@@ -2253,6 +2259,10 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	}
 
 	else if (Identifier == "station-habitation" ||
+			Identifier == "station-bh-habitation" ||
+			Identifier == "station-by-habitation" ||
+			Identifier == "station-nh-habitation" ||
+			Identifier == "station-tf-habitation" ||
 			Identifier == "station-outpost" ||
 			Identifier == "station-solar-plant")
 	{
@@ -2266,6 +2276,7 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	}
 	else if(Identifier == "station-carbon-refinery" ||
 			Identifier == "station-farm" ||
+			Identifier == "station-tf-farm" ||
 			Identifier == "station-plastics-refinery")
 	{
 		return IsTechnologyUnlocked("chemicals");
@@ -2282,7 +2293,10 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	{
 		return IsTechnologyUnlocked("metallurgy");
 	}
-	else if(Identifier == "station-shipyard")
+	else if(Identifier == "station-shipyard" ||
+		Identifier == "station-bh-shipyard" ||
+		Identifier == "station-by-shipyard" ||
+		Identifier == "station-nh-shipyard")
 	{
 		return IsTechnologyUnlocked("shipyard-station");
 	}
@@ -2297,6 +2311,11 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 			Identifier == "station-research")
 	{
 		return IsTechnologyUnlocked("science");
+	}
+
+	if (Description->IsSubstation)
+	{
+		return false;
 	}
 
 	FLOGV("WARNING: station %s don't need technology", *Description->Identifier.ToString());

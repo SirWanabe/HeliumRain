@@ -420,7 +420,7 @@ void UFlareSpacecraftStateManager::EnablePilot(bool PilotEnabled)
 	IsPiloted = PilotEnabled;
 }
 
-void UFlareSpacecraftStateManager::SetExternalCamera(bool NewState)
+void UFlareSpacecraftStateManager::SetExternalCamera(bool NewState, bool DeactivateWeapons)
 {
 	// If nothing changed...
 	if (ExternalCamera == NewState)
@@ -431,8 +431,11 @@ void UFlareSpacecraftStateManager::SetExternalCamera(bool NewState)
 	ExternalCamera = NewState;
 	AFlarePlayerController* PC = Spacecraft->GetPC();
 
-	// Reset state
-	Spacecraft->GetWeaponsSystem()->DeactivateWeapons();
+	if (DeactivateWeapons)
+	{
+		// Reset state
+		Spacecraft->GetWeaponsSystem()->DeactivateWeapons();
+	}
 
 	// Put the camera at the right spot
 	if (ExternalCamera)

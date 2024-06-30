@@ -81,10 +81,6 @@ public:
 	UPROPERTY(Config)
 	bool                                     UseCockpit;
 
-	/** Whether to show lateral velocity */
-	UPROPERTY(Config)
-	bool                                     ShowLateralVelocity;
-		
 	/** Whether to invert Y axis */
 	UPROPERTY(Config)
 	bool                                     InvertY;
@@ -96,6 +92,18 @@ public:
 	/** Whether to use anti collision */
 	UPROPERTY(Config)
 	bool                                     UseAnticollision;
+
+	/** Whether to show lateral velocity / "drift" */
+	UPROPERTY(Config)
+	bool                                     ShowLateralVelocity;
+
+	/** Does the mouse menu reset position to middle after inactivity? */
+	UPROPERTY(Config)
+	bool                                     MouseMenuAutoReset;
+
+	/** Does mouse menu present a confirmation before sending a ship to selected sector? */
+	UPROPERTY(Config)
+	bool                                     MouseMenuConfirmSectorChange;
 
 	/** Whether to pause the game in menus */
 	UPROPERTY(Config)

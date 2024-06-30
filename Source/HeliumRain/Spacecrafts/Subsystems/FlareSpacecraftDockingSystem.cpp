@@ -38,12 +38,12 @@ void UFlareSpacecraftDockingSystem::Initialize(AFlareSpacecraft* OwnerSpacecraft
 	Components = Spacecraft->GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
 	Description = Spacecraft->GetParent()->GetDescription();
 	Data = OwnerData;
-
 }
 
 void UFlareSpacecraftDockingSystem::Start()
 {
 	// Dock data
+	DockingSlots.Empty();
 	int32 DockCount = 0;
 	int32 ConnectorCount = 0;
 	TArray<UActorComponent*> ActorComponents;
@@ -185,27 +185,13 @@ FFlareDockingInfo UFlareSpacecraftDockingSystem::RequestDock(AFlareSpacecraft* S
 
 		if(Spacecraft->GetParent()->IsComplex())
 		{
-			for (FFlareDockingInfo& MasterConnector : Spacecraft->GetParent()->GetStationConnectors())
+			for (UFlareSimulatedSpacecraft* Child : Spacecraft->GetParent()->GetComplexChildren())
 			{
-				if(MasterConnector.Occupied)
+				if (Child->IsActive())
 				{
-					AFlareSpacecraft* ChildStation = NULL;
-					for(AFlareSpacecraft* StationCandidate : Spacecraft->GetGame()->GetActiveSector()->GetSpacecrafts())
-					{
-						if (StationCandidate->GetImmatriculation() == MasterConnector.ConnectedStationName)
-						{
-							ChildStation = StationCandidate;
-							break;
-						}
-					}
-
-					if(ChildStation)
-					{
-						CheckDockingSlots(BestDockingSlot, BestDistance, ChildStation->GetDockingSystem()->GetDockingSlots(), OnlyFreeSlot);
-					}
+					CheckDockingSlots(BestDockingSlot, BestDistance, Child->GetActive()->GetDockingSystem()->GetDockingSlots(), OnlyFreeSlot);
 				}
 			}
-
 		}
 
 		return BestDockingSlot;
@@ -221,13 +207,13 @@ FFlareDockingInfo UFlareSpacecraftDockingSystem::RequestDock(AFlareSpacecraft* S
 		Slot->Ship = Ship;
 	};
 
-
 	if(BestDockingSlot)
 	{
 		// Granted
 		GrantSlot(BestDockingSlot, Ship);
 		return *BestDockingSlot;
 	}
+
 	// Denied, but player ship, so undock an AI ship
 	else if (Ship->IsPlayerShip())
 	{
@@ -349,6 +335,19 @@ bool UFlareSpacecraftDockingSystem::IsDockedShip(AFlareSpacecraft* ShipCanditate
 		}
 	}
 
+	if (Spacecraft->GetParent()->IsComplex())
+	{
+		for (UFlareSimulatedSpacecraft* Child : Spacecraft->GetParent()->GetComplexChildren())
+		{
+			if (Child->IsActive())
+			{
+				if (Child->GetActive()->GetDockingSystem()->IsDockedShip(ShipCanditate))
+				{
+					return true;
+				}
+			}
+		}
+	}
 	return false;
 }
 

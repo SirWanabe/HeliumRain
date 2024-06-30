@@ -190,8 +190,11 @@ protected:
 	void OnAnticollisionToggle();
 	void OnCockpitToggle();
 	void OnLateralVelocityToggle();
+	void OnMouseMenuConfirmSectorToggle();
+	void OnMouseMenuAutoResetToggle();
+
 	void OnForwardOnlyThrustToggle();
-	
+
 	// Dead zone sliders
 	void OnRotationDeadZoneSliderChanged(float Value);
 	void OnRollDeadZoneSliderChanged(float Value);
@@ -271,6 +274,9 @@ protected:
 #endif
 	TSharedPtr<SFlareButton>                    LateralVelocityButton;
 	TSharedPtr<SFlareButton>                    AnticollisionButton;
+	TSharedPtr<SFlareButton>                    MouseMenuAutoResetButton;
+	TSharedPtr<SFlareButton>                    MouseMenuConfirmSectorChangeButton;
+
 	TSharedPtr<SSlider>                         ShipCountSlider;
 	TSharedPtr<STextBlock>	        			ShipCountLabel;
 

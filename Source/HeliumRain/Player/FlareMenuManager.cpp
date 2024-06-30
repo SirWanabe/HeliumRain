@@ -595,7 +595,6 @@ void AFlareMenuManager::PrepareSkirmishEnd()
 	}
 }
 
-
 /*----------------------------------------------------
 	Internal management
 ----------------------------------------------------*/
@@ -750,6 +749,12 @@ void AFlareMenuManager::OnEnterMenu(bool LightBackground, bool ShowOverlay, bool
 	else
 	{
 		CloseMainOverlay();
+	}
+
+	if (GetPC()->GetNavHUD()->IsWheelMenuOpen())
+	{
+		TSharedPtr<SFlareMouseMenu> MouseMenu = GetPC()->GetNavHUD()->GetMouseMenu();
+		GetPC()->GetNavHUD()->SetWheelMenu(false, false);
 	}
 
 	if (TellPlayer)
@@ -1164,7 +1169,7 @@ void AFlareMenuManager::OpenTrade()
 	OnEnterMenu();
 	if (NextMenu.Value.Spacecraft->GetCompany() == GetPC()->GetCompany())
 	{
-		TradeMenu->Enter(NextMenu.Value.Spacecraft->GetCurrentSector(), NextMenu.Value.Spacecraft, NULL);
+		TradeMenu->Enter(NextMenu.Value.Spacecraft->GetCurrentSector(), NextMenu.Value.Spacecraft, NextMenu.Value.SecondarySpacecraft);
 	}
 	else
 	{
@@ -1395,11 +1400,11 @@ FString AFlareMenuManager::GetMenuKey(EFlareMenu::Type MenuType)
 	return GetKeyNameFromActionName(Key);
 }
 
-void AFlareMenuManager::UpdateOrbitMenuFleets()
+void AFlareMenuManager::UpdateOrbitMenuFleets(bool Instant)
 {
 	if (IsMenuOpen() && GetCurrentMenu() == EFlareMenu::MENU_Orbit)
 	{
-		OrbitMenu->RequestOrbitalFleetsUpdate(true);
+		OrbitMenu->RequestOrbitalFleetsUpdate(Instant);
 	}
 }
 

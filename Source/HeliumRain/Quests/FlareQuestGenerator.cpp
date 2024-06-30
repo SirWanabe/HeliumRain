@@ -748,19 +748,19 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 			break;
 		case 1: // Hard
 			DifficultyModifier = 0.75f;
-			PenaltyModifier = 0.70f;
+			PenaltyModifier = 0.75f;
 			break;
 		case 2: // Very Hard
 			DifficultyModifier = 0.50f;
-			PenaltyModifier = 0.45f;
+			PenaltyModifier = 0.50f;
 			break;
 		case 3: // Expert
 			DifficultyModifier = 0.40f;
-			PenaltyModifier = 0.30f;
+			PenaltyModifier = 0.40f;
 			break;
 		case 4: // Unfair
 			DifficultyModifier = 0.30f;
-			PenaltyModifier = 0.10f;
+			PenaltyModifier = 0.25f;
 			break;
 	}
 
@@ -792,7 +792,6 @@ void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestVa
 	}
 
 	// Reputation reward and penalty
-//	Data.PutInt32("reward-reputation", GameDifficulty);
 	Data.PutInt32("reward-reputation", FMath::Sqrt(QuestValue / 10000));
 	Data.PutInt32("penalty-reputation", -FMath::Sqrt(QuestValue / (1000 * PenaltyModifier)));
 }
@@ -987,6 +986,7 @@ bool UFlareQuestGeneratedVipTransport::Load(UFlareQuestGenerator* Parent, const 
 	FText VIPName = FText::FromString(Data.GetString("vip-name"));
 
 	QuestClass = UFlareQuestGeneratedVipTransport::GetClass();
+	QuestTypeIdentifier = "VIP Transport";
 	Identifier = InitData.GetName("identifier");
 	QuestName = FText::Format(LOCTEXT("GeneratedVipTransportName","VIP transport : {0}"), VIPName);
 	QuestDescription = FText::Format(LOCTEXT("GeneratedVipTransportDescriptionFormat","Transport {0} from {1} to {2}."), VIPName, Sector1->GetSectorName(), Sector2->GetSectorName());
@@ -1195,6 +1195,7 @@ bool UFlareQuestGeneratedResourceSale::Load(UFlareQuestGenerator* Parent, const 
 	int32 Quantity = InitData.GetInt32("quantity");
 
 	QuestClass = UFlareQuestGeneratedResourceSale::GetClass();
+	QuestTypeIdentifier = "Destocking";
 	Identifier = InitData.GetName("identifier");
 	QuestName = FText::Format(LOCTEXT("GeneratedResourceSaleName","{0} destocking in {1}"), Resource->Name, Sector->GetSectorName());
 	QuestDescription = FText::Format(LOCTEXT("GeneratedResourceSaleDescriptionFormat","Buy {0} {1} from {2} at {3}."),
@@ -1421,6 +1422,7 @@ bool UFlareQuestGeneratedResourcePurchase::Load(UFlareQuestGenerator* Parent, co
 	int32 Quantity = InitData.GetInt32("quantity");
 
 	QuestClass = UFlareQuestGeneratedResourcePurchase::GetClass();
+	QuestTypeIdentifier = "Delivery";
 	Identifier = InitData.GetName("identifier");
 	QuestName = FText::Format(LOCTEXT("GeneratedResourcePurchaseName","{0} delivery in {1}"), Resource->Name, Sector->GetSectorName());
 	QuestDescription = FText::Format(LOCTEXT("GeneratedResourcePurchaseDescriptionFormat","Sell {0} {1} to {2} at {3}."),
@@ -1675,6 +1677,7 @@ bool UFlareQuestGeneratedResourceTrade::Load(UFlareQuestGenerator* Parent, const
 	int32 Quantity = InitData.GetInt32("quantity");
 
 	QuestClass = UFlareQuestGeneratedResourceTrade::GetClass();
+	QuestTypeIdentifier = "ResourceTrade";
 	Identifier = InitData.GetName("identifier");
 	if(Sector1 == Sector2)
 	{
@@ -1794,6 +1797,8 @@ bool UFlareQuestGeneratedStationDefense::Load(UFlareQuestGenerator* Parent, cons
 	int32 ArmyCombatPoints = InitData.GetInt32("army-combat-points");
 
 	QuestClass = UFlareQuestGeneratedStationDefense::GetClass();
+	QuestTypeIdentifier = "DefendStations";
+
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedStationDefenseNameLocal","Defend stations of {0} against {1}"), Sector->GetSectorName(), HostileCompany->GetCompanyName());
@@ -1920,6 +1925,7 @@ bool UFlareQuestGeneratedJoinAttack::Load(UFlareQuestGenerator* Parent, const FF
 	int32 AttackDate = InitData.GetInt32("attack-date");
 
 	QuestClass = UFlareQuestGeneratedJoinAttack::GetClass();
+	QuestTypeIdentifier = "AttackCompany";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedJoinAttackNameLocal","Attack {0} with {1}"),
@@ -2072,6 +2078,7 @@ bool UFlareQuestGeneratedSectorDefense::Load(UFlareQuestGenerator* Parent, const
 	int32 AttackDate = InitData.GetInt32("attack-date");
 
 	QuestClass = UFlareQuestGeneratedSectorDefense::GetClass();
+	QuestTypeIdentifier = "DefendSector";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedSectorDefenseNameLocal","Defend {0} against {1}'s attack"),
@@ -2212,6 +2219,7 @@ bool UFlareQuestGeneratedCargoHunt::Load(UFlareQuestGenerator* Parent, const FFl
 	bool TargetLargeCargo = InitData.GetInt32("large-cargo") > 0;
 
 	QuestClass = UFlareQuestGeneratedCargoHunt::GetClass();
+	QuestTypeIdentifier = "CargoHunt";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedCargoHuntNameLocal","Attack {0}'s cargos"), HostileCompany->GetCompanyName());
@@ -2408,6 +2416,7 @@ bool UFlareQuestGeneratedStationDefense2::Load(UFlareQuestGenerator* Parent, con
 	int32 ArmyCombatPoints = InitData.GetInt32("army-combat-points");
 
 	QuestClass = UFlareQuestGeneratedStationDefense2::GetClass();
+	QuestTypeIdentifier = "DefendStations";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedStationDefenseNameLocal","Defend stations of {0} against {1}"), Sector->GetSectorName(), HostileCompany->GetCompanyName());
@@ -2583,7 +2592,8 @@ bool UFlareQuestGeneratedJoinAttack2::Load(UFlareQuestGenerator* Parent, const F
 	int32 AttackDate = InitData.GetInt32("attack-date");
 
 	QuestClass = UFlareQuestGeneratedJoinAttack2::GetClass();
-	Identifier = InitData.GetName("identifier");
+	QuestTypeIdentifier = "AttackCompany";
+Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedJoinAttackNameLocal","Attack {0} with {1}"),
 		Sector->GetSectorName(),
@@ -2765,6 +2775,7 @@ bool UFlareQuestGeneratedSectorDefense2::Load(UFlareQuestGenerator* Parent, cons
 	int32 AttackDate = InitData.GetInt32("attack-date");
 
 	QuestClass = UFlareQuestGeneratedSectorDefense2::GetClass();
+	QuestTypeIdentifier = "DefendSector";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedSectorDefenseNameLocal","Defend {0} against {1}'s attack"),
@@ -2990,6 +3001,7 @@ bool UFlareQuestGeneratedCargoHunt2::Load(UFlareQuestGenerator* Parent, const FF
 	bool TargetLargeCargo = InitData.GetInt32("large-cargo") > 0;
 
 	QuestClass = UFlareQuestGeneratedCargoHunt2::GetClass();
+	QuestTypeIdentifier = "CargoHunt";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedCargoHuntNameLocal","Attack {0}'s cargos"), HostileCompany->GetCompanyName());
@@ -3120,6 +3132,7 @@ bool UFlareQuestGeneratedMilitaryHunt2::Load(UFlareQuestGenerator* Parent, const
 	bool RequestDestroyTarget = InitData.GetInt32("destroy") > 0;
 
 	QuestClass = UFlareQuestGeneratedMilitaryHunt2::GetClass();
+	QuestTypeIdentifier = "AttackCompany";
 	Identifier = InitData.GetName("identifier");
 
 	QuestName = FText::Format(LOCTEXT("GeneratedMilitaryHuntNameLocal", "Attack {0}'s military ships"), HostileCompany->GetCompanyName());
@@ -3224,7 +3237,8 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 	int32 MeteoriteCount = InitData.GetInt32("meteorite-count");
 
 	QuestClass = UFlareQuestGeneratedMeteoriteInterception::GetClass();
-	Identifier = InitData.GetName("identifier");
+	QuestTypeIdentifier = "MeteoriteInterception";
+Identifier = InitData.GetName("identifier");
 
 	FLOGV("TargetStation %p", TargetStation);
 
@@ -3234,7 +3248,7 @@ bool UFlareQuestGeneratedMeteoriteInterception::Load(UFlareQuestGenerator* Paren
 	}
 
 	QuestName = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionName", "Meteorite intercept in {0}"), TargetStation->GetCurrentSector()->GetSectorName());
-	QuestDescription = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionDescription", "A meteorite group will pose a threat to {0} in {1} on {2}. Intercept it and destroy it."),
+	QuestDescription = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionDescription", "A meteorite group will pose a threat to {0} in {1} on {2}. Intercept and destroy."),
 		UFlareGameTools::DisplaySpacecraftName(TargetStation),
 		TargetStation->GetCurrentSector()->GetSectorName(),
 		UFlareGameTools::GetDisplayDate(InterceptDate + 1));

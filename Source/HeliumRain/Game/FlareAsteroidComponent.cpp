@@ -63,6 +63,7 @@ void UFlareAsteroidComponent::UnSafeDestroy()
 	PrimaryComponentTick.bCanEverTick = true;
 	RegisterComponent();
 	SetSimulatePhysics(true);
+	ResetEffects(IsIcyAsteroid);
 }
 
 void UFlareAsteroidComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)

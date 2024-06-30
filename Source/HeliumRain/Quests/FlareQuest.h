@@ -148,6 +148,7 @@ protected:
 	FName									Identifier;
 	FText									QuestName;
 	FText                                   QuestDescription;
+	FString									QuestTypeIdentifier;
 	EFlareQuestCategory::Type               QuestCategory;
 	UFlareCompany*							Client;
 	bool									Accepted;
@@ -161,6 +162,11 @@ public:
 	inline FName GetIdentifier() const
 	{
 		return Identifier;
+	}
+
+	inline FString GetQuestTypeIdentifier()
+	{
+		return QuestTypeIdentifier;
 	}
 
 	inline FText GetQuestName() const

@@ -4,6 +4,7 @@
 #include "FlareGame.h"
 
 #define LOCTEXT_NAMESPACE "FlareCacheSystem"
+#define DEBUG_SPACECRAFT_CACHE
 
 /*----------------------------------------------------
 	Constructor
@@ -25,6 +26,49 @@ void UFlareCacheSystem::InitialSetup(AFlareGame* GameMode)
 	CachedBombs.Empty();
 	CachedAsteroids.Empty();
 	CachedDebris.Empty();
+	CachedSpacecraft.Empty();
+}
+
+void UFlareCacheSystem::StoreCachedSpacecraft(AFlareSpacecraft* Spacecraft)
+{
+	if (CachedSpacecraft.Contains(Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate))
+	{
+		CachedSpacecraft[Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate].TrackedSpacecraft.Add(Spacecraft);
+
+#ifdef DEBUG_SPACECRAFT_CACHE
+		FLOGV("UFlareCacheSystem::StoreCachedSpacecraft Store '%s' (template '%s') as already existing cache entry",
+			*Spacecraft->GetParent()->GetImmatriculation().ToString(),
+			*Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate->GetName())
+#endif
+
+	}
+	else
+	{
+		FFlareSpacecraftCacheHelper NewCacheHelper;
+		NewCacheHelper.TrackedSpacecraft.Add(Spacecraft);
+		CachedSpacecraft.Add(Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate, NewCacheHelper);
+
+#ifdef DEBUG_SPACECRAFT_CACHE
+		FLOGV("UFlareCacheSystem::StoreCachedSpacecraft Store '%s' (template '%s') as NewCacheHelper",
+			*Spacecraft->GetParent()->GetImmatriculation().ToString(),
+			*Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate->GetName())
+#endif
+	}
+}
+
+AFlareSpacecraft* UFlareCacheSystem::RetrieveCachedSpacecraft(UClass* SpacecraftType)
+{
+	if (CachedSpacecraft.Contains(SpacecraftType) && CachedSpacecraft[SpacecraftType].TrackedSpacecraft.Num() > 0)
+	{
+
+#ifdef DEBUG_SPACECRAFT_CACHE
+		FLOGV("UFlareCacheSystem::RetrieveCachedSpacecraft Retrieve '%s' for 'new' ship",
+			*SpacecraftType->GetName())
+#endif
+
+			return CachedSpacecraft[SpacecraftType].TrackedSpacecraft.Pop();
+	}
+	return nullptr;
 }
 
 void UFlareCacheSystem::StoreCachedShell(AFlareShell* Shell)
@@ -77,6 +121,24 @@ AFlareAsteroid* UFlareCacheSystem::RetrieveCachedAsteroid()
 	{
 		AFlareAsteroid* Asteroid = CachedAsteroids.Pop();
 		return Asteroid;
+	}
+	return NULL;
+}
+
+void UFlareCacheSystem::StoreCachedMeteorite(AFlareMeteorite* Meteorite)
+{
+	if (Meteorite)
+	{
+		CachedMeteorites.Add(Meteorite);
+	}
+}
+
+AFlareMeteorite* UFlareCacheSystem::RetrieveCachedMeteorite()
+{
+	if (CachedMeteorites.Num() > 0)
+	{
+		AFlareMeteorite* Meteorite = CachedMeteorites.Pop();
+		return Meteorite;
 	}
 	return NULL;
 }
