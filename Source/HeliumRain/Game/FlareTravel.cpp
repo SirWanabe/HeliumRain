@@ -57,7 +57,7 @@ void UFlareTravel::InitTravelSector(FFlareSectorSave& NewSectorData)
 	NewSectorData.PeopleData.Dept = 0;
 }
 
-void UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
+bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 {
 	Game = Cast<UFlareWorld>(GetOuter())->GetGame();
 	TravelData = Data;
@@ -70,6 +70,20 @@ void UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	else
 	{
 		Fleet = NewFleet;
+	}
+
+	if (!Fleet)
+	{
+		//TODO: There is a rare issue where the Fleet linked with a Travel is possibly disbanded/deleted	
+		
+		//Somehow bogus travel? Discard.
+		FLOGV("UFlareTravel::Load : Disconnected travel from fleet, deleting. %s->%s. Fleet was %s. Departure %d. Travel %d", 
+			*Data.OriginSectorIdentifier.ToString(),
+			*Data.DestinationSectorIdentifier.ToString(),
+			*Data.FleetIdentifier.ToString(),
+			Data.DepartureDate,
+			Data.SectorData.IsTravelSector);
+		return false;
 	}
 
 	DestinationSector = Game->GetGameWorld()->FindSector(TravelData.DestinationSectorIdentifier);
@@ -113,6 +127,7 @@ void UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	TravelSector->AddFleet(Fleet);
 
 	NeedNotification = true;
+	return true;
 }
 
 
@@ -128,6 +143,18 @@ FFlareTravelSave* UFlareTravel::Save()
 
 void UFlareTravel::Simulate()
 {
+	if (!Fleet)
+	{
+		FLOGV("UFlareTravel::Simulate : WARNING: Disconnected travel from fleet. %s->%s. Fleet was %s. Departure %d. Travel %d",
+		*TravelData.OriginSectorIdentifier.ToString(),
+		*TravelData.DestinationSectorIdentifier.ToString(),
+		*TravelData.FleetIdentifier.ToString(),
+		TravelData.DepartureDate,
+		TravelData.SectorData.IsTravelSector);
+		Game->GetGameWorld()->DeleteTravel(this);
+		return;
+	}
+
 	int64 RemainingTime = GetRemainingTravelDuration();
 
 	UpdateTravelParameters();
@@ -518,7 +545,6 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 
 	if(Company)
 	{
-
 		float TechnologyBonus = Company->IsTechnologyUnlocked("fast-travel") ? 0.5f : 1.f;
 		float TechnologyBonusSecondary = Company->GetTechnologyBonus("travel-bonus");
 		TechnologyBonus -= TechnologyBonusSecondary;
@@ -544,7 +570,8 @@ int64 UFlareTravel::ComputePhaseTravelDuration(UFlareWorld* World, FFlareCelesti
 
 	if (TravelFleet)
 	{
-		return ((TravelDistance * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower())) / (UFlareGameTools::SECONDS_IN_DAY);
+		float EngineAccelerationPowerRatio = FMath::Max((float) 0.75f, 1.f - (0.01f * (TravelFleet->GetShipCount() - 1)));
+		return ((TravelDistance * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower() * EngineAccelerationPowerRatio)) / (UFlareGameTools::SECONDS_IN_DAY);
 
 	}
 	return (TRAVEL_DURATION_PER_PHASE_KM * TravelDistance) / UFlareGameTools::SECONDS_IN_DAY;
@@ -579,7 +606,8 @@ int64 UFlareTravel::ComputeAltitudeTravelDuration(UFlareWorld* World, FFlareCele
 
 	if (TravelFleet && TravelFleet->GetFleetLowestEngineAccelerationPower())
 	{
-		return ((TravelAltitude * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower())) / (UFlareGameTools::SECONDS_IN_DAY);
+		float EngineAccelerationPowerRatio = FMath::Max((float)0.75f, 1.f - (0.01f * (TravelFleet->GetShipCount() - 1)));
+		return ((TravelAltitude * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower() * EngineAccelerationPowerRatio)) / (UFlareGameTools::SECONDS_IN_DAY);
 	}
 
 	return (TRAVEL_DURATION_PER_ALTITUDE_KM * TravelAltitude + UFlareGameTools::SECONDS_IN_DAY) / UFlareGameTools::SECONDS_IN_DAY;
@@ -613,6 +641,11 @@ double UFlareTravel::ComputeAltitudeTravelMoonToMoonDistance(UFlareWorld* World,
 
 bool UFlareTravel::IsPlayerHostile()
 {
+	if (!Fleet || !Fleet->GetFleetCompany())
+	{
+		return false;
+	}
+
 	if(Fleet->GetFleetCompany()->IsPlayerCompany())
 	{
 		return false;

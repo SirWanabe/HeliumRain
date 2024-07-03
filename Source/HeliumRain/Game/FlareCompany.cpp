@@ -382,7 +382,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 			}
 		}
 
-		if (Ship->IsAllowExternalOrder() && (this == this->GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != this->GetGame()->GetPC()->GetCompany())
+		if (Ship->IsAllowExternalOrder() && (this == GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != GetGame()->GetPC()->GetCompany())
 // auto resupply, player needs auto trade technology for it to work, AI Company main method is to "accidently" resupply the carrier, haphazardly with whatever is at hand locally.
 		{
 			UFlareFleet* Fleet = Ship->GetCurrentFleet();
@@ -498,41 +498,41 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 							int32 ResourcePrice = LocalSector->GetTransfertResourcePrice(BestStation, Ship, LowestResource);
 							int32 MaxAffordableQuantity = FMath::Max(0, int32(this->GetMoney() / ResourcePrice));
 							BestStationQuantity = FMath::Min(BestStationQuantity, MaxAffordableQuantity);
-
-							float Ratio = BestStationCompanyQuantity / BestStationQuantity;
-
-							if (Ratio >= 0.50f)
+							if(BestStationQuantity > 0)
 							{
-								//trade company
-								int32 Quantity = SectorHelper::Trade(BestCompanyStation,
-									Ship,
-									LowestResource,
-									BestStationCompanyQuantity,
-									0,
-									NULL,
-									false,
-									1);
-								if (Quantity > 0)
+								float Ratio = BestStationCompanyQuantity / BestStationQuantity;
+								if (Ratio >= 0.50f)
 								{
-									SuccessfulTrade = true;
+									//trade company
+									int32 Quantity = SectorHelper::Trade(BestCompanyStation,
+										Ship,
+										LowestResource,
+										BestStationCompanyQuantity,
+										0,
+										NULL,
+										false,
+										1);
+									if (Quantity > 0)
+									{
+										SuccessfulTrade = true;
+									}
 								}
-							}
-							else
-							{
-								//trade other
-								int32 Quantity = SectorHelper::Trade(BestStation,
-									Ship,
-									LowestResource,
-									BestStationQuantity,
-									0,
-									NULL,
-									false,
-									1);
-								if (Quantity > 0)
+								else
 								{
-									SuccessfulTrade = true;
+									//trade other
+									int32 Quantity = SectorHelper::Trade(BestStation,
+										Ship,
+										LowestResource,
+										BestStationQuantity,
+										0,
+										NULL,
+										false,
+										1);
+									if (Quantity > 0)
+									{
+										SuccessfulTrade = true;
+									}
 								}
-
 							}
 						}
 						else if (BestStation && BestStationQuantity > 0)
@@ -551,7 +551,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 							}
 						}
 					}
-					if (!SuccessfulTrade && this != this->GetGame()->GetPC()->GetCompany())
+					if (!SuccessfulTrade && this != GetGame()->GetPC()->GetCompany())
 					{
 						CompanyAI->UpdateNeedyCarrierMovement(Ship, InputResources);
 					}
@@ -1228,6 +1228,7 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	if (Spacecraft->GetActive())
 	{
 		GetGame()->GetCacheSystem()->StoreCachedSpacecraft(Spacecraft->GetActive());
+		Spacecraft->SetActiveSpacecraft(nullptr);
 	}
 
 	// Destroy child first
@@ -1253,7 +1254,6 @@ void UFlareCompany::DestroySpacecraft(UFlareSimulatedSpacecraft* Spacecraft)
 	CompanyChildStations.Remove(Spacecraft);
 	CompanyTelescopes.Remove(Spacecraft);
 	CompanyShips.Remove(Spacecraft);
-
 
 	if (Spacecraft->GetDescription()->IsDroneCarrier)
 	{
@@ -2024,8 +2024,11 @@ void UFlareCompany::StopCapture(UFlareSimulatedSpacecraft* Station)
 
 bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 {
-
 	if(CompanyData.CaptureOrders.Contains(Station->GetImmatriculation()))
+	{
+		return false;
+	}
+	if (Station->IsComplexElement())
 	{
 		return false;
 	}
@@ -3009,28 +3012,7 @@ UFlareSimulatedSpacecraft* UFlareCompany::FindSpacecraft(FName ShipImmatriculati
 			}
 		}
 	}
-/*
-	if(!Destroyed )
-	{
-		for (UFlareSimulatedSpacecraft* Spacecraft : CompanySpacecrafts)
-		{
-			if (Spacecraft->GetImmatriculation() == ShipImmatriculation)
-			{
-				return Spacecraft;
-			}
-		}
-	}
-	else
-	{
-		for (UFlareSimulatedSpacecraft* Spacecraft : CompanyDestroyedSpacecrafts)
-		{
-			if (Spacecraft->GetImmatriculation() == ShipImmatriculation)
-			{
-				return Spacecraft;
-			}
-		}
-	}
-*/
+
 	return NULL;
 }
 

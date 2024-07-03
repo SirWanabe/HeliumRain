@@ -81,6 +81,7 @@ struct PilotHelper
 		float IsSmall;
 		float IsStation;
 		float IsNotStation;
+		bool  IgnoreStation;
 		float IsMilitary;
 		float IsNotMilitary;
 		float IsDangerous;

@@ -110,7 +110,7 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 		if(!Spacecraft->IsComplexElement())
 		{
 			SectorSpacecrafts.Add(Spacecraft);
-			if (Spacecraft->IsMilitary())
+			if (Spacecraft->IsMilitaryArmed())
 			{
 				SectorCombatCapableShips.Add(Spacecraft);
 			}
@@ -130,7 +130,6 @@ void UFlareSimulatedSector::Load(const FFlareSectorDescription* Description, con
 		{
 			FLOGV("UFlareSimulatedSector::Load : Missing fleet %s in sector %s", *SectorData.FleetIdentifiers[i].ToString(), *GetSectorName().ToString());
 		}
-
 	}
 
 	if (SectorData.FleetSupplyConsumptionStats.MaxSize != FLEET_SUPPLY_CONSUMPTION_STATS)
@@ -442,7 +441,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	if(!Spacecraft->IsComplexElement())
 	{
 		SectorSpacecrafts.Add(Spacecraft);
-		if (Spacecraft->IsMilitary())
+		if (Spacecraft->IsMilitaryArmed())
 		{
 			SectorCombatCapableShips.Add(Spacecraft);
 		}
@@ -518,13 +517,12 @@ void UFlareSimulatedSector::CreateAsteroid(int32 ID, FName Name, FVector Locatio
 void UFlareSimulatedSector::AddFleet(UFlareFleet* Fleet)
 {
 	SectorFleets.AddUnique(Fleet);
-
 	for (int ShipIndex = 0; ShipIndex < Fleet->GetShips().Num(); ShipIndex++)
 	{
 		Fleet->GetShips()[ShipIndex]->SetCurrentSector(this);
-		SectorShips.AddUnique(Fleet->GetShips()[ShipIndex]);
 		SectorSpacecrafts.AddUnique(Fleet->GetShips()[ShipIndex]);
-		if (Fleet->GetShips()[ShipIndex]->IsMilitary())
+		SectorShips.AddUnique(Fleet->GetShips()[ShipIndex]);
+		if (Fleet->GetShips()[ShipIndex]->IsMilitaryArmed())
 		{
 			SectorCombatCapableShips.Add(Fleet->GetShips()[ShipIndex]);
 		}
@@ -1675,7 +1673,7 @@ void UFlareSimulatedSector::SetPreciseResourcePrice(FFlareResourceDescription* R
 }
 
 
-static bool ReserveShipComparator (UFlareSimulatedSpacecraft& Ship1, UFlareSimulatedSpacecraft& Ship2)
+static bool ReserveShipComparator(UFlareSimulatedSpacecraft& Ship1, UFlareSimulatedSpacecraft& Ship2)
 {
 	bool SELECT_SHIP1 = true;
 
@@ -1708,6 +1706,12 @@ static bool ReserveShipComparator (UFlareSimulatedSpacecraft& Ship1, UFlareSimul
 	{
 		return Ship1.GetCombatPoints(true) > Ship2.GetCombatPoints(true);
 	}
+
+	if (!Ship1.GetDescription()->IsDroneShip && Ship2.GetDescription()->IsDroneShip)
+	{
+		return SELECT_SHIP1;
+	}
+
 	// TODO sort by fleet order
 
 		// Priority to full ships
@@ -2184,7 +2188,7 @@ void UFlareSimulatedSector::UpdateReserveShips()
 
 	for (UFlareSimulatedSpacecraft* Ship : GetSectorShips())
 	{
-		if (Ship == nullptr || !IsValid(Ship) || Ship->IsDestroyed())
+		if (!IsValid(Ship) || Ship->IsDestroyed())
 		{
 			continue;
 		}

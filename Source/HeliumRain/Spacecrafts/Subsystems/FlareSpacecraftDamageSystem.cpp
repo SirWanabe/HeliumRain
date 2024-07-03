@@ -111,8 +111,8 @@ void UFlareSpacecraftDamageSystem::Start()
 	// Init alive status
 	WasControllable = !Parent->IsUncontrollable();
 	WasAlive = Parent->IsAlive();
+	WasDisarmed = Parent->IsDisarmed();
 	TimeSinceLastExternalDamage = 10000;
-
 }
 
 void UFlareSpacecraftDamageSystem::SetLastDamageCause(DamageCause Cause)
@@ -784,6 +784,16 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 	if (DestroyedSomething)
 	{
 		bool MakeUncontrolableDestroyed = false;
+		bool HasBeenDisarmed = false;
+		if (!WasDisarmed)
+		{
+			if (Parent->IsDisarmed())
+			{
+				WasDisarmed = true;
+				HasBeenDisarmed = true;
+			}
+		}
+
 		if (WasControllable)
 		{
 			if (Parent->IsUncontrollable())
@@ -877,18 +887,20 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 			CheckRecovery();
 		}
 
-		Spacecraft->GetParent()->GetCurrentSector()->UpdateSectorBattleState(Spacecraft->GetCompany());
-		if (DamageSource && DamageSource->GetCompany() != Spacecraft->GetCompany())
-		{
-			DamageSource->GetCurrentSector()->UpdateSectorBattleState(DamageSource->GetCompany());
-		}
-
 		// Check skirmish victory
 		if (Spacecraft->GetOwnerSector())
 		{
 			Spacecraft->GetOwnerSector()->CheckSkirmishEndCondition();
 		}
 
+		if (MakeUncontrolableDestroyed || HasBeenDisarmed)
+		{
+			Spacecraft->GetParent()->GetCurrentSector()->UpdateSectorBattleState(Spacecraft->GetCompany());
+			if (DamageSource && DamageSource->GetCompany() != Spacecraft->GetCompany())
+			{
+				DamageSource->GetCurrentSector()->UpdateSectorBattleState(DamageSource->GetCompany());
+			}
+		}
 		if (MakeUncontrolableDestroyed)
 		{
 			// Player kill

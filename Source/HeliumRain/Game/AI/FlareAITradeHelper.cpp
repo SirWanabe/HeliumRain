@@ -1360,34 +1360,36 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 			int64 RemainingTravelDuration = FMath::Max((int64)1, Travel->GetRemainingTravelDuration());
 
 			UFlareFleet* IncomingFleet = Travel->GetFleet();
-
-			for (int32 ShipIndex = 0; ShipIndex < IncomingFleet->GetShips().Num(); ShipIndex++)
+			if (IsValid(IncomingFleet))
 			{
-				UFlareSimulatedSpacecraft* Ship = IncomingFleet->GetShips()[ShipIndex];
-
-				if (Ship->GetActiveCargoBay()->GetSlotCapacity() == 0 && Ship->GetDamageSystem()->IsStranded())
+				for (int32 ShipIndex = 0; ShipIndex < IncomingFleet->GetShips().Num(); ShipIndex++)
 				{
-					continue;
-				}
+					UFlareSimulatedSpacecraft* Ship = IncomingFleet->GetShips()[ShipIndex];
 
-				if (Ship->GetCompany()->GetMoney() > 0)
-				{
-					SectorVariation.IncomingCapacity += Ship->GetActiveCargoBay()->GetCapacity() / RemainingTravelDuration;
-				}
-
-
-				TArray<FFlareCargo>& CargoBaySlots = Ship->GetActiveCargoBay()->GetSlots();
-				for (int32 CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
-				{
-					FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
-
-					if (!Cargo.Resource)
+					if (Ship->GetActiveCargoBay()->GetSlotCapacity() == 0 && Ship->GetDamageSystem()->IsStranded())
 					{
 						continue;
 					}
-					struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Cargo.Resource];
 
-					Variation->IncomingResources += Cargo.Quantity / (RemainingTravelDuration * 0.5);
+					if (Ship->GetCompany()->GetMoney() > 0)
+					{
+						SectorVariation.IncomingCapacity += Ship->GetActiveCargoBay()->GetCapacity() / RemainingTravelDuration;
+					}
+
+
+					TArray<FFlareCargo>& CargoBaySlots = Ship->GetActiveCargoBay()->GetSlots();
+					for (int32 CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
+					{
+						FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
+
+						if (!Cargo.Resource)
+						{
+							continue;
+						}
+						struct ResourceVariation* Variation = &SectorVariation.ResourceVariations[Cargo.Resource];
+
+						Variation->IncomingResources += Cargo.Quantity / (RemainingTravelDuration * 0.5);
+					}
 				}
 			}
 		}

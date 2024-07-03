@@ -46,12 +46,12 @@ void AFlareAsteroid::BeginPlay()
 
 	Super::BeginPlay();
 }
-
+/*
 void AFlareAsteroid::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	/*float CollisionSize = Asteroid->GetCollisionShape().GetExtent().Size();
+	float CollisionSize = Asteroid->GetCollisionShape().GetExtent().Size();
 	if (SpawnLocation.Size() <= 0.1)
 	{
 		SpawnLocation = GetActorLocation();
@@ -61,9 +61,9 @@ void AFlareAsteroid::Tick(float DeltaSeconds)
 	{
 		DrawDebugSphere(GetWorld(), GetActorLocation(), CollisionSize / 2, 16, FColor::Blue, false);
 		DrawDebugLine(GetWorld(), GetActorLocation(), SpawnLocation, FColor::Green, false);
-	}*/
+	}
 }
-
+*/
 void AFlareAsteroid::SafeDestroy()
 {
 	Asteroid->SafeDestroy();

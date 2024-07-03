@@ -321,11 +321,11 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 		for (FFlareConnectionSave Connection : SpacecraftData.ConnectedStations)
 		{
-			UFlareSimulatedSpacecraft* childStation = Company->FindChildStation(Connection.StationIdentifier);
-			if (childStation)
+			UFlareSimulatedSpacecraft* ChildStation = Company->FindChildStation(Connection.StationIdentifier);
+			if (ChildStation)
 			{
-				ComplexChildren.Add(childStation);
-				childStation->RegisterComplexMaster(this);
+				ComplexChildren.Add(ChildStation);
+				ChildStation->RegisterComplexMaster(this);
 			}
 			else
 			{
@@ -584,10 +584,9 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 
 	// Load active spacecraft if it exists
 	if (ActiveSpacecraft &&
-		(Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() != GetCurrentSector()))
+		(Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == GetCurrentSector()))
 	{
 		ActiveSpacecraft->Load(this);
-		ActiveSpacecraft->Redock();
 	}
 
 	UpdateEngineAcceleration();
@@ -750,6 +749,11 @@ void UFlareSimulatedSpacecraft::SelectWhiteListDefault(UFlareCompanyWhiteList* N
 
 UFlareCompanyWhiteList* UFlareSimulatedSpacecraft::GetActiveWhitelist()
 {
+	if (IsComplexElement())
+	{
+		return GetComplexMaster()->GetActiveWhitelist();
+	}
+
 	if (ShipSelectedWhiteList)
 	{
 		return ShipSelectedWhiteList;
@@ -795,7 +799,7 @@ bool UFlareSimulatedSpacecraft::IsNotMilitary() const
 
 bool UFlareSimulatedSpacecraft::IsCapableCarrier() const
 {
-	return SpacecraftDescription->IsDroneCarrier && this->GetShipChildren().Num() > 0;
+	return SpacecraftDescription->IsDroneCarrier && GetShipChildren().Num() > 0;
 }
 
 bool UFlareSimulatedSpacecraft::IsStation() const
@@ -913,7 +917,7 @@ void UFlareSimulatedSpacecraft::TryMigrateDrones()
 				continue;
 			}
 
-			int32 ActiveShipyards = 0;
+			int32 ActiveShipyards = SectorShip->GetShipyardOrderQueue().Num();
 			for (UFlareFactory* Shipyard : SectorShip->GetShipyardFactories())
 			{
 				if (Shipyard->IsProducing())
@@ -1761,7 +1765,7 @@ void UFlareSimulatedSpacecraft::SetInternalDockedTo(UFlareSimulatedSpacecraft* O
 {
 	if (OwnerShip)
 	{
-		this->SetSpawnMode(EFlareSpawnMode::InternalDocked);
+		SetSpawnMode(EFlareSpawnMode::InternalDocked);
 		if (SpacecraftData.DockedAtInternally != OwnerShip->GetImmatriculation())
 		{
 			SpacecraftData.DockedAtInternally = OwnerShip->GetImmatriculation();
@@ -1899,7 +1903,6 @@ bool UFlareSimulatedSpacecraft::TryCapture(UFlareCompany* OtherCompany, int32 Ca
 
 bool UFlareSimulatedSpacecraft::UpgradePart(FFlareSpacecraftComponentDescription* NewPartDesc, int32 WeaponGroupIndex)
 {
-
 	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 	int32 TransactionCost = 0;
 
@@ -2588,7 +2591,7 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 
 		//TODO: make it apply to the AI if they have logic for disabling/enabling their own ship configuration settings
 		FFlareSpacecraftSave SpaceCraftData = GetData();
-		if (GetCompany() == PlayerCompany && SpaceCraftData.ShipyardOrderExternalConfig.Find(ShipDescription->Identifier) == INDEX_NONE)
+		if (GetCompany() == PlayerCompany && !IsInExternalOrdersArray(ShipDescription))
 		{
 #ifdef DEBUG_CANORDER
 			FLOGV("UFlareSimulatedSpacecraft::CanOrder : Tried to order '%s' from player. Denied for ShipyardOrderExternalConfig",
@@ -2928,6 +2931,10 @@ FText UFlareSimulatedSpacecraft::GetShipResourceCost(FFlareSpacecraftDescription
 
 bool UFlareSimulatedSpacecraft::IsAllowExternalOrder()
 {
+	if (IsComplexElement())
+	{
+		return GetComplexMaster()->GetData().AllowExternalOrder;
+	}
 	return SpacecraftData.AllowExternalOrder;
 }
 
@@ -2938,6 +2945,11 @@ bool UFlareSimulatedSpacecraft::IsAllowAutoConstruction()
 
 bool UFlareSimulatedSpacecraft::IsInExternalOrdersArray(const FName ShipDescription)
 {
+	if (IsComplexElement())
+	{
+		return GetComplexMaster()->IsInExternalOrdersArray(ShipDescription);
+	}
+
 	if (SpacecraftData.ShipyardOrderExternalConfig.Find(ShipDescription) != INDEX_NONE)
 	{
 		return true;
@@ -2947,6 +2959,11 @@ bool UFlareSimulatedSpacecraft::IsInExternalOrdersArray(const FName ShipDescript
 
 bool UFlareSimulatedSpacecraft::IsInExternalOrdersArray(const FFlareSpacecraftDescription* ShipDescription)
 {
+	if (IsComplexElement())
+	{
+		return GetComplexMaster()->IsInExternalOrdersArray(ShipDescription);
+	}
+
 	if (SpacecraftData.ShipyardOrderExternalConfig.Find(ShipDescription->Identifier) != INDEX_NONE)
 	{
 		return true;
@@ -3551,9 +3568,27 @@ bool UFlareSimulatedSpacecraft::IsLastPlayerShip()
 bool UFlareSimulatedSpacecraft::IsResponsible(EFlareDamage::Type DamageType)
 {
 	UFlareSimulatedSpacecraft* PlayerShip = GetGame()->GetPC()->GetPlayerShip();
-
 	if (this != PlayerShip)
 	{
+		if (GetCompany() == PlayerShip->GetCompany())
+		{
+			EFlareCombatGroup::Type CombatGroup;
+			if (GetSize() == EFlarePartSize::L)
+			{
+				CombatGroup = EFlareCombatGroup::Capitals;
+			}
+			else
+			{
+				CombatGroup = EFlareCombatGroup::Fighters;
+			}
+
+			EFlareCombatTactic::Type CurrentTactic = GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
+			if (CurrentTactic == EFlareCombatTactic::DestroyCivilians || CurrentTactic == EFlareCombatTactic::DestroyMilitary)
+			{
+				return true;
+			}
+		}
+
 		return false;
 	}
 

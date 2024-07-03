@@ -758,13 +758,6 @@ FText SFlareOrbitalMenu::GetTravelText() const
 
 	return FText();
 }
-/*
-//not used anymore??
-FVector2D SFlareOrbitalMenu::GetWidgetPosition(int32 Index) const
-{
-	return FVector2D(1920, 1080) / 2;
-}
-*/
 
 FVector2D SFlareOrbitalMenu::GetWidgetSize(int32 Index) const
 {
@@ -930,6 +923,11 @@ void SFlareOrbitalMenu::OnFastForwardConfirmed(bool Automatic)
 		MenuManager->GetPC()->SimulateConfirmed();
 		RefreshTrackedButtons();
 		AutomatedFleetsInfo->Update();
+		if (OrbitalFleetsUpdateRequested)
+		{
+			OrbitalFleetsUpdateRequested = false;
+			OrbitalFleetsInfo->Update();
+		}
 	}
 }
 

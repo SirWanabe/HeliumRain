@@ -686,6 +686,10 @@ void UFlareCargoBay::SetSlotRestriction(int32 SlotIndex, EFlareResourceRestricti
 
 TEnumAsByte<EFlareResourceRestriction::Type> UFlareCargoBay::GetRestriction(int32 SlotIndex)
 {
+	if (SlotIndex >= CargoBay.Num())
+	{
+		return EFlareResourceRestriction::Nobody;
+	}
 	return CargoBay[SlotIndex].Restriction;
 }
 

@@ -287,7 +287,7 @@ void UFlareSpacecraftComponent::SetupComponentMesh()
 	UStaticMesh* Mesh = GetMesh(!(Spacecraft));
 
 	// Set the mesh
-	if (ComponentDescription && Mesh)
+	if (ComponentDescription && IsValid(Mesh))
 	{
 		SetStaticMesh(Mesh);
 		SetMaterial(0, Mesh->GetMaterial(0));
@@ -819,7 +819,10 @@ void UFlareSpacecraftComponent::SafeDestroy()
 		{
 			for (UParticleSystemComponent* DamageEffect : DamagedEffects)
 			{
-				DamageEffect->Deactivate();
+				if (DamageEffect)
+				{
+					DamageEffect->Deactivate();
+				}
 			}
 			DamagedEffects.Empty();
 		}

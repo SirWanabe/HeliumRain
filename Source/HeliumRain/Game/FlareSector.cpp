@@ -65,7 +65,6 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 	}
 
 	// Load safe location spacecrafts
-	SectorSpacecrafts.Reserve(ParentSector->GetSectorSpacecrafts().Num());
 	SectorSpacecraftsCache.Reserve(ParentSector->GetSectorSpacecrafts().Num());
 	SectorStations.Reserve(ParentSector->GetSectorStations().Num());
 	SectorShips.Reserve(ParentSector->GetSectorShips().Num());
@@ -128,31 +127,53 @@ void UFlareSector::Tick(float DeltaSeconds)
 		UpdateSectorBattleStates();
 		SignalLocalSectorUpdateSectorBattleStates = false;
 	}
-\
-	for (AFlareBomb* Bomb : SectorBombs)
+	
+	for (int i = 0; i < SectorBombs.Num(); i++)
 	{
-		if (!Bomb || Bomb->IsSafeDestroying())
+		if (IsDestroyingSector)
 		{
-			continue;
+			break;
 		}
-		Bomb->TickBomb(DeltaSeconds);
+		AFlareBomb* Bomb = SectorBombs[i];
+		if (IsValid(Bomb))
+		{
+			if (Bomb->IsSafeDestroying())
+			{
+				continue;
+			}
+			Bomb->TickBomb(DeltaSeconds);
+		}
 	}
 
-	for (AFlareMeteorite* Meteorite : SectorMeteorites)
+	for (int i = 0; i < SectorMeteorites.Num(); i++)
 	{
+		if (IsDestroyingSector)
+		{
+			break;
+		}
+		AFlareMeteorite* Meteorite = SectorMeteorites[i];
 		if (IsValid(Meteorite))
 		{
 			Meteorite->TickMeteorite(DeltaSeconds);
 		}
 	}
 
-	for (AFlareSpacecraft* Ship : SectorSpacecrafts)
+	for (int i = 0; i < SectorSpacecrafts.Num(); i++)
 	{
-		if (!Ship || Ship->IsSafeDestroying())
+		if (IsDestroyingSector)
 		{
-			continue;
+			break;
 		}
-		Ship->TickSpacecraft(DeltaSeconds);
+		AFlareSpacecraft* Spacecraft = SectorSpacecrafts[i];
+
+		if (IsValid(Spacecraft))
+		{
+			if (Spacecraft->IsSafeDestroying())
+			{
+				continue;
+			}
+			Spacecraft->TickSpacecraft(DeltaSeconds);
+		}
 	}
 }
 
@@ -323,8 +344,9 @@ void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSec
 void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
-	SignalLocalSectorUpdateSectorBattleStates = false;
 	IsDestroyingSector = true;
+
+	SignalLocalSectorUpdateSectorBattleStates = false;
 	AFlareSpacecraft* PlayerShip = nullptr;
 
 	if (ParentSector != nullptr)
@@ -555,7 +577,6 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 				*ParentSpacecraft->GetImmatriculation().ToString(),
 				ParentSpacecraft->GetData().Location.X, ParentSpacecraft->GetData().Location.Y, ParentSpacecraft->GetData().Location.Z);
 #endif
-		
 			if (!Spacecraft->IsStation() && !Spacecraft->GetNavigationSystem()->IsDocked())
 			{
 #ifdef DEBUG_SPACESHIPPLACEMENT
@@ -697,9 +718,7 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 		case EFlareSpawnMode::InternalDocked:
 		{
 			if (ParentSpacecraft->GetShipMaster())
-			{
-				FVector Location = ParentSpacecraft->GetShipMaster()->GetData().Location;
-			
+			{		
 				int ShipPosition = 0;
 				for (UFlareSimulatedSpacecraft* OwnedShips : ParentSpacecraft->GetShipMaster()->GetShipChildren())
 				{
@@ -718,12 +737,12 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 				else
 				{
 					OddEven = false;
-				}
+				}		
+			
+				PlaceSpacecraftDrone(Spacecraft, ParentSpacecraft->GetShipMaster()->GetActive()->GetActorLocation(), ParentSpacecraft->GetShipMaster()->GetActive()->GetActorRotation(), 700, ParentSpacecraft->GetShipMaster()->GetActive()->GetMeshScale() + 200, OddEven);
 
-				PlaceSpacecraftDrone(Spacecraft, Location, ParentSpacecraft->GetData().Rotation, 800, ParentSpacecraft->GetShipMaster()->GetActive()->GetMeshScale() + 125, OddEven);
-
-				float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetData().LinearVelocity.Size() * 0.6;
-				FVector CenterDirection = (GetSectorCenter() - Location).GetUnsafeNormal();
+				float SpawnVelocity = ParentSpacecraft->GetShipMaster()->GetActive()->GetLinearVelocity().Size() * 0.6;
+				FVector CenterDirection = (GetSectorCenter() - ParentSpacecraft->GetShipMaster()->GetActive()->GetActorLocation()).GetUnsafeNormal();
 				RootComponent->SetPhysicsLinearVelocity(CenterDirection * SpawnVelocity, false);
 				RootComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector, false);
 			}
@@ -951,7 +970,7 @@ void UFlareSector::PlaceSpacecraftDrone(AFlareSpacecraft* Spacecraft, FVector Lo
 {
 	float RandomLocationRadius = InitialLocationRadius;
 	float EffectiveDistance = -1;
-	float Size = Spacecraft->GetMeshScale();
+	float Size = Spacecraft->GetMeshScale() * 4;
 	int Loops = 0;
 
 	do

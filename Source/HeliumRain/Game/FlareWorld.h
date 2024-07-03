@@ -222,6 +222,8 @@ protected:
 	UPROPERTY()
 	UFlareBattle*					  	 BattleSimulation;
 
+	TArray<AFlareSpacecraft*>			 PendingActiveSpacecraftDeletions;
+
 	AFlareGame*                          Game;
 
 	bool RunningPrimarySimulate;

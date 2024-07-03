@@ -252,7 +252,7 @@ struct FFlareSpacecraftComponentWeaponCharacteristics
 	/** Sound played when firing */
 	UPROPERTY(EditAnywhere, Category = Content) USoundCue* FiringSound;
 
-	/** Effect shown with a shell explode */
+	/** Effect shown when a shell explodes */
 	UPROPERTY(EditAnywhere, Category = Content) UParticleSystem* ExplosionEffect;
 
 	/** Scale for effect shown with a shell explode */

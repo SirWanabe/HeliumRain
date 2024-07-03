@@ -369,11 +369,16 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			continue;
 		}
 
+		if (Preferences.IgnoreStation && ShipCandidate->IsStation())
+		{
+			continue;
+		}
+
 		float Score;
 		float StateScore;
 		float AttackTargetScore;
 		float DistanceScore;
-		float AlignementScore;
+		float AlignmentScore;
 
 		StateScore = Preferences.TargetStateWeight;
 
@@ -471,7 +476,6 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			StateScore *=  Preferences.IsHarpooned;
 		}
 
-
 		if(Preferences.LastTarget.Is(ShipCandidate)) {
 			StateScore *=  Preferences.LastTargetWeight;
 		}
@@ -504,30 +508,30 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 		FVector Direction = (ShipCandidate->GetActorLocation() - Preferences.BaseLocation).GetUnsafeNormal();
 
 
-		float Alignement = FVector::DotProduct(Preferences.PreferredDirection, Direction);
+		float Alignment = FVector::DotProduct(Preferences.PreferredDirection, Direction);
 
-		if (Alignement > Preferences.MinAlignement)
+		if (Alignment > Preferences.MinAlignement)
 		{
-			AlignementScore = Preferences.AlignementWeight * ((Alignement - Preferences.MinAlignement) / (1 - Preferences.MinAlignement));
+			AlignmentScore = Preferences.AlignementWeight * ((Alignment - Preferences.MinAlignement) / (1 - Preferences.MinAlignement));
 		}
 		else
 		{
-			AlignementScore = 0;
+			AlignmentScore = 0;
 		}
 
-		Score = StateScore * (AttackTargetScore + DistanceScore + AlignementScore);
-
-
-		/*FLOGV("  - %s: %f", *ShipCandidate->GetImmatriculation().ToString(), Score);
-		FLOGV("        - StateScore=%f", StateScore);
-		FLOGV("        - AttackTargetScore=%f", AttackTargetScore);
-		FLOGV("        - DistanceScore=%f", DistanceScore);
-		FLOGV("        - AlignementScore=%f", AlignementScore);*/
+		Score = StateScore * (AttackTargetScore + DistanceScore + AlignmentScore);
 
 		if (Score > 0)
 		{
 			if (BestTarget.IsEmpty() || Score > BestScore)
 			{
+/*
+				FLOGV("  - %s: %f", *ShipCandidate->GetImmatriculation().ToString(), Score);
+				FLOGV("        - StateScore=%f", StateScore);
+				FLOGV("        - AttackTargetScore=%f", AttackTargetScore);
+				FLOGV("        - DistanceScore=%f", DistanceScore);
+				FLOGV("        - AlignementScore=%f", AlignmentScore);
+*/
 				BestTarget.SetSpacecraft(ShipCandidate);
 				BestScore = Score;
 			}

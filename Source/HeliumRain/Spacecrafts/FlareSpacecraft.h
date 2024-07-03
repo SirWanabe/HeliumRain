@@ -84,6 +84,7 @@ public:
 	void SetWantUndockInternalShips(bool Set);
 	void LaunchRetrieveDrones();
 
+	void SetInternalDockedTo(AFlareSpacecraft* DockingTo);
 	void CarrierReleaseInternalDockShips(float DeltaSeconds);
 
 	bool GetWantUndockInternalShips();

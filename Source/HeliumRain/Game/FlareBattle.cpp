@@ -70,7 +70,7 @@ void UFlareBattle::Load(UFlareSimulatedSector* BattleSector)
 	FindFightingCompanies();
 	for (int32 ShipIndex = 0; ShipIndex < Sector->GetSectorCombatCapableShips().Num(); ShipIndex++)
 	{
-		UFlareSimulatedSpacecraft* Ship = Sector->GetSectorShips()[ShipIndex];
+		UFlareSimulatedSpacecraft* Ship = Sector->GetSectorCombatCapableShips()[ShipIndex];
 		if (Ship->IsReserve())
 		{
 			// No in fight
@@ -406,6 +406,7 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 		{
 			MeteoriteTarget = GetMeteoriteTarget();
 		}
+/*
 		else
 		{
 			FLOGV("%s want to attack %s with %s",
@@ -413,7 +414,7 @@ bool UFlareBattle::SimulateLargeShipTurn(UFlareSimulatedSpacecraft* Ship)
 			*ShipTarget->GetImmatriculation().ToString(),
 			*ComponentData->ShipSlotIdentifier.ToString())
 		}
-
+*/
 		if (ShipTarget || MeteoriteTarget)
 		{
 			if (SimulateShipWeaponAttack(Ship, ComponentDescription, ComponentData, ShipTarget, MeteoriteTarget))
@@ -671,7 +672,7 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 
 		float Precision = UsageRatio * FMath::Max(0.01f, 1.f-(WeaponDescription->WeaponCharacteristics.GunCharacteristics.AmmoPrecision * TargetCoef));
 
-		FLOGV("Fire %d ammo with a hit probability of %f", AmmoToFire, Precision);
+//		FLOGV("Fire %d ammo with a hit probability of %f", AmmoToFire, Precision);
 		for (int32 BulletIndex = 0; BulletIndex <  AmmoToFire; BulletIndex++)
 		{
 			if(FMath::FRand() < Precision)

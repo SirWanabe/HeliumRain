@@ -150,7 +150,7 @@ void UFlareSpacecraftComponentsCatalog::SetupModArrays(TArray<UFlareSpacecraftCo
 				if (OldEntryDesc)
 				{
 					ReplaceOldEntrySettings(OldEntryDesc, ComponentEntry);
-					if (PassedArray.Remove(OldEntry))
+					if (PassedArray.Remove(ComponentEntry))
 					{
 						Index = FMath::Min(0, Index -= 1);
 					}
@@ -158,6 +158,7 @@ void UFlareSpacecraftComponentsCatalog::SetupModArrays(TArray<UFlareSpacecraftCo
 			}
 			else
 			{
+				FFlareSpacecraftComponentDescription* OldEntryDesc = &OldEntry->Data;
 				if (PassedArray.Remove(OldEntry))
 				{
 					Index = FMath::Min(0, Index -= 1);
@@ -190,17 +191,25 @@ void UFlareSpacecraftComponentsCatalog::ReplaceOldEntrySettings(FFlareSpacecraft
 	{
 		OldEntryDesc->Mesh = Component->Data.Mesh;
 	}
+
 	if (Component->Data.DestroyedEffect)
 	{
 		OldEntryDesc->DestroyedEffect = Component->Data.DestroyedEffect;
 	}
+
 	if (Component->Data.DamagedEffect)
 	{
 		OldEntryDesc->DamagedEffect = Component->Data.DamagedEffect;
 	}
+
 	if (Component->Data.MeshPreviewBrush.GetImageType() != ESlateBrushImageType::NoImage)
 	{
 		OldEntryDesc->MeshPreviewBrush = Component->Data.MeshPreviewBrush;
+	}
+
+	if (Component->Data.WeaponCharacteristics.ImpactEffect)
+	{
+		OldEntryDesc->WeaponCharacteristics.ImpactEffect = Component->Data.WeaponCharacteristics.ImpactEffect;
 	}
 
 	OldEntryDesc->GeneralCharacteristics.LifeSupport = Component->Data.GeneralCharacteristics.LifeSupport;
@@ -212,6 +221,7 @@ void UFlareSpacecraftComponentsCatalog::ReplaceOldEntrySettings(FFlareSpacecraft
 	OldEntryDesc->EngineCharacteristics.IsEngine = Component->Data.EngineCharacteristics.IsEngine;
 	OldEntryDesc->EngineCharacteristics.EnginePower = Component->Data.EngineCharacteristics.EnginePower;
 	OldEntryDesc->EngineCharacteristics.AngularAccelerationRate = Component->Data.EngineCharacteristics.AngularAccelerationRate;
+
 	if(Component->Data.EngineCharacteristics.EngineSound)
 	{
 		OldEntryDesc->EngineCharacteristics.EngineSound = Component->Data.EngineCharacteristics.EngineSound;
@@ -229,6 +239,7 @@ void UFlareSpacecraftComponentsCatalog::ReplaceOldEntrySettings(FFlareSpacecraft
 	OldEntryDesc->WeaponCharacteristics.FuzeType = Component->Data.WeaponCharacteristics.FuzeType;
 	OldEntryDesc->WeaponCharacteristics.FuzeMinDistanceThresold = Component->Data.WeaponCharacteristics.FuzeMinDistanceThresold;
 	OldEntryDesc->WeaponCharacteristics.FuzeMaxDistanceThresold = Component->Data.WeaponCharacteristics.FuzeMaxDistanceThresold;
+
 	if (Component->Data.WeaponCharacteristics.ImpactSound)
 	{
 		OldEntryDesc->WeaponCharacteristics.ImpactSound = Component->Data.WeaponCharacteristics.ImpactSound;
@@ -245,12 +256,13 @@ void UFlareSpacecraftComponentsCatalog::ReplaceOldEntrySettings(FFlareSpacecraft
 	{
 		OldEntryDesc->WeaponCharacteristics.ExplosionEffect = Component->Data.WeaponCharacteristics.ExplosionEffect;
 	}
-	OldEntryDesc->WeaponCharacteristics.ExplosionEffectScale = Component->Data.WeaponCharacteristics.ExplosionEffectScale;
+
 	if (Component->Data.WeaponCharacteristics.ImpactEffect)
 	{
 		OldEntryDesc->WeaponCharacteristics.ImpactEffect = Component->Data.WeaponCharacteristics.ImpactEffect;
 	}
 
+	OldEntryDesc->WeaponCharacteristics.ExplosionEffectScale = Component->Data.WeaponCharacteristics.ExplosionEffectScale;
 	OldEntryDesc->WeaponCharacteristics.ImpactEffectScale = Component->Data.WeaponCharacteristics.ImpactEffectScale;
 
 	OldEntryDesc->WeaponCharacteristics.GunCharacteristics.IsGun = Component->Data.WeaponCharacteristics.GunCharacteristics.IsGun;

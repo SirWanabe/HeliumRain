@@ -186,14 +186,6 @@ void SFlareSectorButton::RefreshButton()
 		return;
 	}
 
-	SectorTitle->SetShadowColorAndOpacity(GetShadowColor());
-	SectorTitle->SetText(Sector->GetSectorName());
-
-	SectorText->SetShadowColorAndOpacity(GetShadowColor());
-	SectorText->SetText(GetSectorText());
-	SectorText->SetVisibility(GetBottomTextVisibility());
-
-	UpdateBackgroundImages();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
 	EFlareOrbitalMode::Type DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
@@ -420,6 +412,15 @@ void SFlareSectorButton::RefreshButton()
 			}
 		}
 	}
+
+	SectorTitle->SetShadowColorAndOpacity(GetShadowColor());
+	SectorTitle->SetText(Sector->GetSectorName());
+
+	SectorText->SetShadowColorAndOpacity(GetShadowColor());
+	SectorText->SetText(GetSectorText());
+	SectorText->SetVisibility(GetBottomTextVisibility());
+
+	UpdateBackgroundImages();
 }
 
 /*----------------------------------------------------
@@ -457,7 +458,7 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 
 		for (UFlareFleet* Fleet : Sector->GetSectorFleets())
 		{
-			if (Fleet->GetFleetCompany()->IsPlayerCompany())
+			if (Fleet->GetFleetCompany() && Fleet->GetFleetCompany()->IsPlayerCompany())
 			{
 				SectorInfoText = FText::Format(LOCTEXT("SectorInfoFleetLocalFormat", "{0}\n\u2022 Your fleet {1} is here."),
 				SectorInfoText,
@@ -468,7 +469,7 @@ void SFlareSectorButton::OnMouseEnter(const FGeometry& MyGeometry, const FPointe
 		// Get incoming fleets
 		for (UFlareTravel* Travel : MenuManager->GetGame()->GetGameWorld()->GetTravels())
 		{
-			if (Travel->GetFleet()->GetFleetCompany()->IsPlayerCompany() && Sector == Travel->GetDestinationSector())
+			if (Travel->GetFleet() && Travel->GetFleet()->GetFleetCompany() && Travel->GetFleet()->GetFleetCompany()->IsPlayerCompany() && Sector == Travel->GetDestinationSector())
 			{
 				FText DateText = UFlareGameTools::FormatDate(Travel->GetRemainingTravelDuration(), 1);
 				SectorInfoText = FText::Format(LOCTEXT("SectorInfoFleetTravelFormat", "{0}\n\u2022 Your fleet {1} will arrive in {2}."),

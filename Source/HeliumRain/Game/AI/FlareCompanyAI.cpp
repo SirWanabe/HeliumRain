@@ -727,6 +727,10 @@ void UFlareCompanyAI::AutoScrap()
 			{
 				continue;
 			}
+			else if (ShipCandidate->GetCurrentFleet() && ShipCandidate->GetCurrentFleet()->IsTraveling())
+			{
+				continue;
+			}
 
 			int32 ResourceCount = ShipCandidate->GetActiveCargoBay()->GetUsedCargoSpace();
 			int32 Capacity = ShipCandidate->GetActiveCargoBay()->GetCapacity();
@@ -765,8 +769,7 @@ void UFlareCompanyAI::AutoScrap()
 #endif
 
 		UFlareSimulatedSpacecraft* TargetStation = NULL;
-		TArray<UFlareSimulatedSpacecraft*> SectorStations = BestScrapCandidate->GetCurrentSector()->GetSectorStations();
-
+		TArray<UFlareSimulatedSpacecraft*> SectorStations = BestScrapCandidate->GetCompany()->GetCompanySectorStations(BestScrapCandidate->GetCurrentSector());
 		// Find a suitable station
 		for (int Index = 0; Index < SectorStations.Num(); Index++)
 		{
@@ -1577,15 +1580,10 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 
 		if (!UnderConstructionUpgrade&&Resources_Upgrade)
 		{
-			for (int32 StationIndex = 0; StationIndex < Sector->GetSectorStations().Num(); StationIndex++)
+			
+			for (int32 StationIndex = 0; StationIndex < Company->GetCompanySectorStations(Sector).Num(); StationIndex++)
 			{
-				UFlareSimulatedSpacecraft* Station = Sector->GetSectorStations()[StationIndex];
-				if (Station->GetCompany() != Company)
-				{
-					// Only AI company station
-					continue;
-				}
-
+				UFlareSimulatedSpacecraft* Station = Company->GetCompanySectorStations(Sector)[StationIndex];
 				if (GetGame()->GetQuestManager()->IsTradeQuestUseStation(Station, true))
 				{
 					// Do not update stations used by quests
@@ -2238,6 +2236,11 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 			int32 MinCombatPoints = MAX_int32;
 			for (UFlareSimulatedSpacecraft* Ship : Sector->GetSectorShips())
 			{
+				if (Ship->GetDescription()->IsDroneShip)
+				{
+					continue;
+				}
+
 				if (!Ship->IsMilitary()
 					|| !WarContext.Allies.Contains(Ship->GetCompany())
 					|| Ship->CanTravel() == false)
@@ -2426,7 +2429,6 @@ TMap<UFlareCompany*, TArray<UFlareFleet*>> UFlareCompanyAI::GenerateWarFleetList
 			}
 		}
 	}
-
 	return NewWarFleets;
 }
 
@@ -2942,7 +2944,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 				//Ships try to break off from their fleets so faster ships can possibly initiate resupplies earlier.
 				for (UFlareSimulatedSpacecraft* Ship : MovableShips)
 				{
-					if (Ship->GetCurrentFleet()->GetShipCount() > 1)
+					if (!Ship->GetDescription()->IsDroneShip && Ship->GetCurrentFleet()->GetShipCount() > 1)
 					{
 						Ship->GetCompany()->CreateAutomaticFleet(Ship);
 					}
@@ -3699,7 +3701,7 @@ void UFlareCompanyAI::UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship
 	}
 
 //Only runs during peacetime, carriers split off solo to find resources individually
-	if (Ship->GetCurrentFleet()->GetShipCount() > 1)
+	if (!Ship->GetDescription()->IsDroneShip && Ship->GetCurrentFleet()->GetShipCount() > 1)
 	{
 		Company->CreateAutomaticFleet(Ship);
 	}

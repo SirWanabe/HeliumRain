@@ -1630,7 +1630,6 @@ bool AFlarePlayerController::ConfirmFastForward(FSimpleDelegate OnConfirmed, FSi
 	FText ConfirmFFTitleText = LOCTEXT("ConfirmBattleTitle", "BATTLE IN PROGRESS");
 	FText ConfirmFFDetailsText;
 
-
 	// Check for battle
 	for (int32 SectorIndex = 0; SectorIndex < GetCompany()->GetKnownSectors().Num(); SectorIndex++)
 	{
@@ -3025,6 +3024,10 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackMilitary),
 		CurrentTacticsForGroup == EFlareCombatTactic::AttackMilitary);
 
+	MouseMenu->AddWidget("New", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::DestroyMilitary),
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyMilitary),
+		CurrentTacticsForGroup == EFlareCombatTactic::DestroyMilitary);
+
 	MouseMenu->AddWidget("Mouse_AttackStations", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::AttackStations),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackStations),
 		CurrentTacticsForGroup == EFlareCombatTactic::AttackStations);
@@ -3032,6 +3035,10 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 	MouseMenu->AddWidget("Mouse_AttackCivilians", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::AttackCivilians),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackCivilians),
 		CurrentTacticsForGroup == EFlareCombatTactic::AttackCivilians);
+
+	MouseMenu->AddWidget("TargettingContextButton", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::DestroyCivilians),
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyCivilians),
+		CurrentTacticsForGroup == EFlareCombatTactic::DestroyCivilians);
 
 	if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
 	{

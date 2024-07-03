@@ -163,8 +163,6 @@ void AFlareBomb::TickBomb(float DeltaSeconds)
 		return;
 	}
 
-//	Super::Tick(DeltaSeconds);
-
 	if(BombLockedInCollision > 0)
 	{
 		BombLockedInCollision -= 0.5;

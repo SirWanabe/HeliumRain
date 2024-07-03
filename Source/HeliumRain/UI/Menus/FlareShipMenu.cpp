@@ -623,31 +623,48 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 		PC->GetMenuPawn()->SetCameraOffset(FVector2D(100, -30));
 	}
 
-	// Is the docking list visible ?
-	UFlareSpacecraftDockingSystem* DockSystem = NULL;
-	if (TargetSpacecraft->IsActive())
+	bool IsActiveSector = false;
+	if (MenuManager->GetGame()->GetActiveSector())
 	{
-		DockSystem = TargetSpacecraft->GetActive()->GetDockingSystem();
+		UFlareSimulatedSector* CurrentActiveSector = MenuManager->GetGame()->GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector == TargetSpacecraft->GetCurrentSector())
+		{
+			IsActiveSector = true;
+		}
 	}
 
-	// Fill the docking list if it is visible
-	if (TargetSpacecraft->IsStation())
+	if (IsActiveSector)
 	{
-		if (DockSystem)
+		// Is the docking list visible ?
+		UFlareSpacecraftDockingSystem* DockSystem = NULL;
+		if (TargetSpacecraft->IsActive())
 		{
-			if (DockSystem->GetDockCount() > 0)
+			DockSystem = TargetSpacecraft->GetActive()->GetDockingSystem();
+		}
+
+		// Fill the docking list if it is visible
+		if (TargetSpacecraft->IsStation())
+		{
+			if (DockSystem)
 			{
-				CheckDockedShips(DockSystem->GetDockedShips());
-			}
-			if (TargetSpacecraft->IsComplex())
-			{
-				for (UFlareSimulatedSpacecraft* Substation : TargetSpacecraft->GetComplexChildren())
+				if (DockSystem->GetDockCount() > 0)
 				{
-					CheckDockedShips(Substation->GetActive()->GetDockingSystem()->GetDockedShips());
+					CheckDockedShips(DockSystem->GetDockedShips());
+				}
+				if (TargetSpacecraft->IsComplex())
+				{
+					for (UFlareSimulatedSpacecraft* Substation : TargetSpacecraft->GetComplexChildren())
+					{
+						CheckDockedShips(Substation->GetActive()->GetDockingSystem()->GetDockedShips());
+					}
 				}
 			}
+			ShipList->RefreshList();
 		}
-		ShipList->RefreshList();
+		else
+		{
+			ShipList->SetVisibility(EVisibility::Collapsed);
+		}
 	}
 	else
 	{
@@ -1277,7 +1294,7 @@ void SFlareShipMenu::UpdateComplexList()
 	SelectedComplexStation = NAME_None;
 	SelectedComplexConnector = NAME_None;
 	
-	if (TargetSpacecraft && TargetSpacecraft->IsComplex())
+	if (TargetSpacecraft && TargetSpacecraft->IsComplex() && TargetSpacecraft->GetCompany() == MenuManager->GetPC()->GetCompany())
 	{
 		// Complex is under construction, can't build
 		if (TargetSpacecraft->IsUnderConstruction())
@@ -2471,11 +2488,21 @@ void SFlareShipMenu::OnPartConfirmed()
 	FFlareSpacecraftComponentDescription* NewPartDesc = PartListData[CurrentPartIndex];
 	CurrentEquippedPartIndex = CurrentPartIndex;
 	CurrentEquippedPartDescription = NewPartDesc;
-		
+
+	bool IsActiveSector = false;
+	if (MenuManager->GetGame()->GetActiveSector())
+	{
+		UFlareSimulatedSector* CurrentActiveSector = MenuManager->GetGame()->GetActiveSector()->GetSimulatedSector();
+		if (CurrentActiveSector == TargetSpacecraft->GetCurrentSector())
+		{
+			IsActiveSector = true;
+		}
+	}
+
 	// Upgrade the ship
 	if (TargetSpacecraft)
 	{
-		if (TargetSpacecraft->GetActive())
+		if (TargetSpacecraft->GetActive() && IsActiveSector)
 		{
 			AFlareSpacecraft* ActiveShip = TargetSpacecraft->GetActive();
 			if (ActiveShip)

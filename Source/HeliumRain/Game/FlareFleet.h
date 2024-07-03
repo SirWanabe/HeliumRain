@@ -99,9 +99,9 @@ public:
 	/** Tell us if we can add ship, and why */
 	virtual bool CanAddShip(UFlareSimulatedSpacecraft* Ship);
 
-	virtual void AddShip(UFlareSimulatedSpacecraft* Ship);
+	virtual void AddShip(UFlareSimulatedSpacecraft* Ship,bool IgnoreSectorCheck = false);
 
-	int32 InterceptShips();
+	uint32 InterceptShips();
 
 	virtual void RemoveShip(UFlareSimulatedSpacecraft* Ship, bool Destroyed = false, bool ReformFleet = true);
 
@@ -166,7 +166,7 @@ public:
 	
 	virtual void InitShipList();
 
-	void RemoveImmobilizedShips();
+	uint32 RemoveImmobilizedShips();
 
 	void SetFleetColor(FLinearColor Color);
 
@@ -316,7 +316,7 @@ public:
 	int32 GetFleetResourceQuantity(FFlareResourceDescription* Resource);
 	int32 GetFleetFreeSpaceForResource(FFlareResourceDescription* Resource);
 
-	int32 GetCombatPoints(bool ReduceByDamage) const;
+	int32 GetCombatPoints(bool ReduceByDamage, bool FilterForMilitary = false) const;
 
 	bool IsRepairing() const;
 	bool IsRefilling() const;

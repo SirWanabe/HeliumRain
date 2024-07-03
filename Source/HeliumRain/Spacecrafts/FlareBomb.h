@@ -96,8 +96,6 @@ public:
 	/** Launch the weapon */
 	virtual void OnLaunched(AFlareSpacecraft* Target);
 
-//	virtual void Tick(float DeltaSeconds) override;
-
 	virtual void TickBomb(float DeltaSeconds);
 
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved,

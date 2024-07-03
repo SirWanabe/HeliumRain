@@ -453,6 +453,7 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 	FVector FireAxis = Turret->GetFireAxis();
 
 	struct PilotHelper::TargetPreferences TargetPreferences;
+	TargetPreferences.IgnoreStation = false;
 	TargetPreferences.IsLarge = 1;
 	TargetPreferences.IsSmall = 1;
 	TargetPreferences.IsStation = 0;
@@ -509,12 +510,29 @@ PilotHelper::PilotTarget UFlareTurretPilot::GetNearestHostileTarget(bool Reachab
 	{
 		TargetPreferences.IsStation = 0;
 	}
+	else if (Tactic == EFlareCombatTactic::DestroyMilitary)
+	{
+		TargetPreferences.IgnoreStation = true;
+		TargetPreferences.IsStation = 0.0f;
+		TargetPreferences.IsUncontrollableSmallMilitary = 0.25f;
+		TargetPreferences.IsUncontrollableLargeMilitary = 0.25f;
+	}
 	else if (Tactic == EFlareCombatTactic::AttackCivilians)
 	{
 		TargetPreferences.IsStation = 0;
 		TargetPreferences.IsMilitary = 0.1;
 		TargetPreferences.IsNotMilitary = 1.0;
 		TargetPreferences.IsNotDangerous = 1.0;
+	}
+	else if (Tactic == EFlareCombatTactic::DestroyCivilians)
+	{
+		TargetPreferences.IgnoreStation = true;
+		TargetPreferences.IsStation = 0.0f;
+		TargetPreferences.IsMilitary = 0.1;
+		TargetPreferences.IsNotMilitary = 1.0;
+		TargetPreferences.IsNotDangerous = 1.0;
+
+		TargetPreferences.IsUncontrollableCivil = 0.25f;
 	}
 	else if (Tactic == EFlareCombatTactic::ProtectMe)
 	{

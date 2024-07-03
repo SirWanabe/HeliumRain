@@ -479,6 +479,7 @@ void AFlareGame::Scrap(FName ShipImmatriculation, FName TargetStationImmatricula
 	}
 
 	UFlareSimulatedSector* CurrentSector = ShipToScrap->GetCurrentSector();
+
 	bool IsActiveSector = GetActiveSector() != nullptr;
 	if (IsActiveSector)
 	{

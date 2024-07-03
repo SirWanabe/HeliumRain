@@ -1023,28 +1023,38 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 
 	if (DockStation->IsComplexElement())
 	{
-		AttachStation = DockStation->GetComplex();
+		if (DockStation->GetParent()->GetComplexMaster()->GetActive())
+		{
+			AttachStation = DockStation->GetParent()->GetComplexMaster()->GetActive();
+			if (!AttachStation)
+			{
+				AttachStation = DockStation;
+			}
+		}
 	}
 
-	DockConstraint->SetConstrainedComponents(Spacecraft->Airframe, NAME_None, AttachStation->Airframe,NAME_None);
-
-	// Cut engines
-	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
-	for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
+	if (AttachStation)
 	{
-		UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
-		Engine->SetAlpha(0.0f);
-	}
+		DockConstraint->SetConstrainedComponents(Spacecraft->Airframe, NAME_None, AttachStation->Airframe, NAME_None);
 
-	Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination,TransactionDonation, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
-	TransactionNewPartDesc = NULL;
-	TransactionNewPartWeaponGroupIndex = NULL;
-	TransactionResource = NULL;
-	TransactionQuantity = NULL;
-	TransactionSourceShip = NULL;
-	TransactionDestination = NULL;
-	TransactionDestinationDock = NULL;
-	TransactionDonation = NULL;
+		// Cut engines
+		TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
+		for (int32 EngineIndex = 0; EngineIndex < Engines.Num(); EngineIndex++)
+		{
+			UFlareEngine* Engine = Cast<UFlareEngine>(Engines[EngineIndex]);
+			Engine->SetAlpha(0.0f);
+		}
+
+		Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination, TransactionDonation, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
+		TransactionNewPartDesc = NULL;
+		TransactionNewPartWeaponGroupIndex = NULL;
+		TransactionResource = NULL;
+		TransactionQuantity = NULL;
+		TransactionSourceShip = NULL;
+		TransactionDestination = NULL;
+		TransactionDestinationDock = NULL;
+		TransactionDonation = NULL;
+	}
 }
 
 /*----------------------------------------------------

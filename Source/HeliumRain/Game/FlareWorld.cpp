@@ -179,8 +179,10 @@ UFlareTravel* UFlareWorld::LoadTravel(const FFlareTravelSave& TravelData, UFlare
 
 	// Create the new travel
 	Travel = NewObject<UFlareTravel>(this, UFlareTravel::StaticClass());
-	Travel->Load(TravelData, Fleet);
-	Travels.AddUnique(Travel);
+	if (Travel->Load(TravelData, Fleet))
+	{
+		Travels.AddUnique(Travel);
+	}
 
 	//FLOGV("UFlareWorld::LoadTravel : loaded travel for fleet '%s'", *Travel->GetFleet()->GetFleetName().ToString());
 
@@ -426,13 +428,14 @@ bool UFlareWorld::CheckIntegrity()
 		for (int32 FleetIndex = 0 ; FleetIndex < Company->GetCompanyFleets().Num(); FleetIndex++)
 		{
 			UFlareFleet* Fleet = Company->GetCompanyFleets()[FleetIndex];
-
+			bool MarkedForDisband = false;
 			if(Fleet->GetShipCount() == 0)
 			{
 				FLOGV("WARNING : World integrity failure : %s fleet %s is empty",
 					  *Company->GetCompanyName().ToString(),
 					  *Fleet->GetFleetName().ToString());
 				Integrity = false;
+				MarkedForDisband = true;
 			}
 
 			if(Fleet->GetCurrentSector() == NULL )
@@ -448,6 +451,10 @@ bool UFlareWorld::CheckIntegrity()
 					  *Company->GetCompanyName().ToString(),
 					  *Fleet->GetFleetName().ToString());
 				Integrity = false;
+			}
+			if (MarkedForDisband)
+			{
+				Fleet->Disband();
 			}
 		}
 	}
@@ -532,14 +539,29 @@ void UFlareWorld::Simulate()
 			BattleSimulation->Simulate();
 		}
 
-		// Remove destroyed spacecraft
-//		TArray<UFlareSimulatedSpacecraft*> SpacecraftToRemove;
+		// Forcibly remove destroyed "active" spacecraft
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < PendingActiveSpacecraftDeletions.Num(); SpacecraftIndex++)
+		{
+			AFlareSpacecraft* Spacecraft = PendingActiveSpacecraftDeletions[SpacecraftIndex];
+			if (IsValid(Spacecraft))
+			{
+				Spacecraft->Destroy();
+			}
+		}
+
+		PendingActiveSpacecraftDeletions.Empty();
+
 		for (int32 SpacecraftIndex = 0 ; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
 
-			if(!Spacecraft->GetDamageSystem()->IsAlive() && !Spacecraft->GetDescription()->IsSubstation)
+			if(!Spacecraft->GetDamageSystem()->IsAlive())
 			{
+				if (Spacecraft->GetActive())
+				{
+					PendingActiveSpacecraftDeletions.Add(Spacecraft->GetActive());
+				}
+
 				Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
 			}
 			else if(Spacecraft->GetActive())
@@ -547,13 +569,6 @@ void UFlareWorld::Simulate()
 				Spacecraft->GetActive()->SimulateDayRun();
 			}
 		}
-/*
-		for (int SpacecraftIndex = 0; SpacecraftIndex < SpacecraftToRemove.Num(); SpacecraftIndex++)
-		{
-			UFlareSimulatedSpacecraft* Spacecraft = SpacecraftToRemove[SpacecraftIndex];
-			Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
-		}
-		*/
 	}
 
 	FLOG("* Simulate > AI");
@@ -658,27 +673,27 @@ void UFlareWorld::Simulate()
 			{
 			case -1: // Easy
 				Chance = 0.00f;
-				MinimumDays = 360;
+				MinimumDays = 365;
 				break;
 			case 0: // Normal
 				Chance = 0.01f;
-				MinimumDays = 300;
+				MinimumDays = 335;
 				break;
 			case 1: // Hard
 				Chance = 0.01f;
-				MinimumDays = 240;
+				MinimumDays = 305;
 				break;
 			case 2: // Very Hard
 				Chance = 0.02f;
-				MinimumDays = 180;
+				MinimumDays = 245;
 				break;
 			case 3: // Expert
 				Chance = 0.05f;
-				MinimumDays = 120;
+				MinimumDays = 185;
 				break;
 			case 4: // Unfair
 				Chance = 0.10f;
-				MinimumDays = 60;
+				MinimumDays = 95;
 				break;
 			}
 		}
@@ -1434,10 +1449,8 @@ void UFlareWorld::ProcessStationCapture()
 		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
 		{
 			UFlareSimulatedSpacecraft* NewChildStation = Sector->CreateSpacecraft(Pair.Key, Capturer, SpawnLocation, SpawnRotation, &Pair.Value, false, false, NewShip->GetImmatriculation());
-
 			Sector->AttachStationToComplexStation(NewChildStation, NewShip->GetImmatriculation(), Pair.Value.AttachComplexConnectorName);
 		}
-
 
 		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
 		
@@ -1980,7 +1993,7 @@ void UFlareWorld::AddFactory(UFlareFactory* Factory)
 
 UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimulatedSector* DestinationSector, bool Force)
 {
-	if (!TravelingFleet->CanTravel() && !Force)
+	if (!TravelingFleet || (!TravelingFleet->CanTravel() && !Force))
 	{
 		return NULL;
 	}
@@ -1999,11 +2012,10 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 	{
 		UFlareSimulatedSector* OriginSector = TravelingFleet->GetCurrentSector();
 
-
 		// Remove intercepted ships
 		if(OriginSector->GetSectorBattleState(TravelingFleet->GetFleetCompany()).HasDanger)
 		{
-			int32 InterceptedShips = TravelingFleet->InterceptShips();
+			uint32 InterceptedShips = TravelingFleet->InterceptShips();
 
 			if (InterceptedShips > 0)
 			{
@@ -2027,7 +2039,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 						Data);
 				}
 
-				if(InterceptedShips == TravelingFleet->GetShipCount())
+				if(InterceptedShips >= TravelingFleet->GetShipCount())
 				{
 					// All ships intercepted
 					return NULL;
@@ -2036,24 +2048,25 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 		}
 
 		// Remove immobilized ships
-		TravelingFleet->RemoveImmobilizedShips();
+		uint32 TravelingFleetSize = TravelingFleet->GetShipCount();
+		uint32 RemovedShips = TravelingFleet->RemoveImmobilizedShips();
+		if (RemovedShips < TravelingFleetSize)
+		{
+			// Make the fleet exit the sector
 
-		// Make the fleet exit the sector
+			OriginSector->RetireFleet(TravelingFleet);
 
-		OriginSector->RetireFleet(TravelingFleet);
-
-		// Create the travel
-		FFlareTravelSave TravelData;
-		TravelData.FleetIdentifier = TravelingFleet->GetIdentifier();
-		TravelData.OriginSectorIdentifier = OriginSector->GetIdentifier();
-		TravelData.DestinationSectorIdentifier = DestinationSector->GetIdentifier();
-		TravelData.DepartureDate = GetDate();
-		UFlareTravel::InitTravelSector(TravelData.SectorData);
-		UFlareTravel* Travel = LoadTravel(TravelData, TravelingFleet);
-
-		GetGame()->GetQuestManager()->OnTravelStarted(Travel);
-
-		return Travel;
+			// Create the travel
+			FFlareTravelSave TravelData;
+			TravelData.FleetIdentifier = TravelingFleet->GetIdentifier();
+			TravelData.OriginSectorIdentifier = OriginSector->GetIdentifier();
+			TravelData.DestinationSectorIdentifier = DestinationSector->GetIdentifier();
+			TravelData.DepartureDate = GetDate();
+			UFlareTravel::InitTravelSector(TravelData.SectorData);
+			UFlareTravel* Travel = LoadTravel(TravelData, TravelingFleet);
+			GetGame()->GetQuestManager()->OnTravelStarted(Travel);
+			return Travel;
+		}
 	}
 	return NULL;
 }
@@ -2354,9 +2367,8 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 		int32 EnemyValue = Entry.Value.CombatValue;
 		int64 RemainingDuration = Entry.Key.RemainingDuration;
 
-		if (RemainingDuration <=1 || PlayerCompany->IsTechnologyUnlocked("early-warning"))
+		if (RemainingDuration <= 1 || PlayerCompany->IsTechnologyUnlocked("early-warning"))
 		{
-
 			FText TravelText;
 			FText TravelPartText = FText::Format(LOCTEXT("ThreatTextTravelPart", "Traveling to {0} ({1} left)"),
 					Sector->GetSectorName(),
@@ -2365,19 +2377,20 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 			if (PlayerCompany->IsTechnologyUnlocked("advanced-radar"))
 			{
 
-				TravelText = FText::Format(LOCTEXT("ThreatTextAdvancedFormat", "\u2022 <WarningText>{0} (Combat value of {1})</>\n    <WarningText>{3}</>\n    <WarningText>{2}</>"),
+				TravelText = FText::Format(LOCTEXT("ThreatTextAdvancedFormat", "\u2022 <WarningText>{0} (Combat value of {1})</>\n    <WarningText>{2}</>\n    <WarningText>{3}</>"),
 						Company->GetCompanyName(),
 						EnemyValue,
-						GetShipsText(Entry.Value.LightShipCount, Entry.Value.HeavyShipCount),
-						TravelPartText);
-			}
+						TravelPartText,
+						GetShipsText(Entry.Value.LightShipCount, Entry.Value.HeavyShipCount));
+			}	
 			else
 			{
-				TravelText = FText::Format(LOCTEXT("ThreatTextFormat", "\u2022 <WarningText>{0}</>\n    <WarningText>{2}</>\n    <WarningText>{1}</>"),
+				TravelText = FText::Format(LOCTEXT("ThreatTextFormat", "\u2022 <WarningText>{0}</>\n    <WarningText>{1}</>\n    <WarningText>{2}</>"),
 
 					Company->GetCompanyName(),
-					GetUnknownShipText (Entry.Value.LightShipCount + Entry.Value.HeavyShipCount),
-					TravelPartText);
+					TravelPartText,
+					GetUnknownShipText(Entry.Value.LightShipCount + Entry.Value.HeavyShipCount)
+					);
 			}
 
 			// Add data

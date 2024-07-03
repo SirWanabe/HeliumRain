@@ -58,4 +58,5 @@ protected:
 	int32                                             CurrentCapitalShipCount;
 	int32                                             CurrentFighterCount;
 	int32                                             CurrentCivilianShipCount;
+	bool											  ShipGroupReset;
 };

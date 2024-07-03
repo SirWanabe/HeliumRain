@@ -25,7 +25,6 @@ public:
 	virtual void BeginPlay() override;
 
 	void TickMeteorite(float DeltaSeconds);
-//	virtual void Tick(float DeltaSeconds) override;
 
 	/** Properties setup */
 	virtual void Load(FFlareMeteoriteSave* Data, UFlareSector* ParentSector);

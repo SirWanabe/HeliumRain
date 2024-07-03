@@ -50,8 +50,10 @@ FText UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::Type Type)
 	{
 		case EFlareCombatTactic::ProtectMe:        Result = LOCTEXT("ProtectMe",       "Protect me");         break;
 		case EFlareCombatTactic::AttackMilitary:   Result = LOCTEXT("AttackMilitary",  "Attack military");    break;
+		case EFlareCombatTactic::DestroyMilitary:   Result = LOCTEXT("DestroyMilitary", "Destroy military");    break;
 		case EFlareCombatTactic::AttackStations:   Result = LOCTEXT("AttackStations",  "Attack stations");    break;
 		case EFlareCombatTactic::AttackCivilians:  Result = LOCTEXT("AttackCivilians", "Attack freighters");  break;
+		case EFlareCombatTactic::DestroyCivilians:  Result = LOCTEXT("DestroyCivilians", "Destroy freighters");  break;
 		case EFlareCombatTactic::StandDown:        Result = LOCTEXT("StandDown",       "Stand down");         break;
 	}
 
@@ -961,7 +963,7 @@ FText FFlareTransactionLogEntry::GetComment(AFlareGame* Game) const
 		FFlareSpacecraftDescription* Description = Game->GetSpacecraftCatalog()->Get(ExtraIdentifier1);
 		if(Description)
 		{
-			Comment = FText::Format(LOCTEXT("OrderShip", "Ordered ship ({0}})"), Description->Name);
+			Comment = FText::Format(LOCTEXT("OrderShip", "Ordered ship ({0})"), Description->Name);
 		}
 		break;
 	}
@@ -970,7 +972,7 @@ FText FFlareTransactionLogEntry::GetComment(AFlareGame* Game) const
 		FFlareSpacecraftDescription* Description = Game->GetSpacecraftCatalog()->Get(ExtraIdentifier1);
 		if(Description)
 		{
-			Comment = FText::Format(LOCTEXT("CancelOrderShip", "Cancelled ship order ({0}})"), Description->Name);
+			Comment = FText::Format(LOCTEXT("CancelOrderShip", "Cancelled ship order ({0})"), Description->Name);
 		}
 		break;
 	}
@@ -979,7 +981,7 @@ FText FFlareTransactionLogEntry::GetComment(AFlareGame* Game) const
 		FFlareSpacecraftDescription* Description = Game->GetSpacecraftCatalog()->Get(ExtraIdentifier1);
 		if(Description)
 		{
-			Comment = FText::Format(LOCTEXT("OrderShipAdvance", "Paid for ship order ({0}})"), Description->Name);
+			Comment = FText::Format(LOCTEXT("OrderShipAdvance", "Paid for ship order ({0})"), Description->Name);
 		}
 		break;
 	}

@@ -151,7 +151,7 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsDisarmed() const
 		return true;
 	}
 
-	if(Spacecraft->IsActive() && Spacecraft->GetActive()->IsOutsideSector())
+	if(Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector() && Spacecraft->GetActive()->IsOutsideSector())
 	{
 		return true;
 	}
@@ -440,6 +440,7 @@ float UFlareSimulatedSpacecraftDamageSystem::ApplyDamage(FFlareSpacecraftCompone
 				&& Spacecraft->GetCompany() != PlayerCompany
 				&& Spacecraft->GetCompany() != Spacecraft->GetGame()->GetScenarioTools()->Pirates)
 			{
+				UFlareSimulatedSpacecraft* PlayerShip = Spacecraft->GetGame()->GetPC()->GetPlayerShip();
 				// Being shot by enemies is pretty much expected
 				if (!Spacecraft->IsHostile(DamageSource->GetCompany(), true))
 				{
@@ -456,7 +457,7 @@ float UFlareSimulatedSpacecraftDamageSystem::ApplyDamage(FFlareSpacecraftCompone
 
 
 				}
-				else if(Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector() && Spacecraft->GetActive()->GetTimeSinceUncontrollable() > 5.f && !Spacecraft->GetGame()->GetQuestManager()->IsAllowedToDestroy(Spacecraft))
+				else if(Spacecraft->IsActive() && Spacecraft->GetActive()->IsInActiveSector() && Spacecraft->GetActive()->GetTimeSinceUncontrollable() > (PlayerShip == DamageSource ? 5.f : 10.f) && !Spacecraft->GetGame()->GetQuestManager()->IsAllowedToDestroy(Spacecraft))
 				{
 					// If an attack on a prisoner, lower attacker's reputation on everyone, give rep to victim
 

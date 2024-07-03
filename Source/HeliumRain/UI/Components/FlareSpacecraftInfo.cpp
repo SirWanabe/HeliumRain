@@ -537,7 +537,7 @@ void SFlareSpacecraftInfo::Show()
 		bool IsDocked = ActiveTargetSpacecraft && InActiveSector && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(PlayerShip->GetActive()));
 		bool IsStation = TargetSpacecraft->IsStation();
 		bool IsCargoShip = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
-		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned;
+		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned && IsFriendly;
 		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking");
 
 		// Permissions
@@ -1853,8 +1853,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 
 		// Our company
 		UFlareCompany* TargetCompany = TargetSpacecraft->GetCompany();
-//		&& TargetCompany == PC->GetCompany()
-		if (TargetCompany && PC)// && !TradeMenu)
+		if (TargetCompany && PC)
 		{
 			if (!TargetSpacecraft->IsStation())
 			{
@@ -1873,6 +1872,11 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 						FFlareSpacecraftComponentDescription* TransactionNewPartDesc = Spacecraftnavigation->GetTransactionNewPartDesc();
 						int32 TransactionNewPartWeaponGroupIndex = Spacecraftnavigation->GetTransactionNewPartWeaponIndex();
 
+						UFlareSimulatedSpacecraft* DockingDisplaySpacecraft = TransactionDestinationDock;
+						if (DockingDisplaySpacecraft->IsComplexElement())
+						{
+							DockingDisplaySpacecraft = DockingDisplaySpacecraft->GetComplexMaster();
+						}
 
 						if (TransactionDestination && TransactionSourceShip && TransactionResource && Spacecraftnavigation && TransactionDestinationDock)
 						{
@@ -1908,7 +1912,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 
 							Formatted = FText::Format(LOCTEXT("SpacecraftInfoFormat", "{0}docking at {1} to {2} {3} {4}"),
 								DistanceText,
-								UFlareGameTools::DisplaySpacecraftName(TransactionDestinationDock),
+								UFlareGameTools::DisplaySpacecraftName(DockingDisplaySpacecraft),
 								TradeStatus,
 								FText::AsNumber(TransactionQuantity),
 								TransactionResource->Name);
@@ -1927,7 +1931,7 @@ FText SFlareSpacecraftInfo::GetSpacecraftLocalInfo() const
 
 							Formatted = FText::Format(LOCTEXT("SpacecraftInfoFormatUpgrade", "{0}docking at {1} to {2} {3}"),
 								DistanceText,
-								UFlareGameTools::DisplaySpacecraftName(TransactionDestinationDock),
+								UFlareGameTools::DisplaySpacecraftName(DockingDisplaySpacecraft),
 								TradeStatus,
 								TransactionNewPartDesc->Name);
 							return Formatted;

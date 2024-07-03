@@ -127,9 +127,13 @@ void UFlareTacticManager::ResetControlGroups(UFlareSimulatedSector* Sector)
 
 void UFlareTacticManager::ResetShipGroup(EFlareCombatTactic::Type Tactic)
 {
-	CurrentCombatTactics.Empty();
-	for (int32 Index = EFlareCombatGroup::AllMilitary; Index <= EFlareCombatGroup::Civilan; Index++)
+	if (!ShipGroupReset)
 	{
-		CurrentCombatTactics.Add(Tactic);
+		ShipGroupReset = true;
+		CurrentCombatTactics.Empty();
+		for (int32 Index = EFlareCombatGroup::AllMilitary; Index <= EFlareCombatGroup::Civilan; Index++)
+		{
+			CurrentCombatTactics.Add(Tactic);
+		}
 	}
 }

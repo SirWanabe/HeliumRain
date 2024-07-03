@@ -95,6 +95,8 @@ namespace EFlareCombatTactic
 		AttackMilitary,
 		AttackStations,
 		AttackCivilians,
+		DestroyMilitary,
+		DestroyCivilians,
 		StandDown
 	};
 }

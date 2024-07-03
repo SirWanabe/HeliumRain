@@ -97,6 +97,7 @@ protected:
 
 	bool                                            WasControllable; // True if was controllable at the last tick
 	bool                                            WasAlive;
+	bool											WasDisarmed;
 	float											TimeSinceLastExternalDamage;
 
 	DamageCause                                     LastDamageCause;

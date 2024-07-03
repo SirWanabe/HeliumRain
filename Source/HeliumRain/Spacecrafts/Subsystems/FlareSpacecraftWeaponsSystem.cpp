@@ -460,7 +460,6 @@ void UFlareSpacecraftWeaponsSystem::UpdateTargetPreference(struct PilotHelper::T
 	float BombPool = 0;
 	float MeteoritePool = 0;
 
-
 	for (int32 GroupIndex = 0; GroupIndex < WeaponGroupList.Num(); GroupIndex++)
 	{
 		EFlareShellDamageType::Type DamageType = WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.DamageType;
@@ -486,7 +485,6 @@ void UFlareSpacecraftWeaponsSystem::UpdateTargetPreference(struct PilotHelper::T
 		}
 
 		if(DamageType == EFlareShellDamageType::LightSalvage)
-
 		{
 			UncontrollableCivilPool += 1.0;
 			UncontrollableSmallMilitaryPool += 1.0;

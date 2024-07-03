@@ -218,28 +218,29 @@ FText UFlareFleet::GetStatusInfo() const
 	return FText();
 }
 
-void UFlareFleet::RemoveImmobilizedShips()
+uint32 UFlareFleet::RemoveImmobilizedShips()
 {
 	TArray<UFlareSimulatedSpacecraft*> ShipToRemove;
 
+	uint32 ShipsRemoved = 0;
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
 		UFlareSimulatedSpacecraft* RemovingShip = FleetShips[ShipIndex];
-		if (RemovingShip && !RemovingShip->CanTravel() && RemovingShip != Game->GetPC()->GetPlayerShip())
+		if (RemovingShip
+			&& RemovingShip != Game->GetPC()->GetPlayerShip() 
+			&& !RemovingShip->GetDescription()->IsDroneShip 
+			&& !RemovingShip->CanTravel() )
 		{
-			if (RemovingShip->GetShipMaster())
-			{
-				if (RemovingShip->GetDescription()->IsDroneShip)
-				{
-//				RemovingShip->TryMigrateDrones();
-				continue;
-				}
-			}
 			ShipToRemove.Add(FleetShips[ShipIndex]);
+			ShipsRemoved++;
 		}
 	}
 
-	RemoveShips(ShipToRemove);
+	if (ShipsRemoved < GetShipCount())
+	{
+		RemoveShips(ShipToRemove);
+	}
+	return ShipsRemoved;
 }
 
 void UFlareFleet::SetFleetColor(FLinearColor Color)
@@ -309,14 +310,14 @@ int32 UFlareFleet::GetRefillDuration() const
 	return RefillDuration;
 }
 
-int32 UFlareFleet::InterceptShips()
+uint32 UFlareFleet::InterceptShips()
 {
 	// Intercept half of ships at maximum and min 1
-	int32 MaxInterseptedShipCount = FMath::Max(1,FleetShips.Num() / 2);
-	int32 InterseptedShipCount = 0;
+	uint32 MaxInterseptedShipCount = FMath::Max(1,FleetShips.Num() / 2);
+	uint32 InterseptedShipCount = 0;
 	for (UFlareSimulatedSpacecraft* Ship : FleetShips)
 	{
-		if(InterseptedShipCount >=MaxInterseptedShipCount)
+		if(InterseptedShipCount >= MaxInterseptedShipCount)
 		{
 			break;
 		}
@@ -358,7 +359,7 @@ bool UFlareFleet::CanAddShip(UFlareSimulatedSpacecraft* Ship)
 	return true;
 }
 
-void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
+void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship, bool IgnoreSectorCheck)
 {
 	if (IsTraveling())
 	{
@@ -366,14 +367,17 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 		return;
 	}
 
-	if (GetCurrentSector() != Ship->GetCurrentSector())
+	if (!IgnoreSectorCheck)
 	{
-		FLOGV("Fleet Merge fail: '%s' is the sector '%s' but '%s' is the sector '%s'",
-			  *GetFleetName().ToString(),
-			  *GetCurrentSector()->GetSectorName().ToString(),
-			  *Ship->GetImmatriculation().ToString(),
-			  *Ship->GetCurrentSector()->GetSectorName().ToString());
-		return;
+		if (GetCurrentSector() != Ship->GetCurrentSector())
+		{
+			FLOGV("Fleet Merge fail: '%s' is the sector '%s' but '%s' is the sector '%s'",
+				*GetFleetName().ToString(),
+				*GetCurrentSector()->GetSectorName().ToString(),
+				*Ship->GetImmatriculation().ToString(),
+				*Ship->GetCurrentSector()->GetSectorName().ToString());
+			return;
+		}
 	}
 
 	UFlareFleet* OldFleet = Ship->GetCurrentFleet();
@@ -386,7 +390,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 		OldFleet->RemoveShip(Ship, false, false);
 	}
 
-	FleetData.ShipImmatriculations.Add(Ship->GetImmatriculation());
+	FleetData.ShipImmatriculations.AddUnique(Ship->GetImmatriculation());
 	FleetShips.AddUnique(Ship);
 
 	if (!Ship->GetDescription()->IsDroneShip)
@@ -405,7 +409,7 @@ void UFlareFleet::AddShip(UFlareSimulatedSpacecraft* Ship)
 	{
 		for (UFlareSimulatedSpacecraft* OwnedShips : Ship->GetShipChildren())
 		{
-			this->AddShip(OwnedShips);
+			AddShip(OwnedShips,true);
 		}
 	}
 
@@ -529,6 +533,10 @@ void UFlareFleet::Disband()
 		return;
 	}
 
+	FLOGV("Fleet Disband: '%s' for %s", 
+	*GetFleetName().ToString(),
+	*GetFleetCompany()->GetCompanyName().ToString());
+
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
 		FleetShips[ShipIndex]->SetCurrentFleet(NULL);
@@ -538,7 +546,12 @@ void UFlareFleet::Disband()
 	{
 		GetCurrentTradeRoute()->RemoveFleet(this);
 	}
-	GetCurrentSector()->DisbandFleet(this);
+
+	if (GetCurrentSector())
+	{
+		GetCurrentSector()->DisbandFleet(this);
+	}
+
 	FleetCompany->RemoveFleet(this);
 }
 
@@ -615,6 +628,7 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 	CurrentSector = Travel->GetTravelSector();
 	CurrentTravel = Travel;
 	InitShipList();
+
 	for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
 	{
 		UFlareSimulatedSpacecraft* FleetShip = FleetShips[ShipIndex];
@@ -632,6 +646,7 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 			}
 		}
 	}
+
 	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
 	{
 		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
@@ -699,7 +714,16 @@ void UFlareFleet::InitShipList()
 				continue;
 			}
 			Ship->SetCurrentFleet(this);
+
 			FleetShips.Add(Ship);
+			if (Ship->GetShipChildren().Num() > 0)
+			{
+				for (UFlareSimulatedSpacecraft* OwnedShips : Ship->GetShipChildren())
+				{
+					FleetShips.Add(OwnedShips);
+				}
+			}
+
 			if (!Ship->GetDescription()->IsDroneShip)
 			{
 				FleetCount++;
@@ -901,7 +925,7 @@ uint32 UFlareFleet::GetMilitaryShipCountBySize(EFlarePartSize::Type Size) const
 			continue;
 		}
 
-		if (FleetShips[ShipIndex]->GetDescription()->Size == Size && FleetShips[ShipIndex]->IsMilitary())
+		if (FleetShips[ShipIndex]->GetDescription()->Size == Size && FleetShips[ShipIndex]->IsMilitaryArmed())
 		{
 			Count++;
 		}
@@ -915,7 +939,7 @@ uint32 UFlareFleet::GetMaxShipCount()
 	return 20;
 }
 
-int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage) const
+int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage, bool FilterForMilitary) const
 {
 	int32 CombatPoints = 0;
 

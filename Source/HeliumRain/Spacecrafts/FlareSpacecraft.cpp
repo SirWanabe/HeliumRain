@@ -383,6 +383,13 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 	}
 }
 
+void AFlareSpacecraft::SetInternalDockedTo(AFlareSpacecraft* DockingTo)
+{
+	GetParent()->SetInternalDockedTo(DockingTo->GetParent());
+	SafeHide(false);
+	DockingTo->SetUndockedAllShips(false);
+}
+
 void AFlareSpacecraft::CarrierReleaseInternalDockShips(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Flarespacecraft_CarrierRelease);
@@ -394,7 +401,7 @@ void AFlareSpacecraft::CarrierReleaseInternalDockShips(float DeltaSeconds)
 		{
 			if (OwnedShips->IsInternalDockedTo(GetParent()) && !OwnedShips->IsReserve())
 			{
-				if (OwnedShips->GetGame()->GetActiveSector() && OwnedShips->GetGame()->GetActiveSector()->GetSimulatedSector() == OwnedShips->GetCurrentSector())
+				if (OwnedShips->GetGame()->GetActiveSector() && OwnedShips->GetGame()->GetActiveSector()->GetSimulatedSector() == GetParent()->GetCurrentSector())
 				{
 					if (OwnedShips->GetGame()->GetActiveSector()->LoadSpacecraft(OwnedShips, true))
 					{
@@ -1470,6 +1477,7 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	// Update local data
 	SetMeshBox = false;
 	LoadedAndReady = false;
+	SetUndockedAllShips(false);
 	Parent = ParentSpacecraft;
 	ResetCurrentTarget();
 
@@ -1763,9 +1771,16 @@ void AFlareSpacecraft::FinishAutoPilots()
 
 	if (GetDescription()->IsDroneShip)
 	{
-		if (GetParent()->GetShipMaster() && GetParent()->GetShipMaster()->GetActive() && !GetParent()->GetShipMaster()->GetActive()->GetWantUndockInternalShips())
+		if (GetParent()->GetShipMaster())
 		{
-			GetParent()->SetInternalDockedTo(GetParent()->GetShipMaster());
+			if(GetParent()->GetShipMaster()->GetActive())
+			{
+				SetInternalDockedTo(GetParent()->GetShipMaster()->GetActive());
+			}
+			else
+			{
+				GetParent()->SetInternalDockedTo(GetParent()->GetShipMaster());
+			}
 		}
 	}
 
