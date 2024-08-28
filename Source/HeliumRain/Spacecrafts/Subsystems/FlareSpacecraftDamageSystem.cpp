@@ -745,7 +745,7 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 			}
 
 			float InflictedDamageRatio = Component->ApplyDamage(Energy * Efficiency, DamageType, DamageSource);
-			if (Component->GetDamageRatio() == 0)
+			if (Component->IsBroken())
 			{
 				DestroyedSomething = true;
 			}
@@ -901,6 +901,7 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 				DamageSource->GetCurrentSector()->UpdateSectorBattleState(DamageSource->GetCompany());
 			}
 		}
+
 		if (MakeUncontrolableDestroyed)
 		{
 			// Player kill

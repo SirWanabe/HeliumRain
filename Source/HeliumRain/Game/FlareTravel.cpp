@@ -570,8 +570,8 @@ int64 UFlareTravel::ComputePhaseTravelDuration(UFlareWorld* World, FFlareCelesti
 
 	if (TravelFleet)
 	{
-		float EngineAccelerationPowerRatio = FMath::Max((float) 0.75f, 1.f - (0.01f * (TravelFleet->GetShipCount() - 1)));
-		return ((TravelDistance * 0.05) / (TravelFleet->GetFleetLowestEngineAccelerationPower() * EngineAccelerationPowerRatio)) / (UFlareGameTools::SECONDS_IN_DAY);
+		float EngineAccelerationPowerRatio = FMath::Max((float) 0.75f, 1.f - (0.005f * (TravelFleet->GetShipCount() - 1)));
+		return ((TravelDistance * 0.015) / (TravelFleet->GetFleetLowestEngineAccelerationPower() * EngineAccelerationPowerRatio)) / (UFlareGameTools::SECONDS_IN_DAY);
 
 	}
 	return (TRAVEL_DURATION_PER_PHASE_KM * TravelDistance) / UFlareGameTools::SECONDS_IN_DAY;

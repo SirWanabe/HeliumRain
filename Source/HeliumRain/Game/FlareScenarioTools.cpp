@@ -172,6 +172,7 @@ void UFlareScenarioTools::GenerateFighterScenario(bool RandomizeStationLocations
 	UnprotectedPlayerCompanyDescription->StartingMoney += DEFAULT_PLAYER_MONEY;
 	SetupWorld(RandomizeStationLocations, EconomyIndex);
 
+	GeneratePlayerStartingSectorKnowledge();
 	CreatePlayerShip(FirstLight, "ship-ghoul");
 	GeneratePlayerStartingResearch();
 }

@@ -350,6 +350,11 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 
 			SetupNewTarget();
 
+			if (!LeaderShip || LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
+			{
+				GetNewLeaderShip();
+			}
+
 			if (LeaderShip == Ship)
 			{
 				if (InitiatedCombat)
@@ -360,10 +365,6 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 						GetNewLeaderShip();
 					}
 				}		
-			}
-			else if (LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
-			{
-				GetNewLeaderShip();
 			}
 			else
 			{
