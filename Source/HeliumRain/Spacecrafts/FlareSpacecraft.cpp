@@ -1472,20 +1472,16 @@ bool AFlareSpacecraft::GetManualDockingProgress(AFlareSpacecraft*& OutStation, F
 	Ship interface
 ----------------------------------------------------*/
 
-void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
+void AFlareSpacecraft::SetParent(UFlareSimulatedSpacecraft* ParentSpacecraft)
 {
-	// Update local data
-	SetMeshBox = false;
-	LoadedAndReady = false;
-	SetUndockedAllShips(false);
 	Parent = ParentSpacecraft;
-	ResetCurrentTarget();
+
+	// Look for parent company
+	SetOwnerCompany(ParentSpacecraft->GetCompany());
 
 	if (!IsPresentationMode())
 	{
 		Airframe->SetSimulatePhysics(true);
-//		Airframe->SetSimulatePhysics(false);
-//		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Parent->SetActiveSpacecraft(this);
 	}
 
@@ -1494,6 +1490,17 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		Airframe->SetSimulatePhysics(false);
 		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
+}
+
+void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
+{
+	// Update local data
+	SetMeshBox = false;
+	LoadedAndReady = false;
+	SetUndockedAllShips(false);
+	SetParent(ParentSpacecraft);
+
+	ResetCurrentTarget();
 
 	/*FLOGV("AFlareSpacecraft::Load %s", *ParentSpacecraft->GetImmatriculation().ToString());*/
 
@@ -1521,83 +1528,11 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	}
 	WeaponsSystem->Initialize(this, &GetData());
 
-	// Look for parent company
-	SetOwnerCompany(ParentSpacecraft->GetCompany());
-
 	// Load dynamic components
 	UpdateDynamicComponents();
 
 	// Initialize components
-	TArray<UActorComponent*> InternalComponents = GetComponentsByClass(UFlareInternalComponent::StaticClass());
-	TArray<UActorComponent*> SpacecraftComponents = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
-
-	ActiveSpacecraftInternalComponents.Empty();
-	ActiveSpacecraftInternalComponents.Reserve(InternalComponents.Num());
-	for (int32 ComponentIndex = 0; ComponentIndex < InternalComponents.Num(); ComponentIndex++)
-	{
-		UFlareInternalComponent* InternalComponent = Cast<UFlareInternalComponent>(InternalComponents[ComponentIndex]);
-		if (InternalComponent)
-		{
-			ActiveSpacecraftInternalComponents.Add(InternalComponent);
-		}
-	}
-
-	ActiveSpacecraftComponents.Empty();
-	ActiveSpacecraftEngineComponents.Empty();
-	FFlareSpacecraftComponentDescription* RCSDescription = nullptr;
-	for (int32 ComponentIndex = 0; ComponentIndex < SpacecraftComponents.Num(); ComponentIndex++)
-	{
-		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(SpacecraftComponents[ComponentIndex]);
-		FFlareSpacecraftComponentSave* ComponentData = NULL;
-
-		// Find component the corresponding component data comparing the slot id
-		bool Found = false;
-		for (int32 i = 0; i < GetData().Components.Num(); i++)
-		{
-			if (Component->SlotIdentifier == GetData().Components[i].ShipSlotIdentifier)
-			{
-				ComponentData = &GetData().Components[i];
-				Found = true;
-				break;
-			}
-		}
-
-		// If no data, this is a cosmetic component and it don't need to be initialized
-		if (!Found)
-		{
-			continue;
-		}
-
-		UFlareSpacecraftComponent* ComponentEngine = Cast<UFlareEngine>(SpacecraftComponents[ComponentIndex]);
-
-		// Reload the component
-		ReloadPart(Component, ComponentData);
-
-		ActiveSpacecraftComponents.Add(Component);
-		if (ComponentEngine)
-		{
-			ActiveSpacecraftEngineComponents.Add(Component);
-		}
-
-		// Set RCS description
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
-		if (ComponentDescription->Type == EFlarePartType::RCS)
-		{
-			RCSDescription = ComponentDescription;
-		}
-
-		// Set orbital engine description
-		else if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
-		{
-			SetOrbitalEngineDescription(ComponentDescription);
-		}
-
-		// Find the cockpit
-		if (ComponentDescription->GeneralCharacteristics.LifeSupport)
-		{
-			ShipCockit = Component;
-		}
-	}
+	UpdateComponents();
 
 	// Initialize navigation system
 	if (!NavigationSystem)
@@ -2111,6 +2046,86 @@ void AFlareSpacecraft::SetRCSDescription(FFlareSpacecraftComponentDescription* D
 		{
 			float Mass = GetSpacecraftMass() / 100000;
 			NavigationSystem->SetAngularAccelerationRate(Description->EngineCharacteristics.AngularAccelerationRate / (60 * Mass));
+		}
+	}
+}
+
+void AFlareSpacecraft::UpdateComponents(bool UpdateCosmetics)
+{
+	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
+	TArray<UActorComponent*> InternalComponents = GetComponentsByClass(UFlareInternalComponent::StaticClass());
+	TArray<UActorComponent*> SpacecraftComponents = GetComponentsByClass(UFlareSpacecraftComponent::StaticClass());
+
+	ActiveSpacecraftInternalComponents.Empty();
+	ActiveSpacecraftInternalComponents.Reserve(InternalComponents.Num());
+	for (int32 ComponentIndex = 0; ComponentIndex < InternalComponents.Num(); ComponentIndex++)
+	{
+		UFlareInternalComponent* InternalComponent = Cast<UFlareInternalComponent>(InternalComponents[ComponentIndex]);
+		if (InternalComponent)
+		{
+			ActiveSpacecraftInternalComponents.Add(InternalComponent);
+		}
+	}
+
+	ActiveSpacecraftComponents.Empty();
+	ActiveSpacecraftEngineComponents.Empty();
+	RCSDescription = nullptr;
+	for (int32 ComponentIndex = 0; ComponentIndex < SpacecraftComponents.Num(); ComponentIndex++)
+	{
+		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(SpacecraftComponents[ComponentIndex]);
+		FFlareSpacecraftComponentSave* ComponentData = NULL;
+
+		// Find component the corresponding component data comparing the slot id
+		bool Found = false;
+		for (int32 i = 0; i < GetData().Components.Num(); i++)
+		{
+			if (Component->SlotIdentifier == GetData().Components[i].ShipSlotIdentifier)
+			{
+				ComponentData = &GetData().Components[i];
+				Found = true;
+				break;
+			}
+		}
+
+		// If no data, this is a cosmetic component and it don't need to be initialized
+		if (!Found)
+		{
+			if (UpdateCosmetics)
+			{
+				Component->SetOwnerCompany(Parent->GetCompany());
+				Component->UpdateCustomization();
+			}
+			continue;
+		}
+
+		// Reload the component
+		ReloadPart(Component, ComponentData);
+
+		ActiveSpacecraftComponents.Add(Component);
+
+		UFlareSpacecraftComponent* ComponentEngine = Cast<UFlareEngine>(SpacecraftComponents[ComponentIndex]);
+		if (ComponentEngine)
+		{
+			ActiveSpacecraftEngineComponents.Add(Component);
+		}
+
+		// Set RCS description
+		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+		if (ComponentDescription->Type == EFlarePartType::RCS)
+		{
+			RCSDescription = ComponentDescription;
+		}
+
+		// Set orbital engine description
+		else if (ComponentDescription->Type == EFlarePartType::OrbitalEngine)
+		{
+			SetOrbitalEngineDescription(ComponentDescription);
+		}
+
+		// Find the cockpit
+		if (ComponentDescription->GeneralCharacteristics.LifeSupport)
+		{
+			ShipCockit = Component;
 		}
 	}
 }

@@ -379,6 +379,8 @@ public:
 	/** Initialize this component and register the master ship object */
 	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr);
 
+	virtual void SetOwnerCompany(UFlareCompany* Company);
+
 	/** Save the ship component to a save file */
 	virtual FFlareSpacecraftComponentSave* Save();
 
@@ -522,7 +524,7 @@ protected:
 	AFlareSpacecraft*	                    Spacecraft;
 
 	UPROPERTY()
-	UFlareCompany*                          PlayerCompany;
+	UFlareCompany*                          OwnerCompany;
 
 	// Materials
 	UMaterialInstanceDynamic*               ComponentMaterial;

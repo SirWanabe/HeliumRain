@@ -256,9 +256,17 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 
 	// UI
 	SetIsEnabled(true);
+
 	if (CreatedNew)
 	{
 		CurrentSpacecraft->Load(Spacecraft);
+	}
+	else
+	{
+		CurrentSpacecraft->SetParent(Spacecraft);
+		CurrentSpacecraft->UpdateDynamicComponents();
+		CurrentSpacecraft->UpdateComponents(true);
+		CurrentSpacecraft->UpdateCustomization();
 	}
 }
 

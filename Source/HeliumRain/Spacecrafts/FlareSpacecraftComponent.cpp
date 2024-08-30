@@ -29,7 +29,7 @@ UFlareSpacecraftComponent::UFlareSpacecraftComponent(const class FObjectInitiali
 	: Super(PCIP)
 	, SpacecraftPawn(NULL)
 	, Spacecraft(NULL)
-	, PlayerCompany(NULL)
+	, OwnerCompany(NULL)
 	, ComponentMaterial(NULL)
 	, EffectMaterial(NULL)
 	, LightMaterial(NULL)
@@ -75,7 +75,7 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 {
 	// Main data
 	SpacecraftPawn = OwnerSpacecraftPawn;
-	PlayerCompany = Company;
+	SetOwnerCompany(Company);
 
 	Spacecraft = Cast<AFlareSpacecraft>(SpacecraftPawn);
 	if (Spacecraft)
@@ -118,6 +118,11 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 	SetupComponentMesh();
 	UpdateCustomization();
 	UpdateLight();
+}
+
+void UFlareSpacecraftComponent::SetOwnerCompany(UFlareCompany* Company)
+{
+	OwnerCompany = Company;
 }
 
 void UFlareSpacecraftComponent::TickForComponent(float DeltaTime)
@@ -382,9 +387,9 @@ void UFlareSpacecraftComponent::UpdateCustomization()
 	// Regular paint
 	if (ComponentMaterial)
 	{
-		if (PlayerCompany)
+		if (OwnerCompany)
 		{
-			PlayerCompany->CustomizeMaterial(ComponentMaterial);
+			OwnerCompany->CustomizeMaterial(ComponentMaterial);
 		}
 		else
 		{
@@ -413,7 +418,7 @@ void UFlareSpacecraftComponent::UpdateCustomization()
 	if (BillboardMaterial)
 	{		
 		// Player
-		if (PlayerCompany->IsPlayerCompany())
+		if (OwnerCompany->IsPlayerCompany())
 		{
 			BillboardMaterial->SetTextureParameterValue("Texture", PC->GetPlayerBanner());
 		}

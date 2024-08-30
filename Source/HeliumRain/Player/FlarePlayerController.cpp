@@ -2787,8 +2787,15 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 {
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 
+	if (!ShipPawn->GetParent()->GetCurrentFleet())
+	{
+		CloseWheelMenu(false);
+		return;
+	}
+
 	// Setup mouse menu
 	MouseMenu->ClearWidgets();
+
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Cancel", "Cancel"),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::CloseWheelMenu,false));
 
@@ -2896,20 +2903,23 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		}
 		else
 		{
-			if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+			if (!GetGame()->IsSkirmish())
 			{
-				MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
-				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
-			}
-			if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
-			{
-				FText RepairText = ShipPawn->GetParent()->GetCurrentFleet()->GetRepairText();
-				FText RefillText = ShipPawn->GetParent()->GetCurrentFleet()->GetRefillText();
-				FText Text = FText::Format(LOCTEXT("RepairFleetFormat", "{0}\n{1}"),
-					RepairText, RefillText);
+				if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+				{
+					MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
+				}
+				if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
+				{
+					FText RepairText = ShipPawn->GetParent()->GetCurrentFleet()->GetRepairText();
+					FText RefillText = ShipPawn->GetParent()->GetCurrentFleet()->GetRefillText();
+					FText Text = FText::Format(LOCTEXT("RepairFleetFormat", "{0}\n{1}"),
+						RepairText, RefillText);
 
-				MouseMenu->AddWidget("Repair", Text,
-				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+					MouseMenu->AddWidget("Repair", Text,
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+				}
 			}
 		}
 	}
@@ -3040,21 +3050,24 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyCivilians),
 		CurrentTacticsForGroup == EFlareCombatTactic::DestroyCivilians);
 
-	if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+	if (!GetGame()->IsSkirmish())
 	{
-		MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
-			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
-	}
+		if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+		{
+			MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
+		}
 
-	if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
-	{
-		FText RepairText = ShipPawn->GetParent()->GetCurrentFleet()->GetRepairText();
-		FText RefillText = ShipPawn->GetParent()->GetCurrentFleet()->GetRefillText();
-		FText Text = FText::Format(LOCTEXT("RepairFleetFormat", "{0}\n{1}"),
-			RepairText, RefillText);
+		if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
+		{
+			FText RepairText = ShipPawn->GetParent()->GetCurrentFleet()->GetRepairText();
+			FText RefillText = ShipPawn->GetParent()->GetCurrentFleet()->GetRefillText();
+			FText Text = FText::Format(LOCTEXT("RepairFleetFormat", "{0}\n{1}"),
+				RepairText, RefillText);
 
-		MouseMenu->AddWidget("Repair", Text,
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+			MouseMenu->AddWidget("Repair", Text,
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+		}
 	}
 
 	int32 NewSelectedWidget = MouseMenu->GetSelectedWidget();

@@ -37,6 +37,7 @@ public:
 	/** Whether to use the external camera or not */
 	virtual void SetExternalCamera(bool External);
 
+	void UpdateCockpitScale();
 
 	/*----------------------------------------------------
 		Internal
@@ -66,7 +67,6 @@ protected:
 
 	/** Update the power level */
 	void UpdatePower(float DeltaSeconds);
-
 
 protected:
 

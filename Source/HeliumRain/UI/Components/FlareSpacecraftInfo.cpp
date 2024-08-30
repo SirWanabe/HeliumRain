@@ -1563,6 +1563,7 @@ EVisibility SFlareSpacecraftInfo::GetBuildVisibility() const
 		}
 		else
 		{
+			UnlicencedIcon->SetVisibility(EVisibility::Collapsed);
 			return EVisibility::Collapsed;
 		}
 	}

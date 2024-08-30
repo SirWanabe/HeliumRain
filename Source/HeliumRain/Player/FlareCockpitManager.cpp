@@ -213,13 +213,7 @@ void AFlareCockpitManager::Tick(float DeltaSeconds)
 			}
 		}
 
-		// Update scale to keep constant scale at different FoVs
-		float Scale = FMath::Tan(FMath::DegreesToRadians(PC->GetCurrentFOV() / 2.f)) / FMath::Tan(FMath::DegreesToRadians(PC->GetMinFOV() / 2.f));
-		CockpitMesh->SetRelativeScale3D(FVector(1.0, LastCockpitScale, LastCockpitScale));
-		if (!FMath::IsNaN(Scale))
-		{
-			LastCockpitScale = Scale;
-		}
+		UpdateCockpitScale();
 	}
 }
 
@@ -443,6 +437,18 @@ void AFlareCockpitManager::UpdatePower(float DeltaSeconds)
 	GetCurrentFrameMaterial()->SetVectorParameterValue( "IndicatorColorBorders", HealthColor);
 }
 
+void AFlareCockpitManager::UpdateCockpitScale()
+{
+	// Update scale to keep constant scale at different FoVs
+	float Scale = FMath::Tan(FMath::DegreesToRadians(PC->GetCurrentFOV() / 2.f)) / FMath::Tan(FMath::DegreesToRadians(PC->GetMinFOV() / 2.f));
+
+	if (!FMath::IsNaN(Scale))
+	{
+		LastCockpitScale = Scale;
+	}
+
+	CockpitMesh->SetRelativeScale3D(FVector(1.0, LastCockpitScale, LastCockpitScale));
+}
 
 /*----------------------------------------------------
 	Getters

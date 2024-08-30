@@ -197,55 +197,59 @@ void UFlareSpacecraftStateManager::Tick(float DeltaSeconds)
 		Spacecraft->GetNavigationSystem()->AbortAllCommands();
 	}
 
-	// Mouse control
-	if (Spacecraft->IsFlownByPlayer() && PC && !PC->GetNavHUD()->IsWheelMenuOpen() && !PC->GetMenuManager()->IsUIOpen())
+	if (Spacecraft->IsFlownByPlayer())
 	{
-		// Compensation curve
-		float DistanceToCenter = FMath::Sqrt(FMath::Square(PlayerAim.X) + FMath::Square(PlayerAim.Y));
-		float CompensatedDistance = FMath::Pow(FMath::Clamp((DistanceToCenter - AngularInputDeadRatio), 0.f, 1.f), MouseSensitivityPower);
-		float Angle = FMath::Atan2(PlayerAim.Y, PlayerAim.X);
+		// Mouse control
+		if (PC && !PC->GetNavHUD()->IsWheelMenuOpen() && !PC->GetMenuManager()->IsUIOpen())
+		{
+			// Compensation curve
+			float DistanceToCenter = FMath::Sqrt(FMath::Square(PlayerAim.X) + FMath::Square(PlayerAim.Y));
+			float CompensatedDistance = FMath::Pow(FMath::Clamp((DistanceToCenter - AngularInputDeadRatio), 0.f, 1.f), MouseSensitivityPower);
+			float Angle = FMath::Atan2(PlayerAim.Y, PlayerAim.X);
 
-		// Pass data
-		if (Spacecraft->GetWeaponsSystem()->IsInFireDirector())
-		{
-			FireDirectorAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
-			FireDirectorAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
-			PlayerManualAngularVelocity.Z = 0;
-			PlayerManualAngularVelocity.Y = 0;
-		}
-		else if (Spacecraft->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET)
-		{
-			FireDirectorAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
-			FireDirectorAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
-			PlayerManualAngularVelocity.Z = 0;
-			PlayerManualAngularVelocity.Y = 0;
+			// Pass data
+			if (Spacecraft->GetWeaponsSystem()->IsInFireDirector())
+			{
+				FireDirectorAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+				FireDirectorAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+				PlayerManualAngularVelocity.Z = 0;
+				PlayerManualAngularVelocity.Y = 0;
+			}
+			else if (Spacecraft->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET)
+			{
+				FireDirectorAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+				FireDirectorAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * 2 * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+				PlayerManualAngularVelocity.Z = 0;
+				PlayerManualAngularVelocity.Y = 0;
+			}
+			else
+			{
+				FireDirectorAngularVelocity.Z = 0;
+				FireDirectorAngularVelocity.Y = 0;
+				PlayerManualAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+				PlayerManualAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
+			}
 		}
 		else
 		{
+			PlayerManualAngularVelocity.Z = 0;
+			PlayerManualAngularVelocity.Y = 0;
 			FireDirectorAngularVelocity.Z = 0;
 			FireDirectorAngularVelocity.Y = 0;
-			PlayerManualAngularVelocity.Z = CompensatedDistance * FMath::Cos(Angle) * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
-			PlayerManualAngularVelocity.Y = CompensatedDistance * FMath::Sin(Angle) * Spacecraft->GetNavigationSystem()->GetAngularMaxVelocity();
 		}
-	}
-	else
-	{
-		PlayerManualAngularVelocity.Z = 0;
-		PlayerManualAngularVelocity.Y = 0;
-		FireDirectorAngularVelocity.Z = 0;
-		FireDirectorAngularVelocity.Y = 0;
-	}
 
-	// Update combat zoom
-	if (ExternalCamera || !Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
-	{
-		CombatZoomEnabled = false;
-	}
-	CombatZoomTimer += (CombatZoomEnabled ? +1 : -1) * DeltaSeconds;
-	CombatZoomTimer = FMath::Clamp(CombatZoomTimer, 0.0f, CombatZoomDuration);
+		// Update combat zoom
+		if (ExternalCamera || !Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
+		{
+			CombatZoomEnabled = false;
+		}
 
-	// Update Camera
-	UpdateCamera(DeltaSeconds);
+		CombatZoomTimer += (CombatZoomEnabled ? +1 : -1) * DeltaSeconds;
+		CombatZoomTimer = FMath::Clamp(CombatZoomTimer, 0.0f, CombatZoomDuration);
+
+		// Update Camera
+		UpdateCamera(DeltaSeconds);
+	}
 }
 
 void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)

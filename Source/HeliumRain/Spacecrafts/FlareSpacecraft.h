@@ -127,6 +127,7 @@ public:
 	----------------------------------------------------*/
 
 	virtual void Load(UFlareSimulatedSpacecraft* Parent);
+	void SetParent(UFlareSimulatedSpacecraft* Parent);
 
 	virtual void Save();
 
@@ -196,6 +197,8 @@ public:
 
 	/** Set the description to use for all RCS */
 	virtual void SetRCSDescription(FFlareSpacecraftComponentDescription* Description);
+
+	virtual void UpdateComponents(bool UpdateCosmetics = false);
 
 	virtual void UpdateCustomization() override;
 

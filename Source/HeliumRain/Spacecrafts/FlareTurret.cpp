@@ -101,7 +101,7 @@ void UFlareTurret::SetupComponentMesh()
 			TurretComponent->AttachToComponent(this, AttachRules);
 			TurretComponent->SetStaticMesh(ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh);
 			TurretComponent->SetMaterial(0, ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh->GetMaterial(0));
-			TurretComponent->Initialize(NULL, PlayerCompany, Spacecraft, false,Spacecraft);
+			TurretComponent->Initialize(NULL, OwnerCompany, Spacecraft, false,Spacecraft);
 			Spacecraft->AddOwnedComponent(TurretComponent);
 		}
 	}
