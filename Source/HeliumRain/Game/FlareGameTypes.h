@@ -236,7 +236,7 @@ struct FFlareCompanyLicensesSave
 
 	/** Used for giving starting licenses upon game load if neccessary */
 	UPROPERTY(EditAnywhere, Category = Save)
-	bool HasRecievedStartingLicenses;
+	bool HasRecievedStartingLicenses = false;
 };
 
 /** Company AI save data */

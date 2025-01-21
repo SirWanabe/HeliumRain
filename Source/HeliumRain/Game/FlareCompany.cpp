@@ -177,8 +177,8 @@ void UFlareCompany::PostLoad()
 
 	if (!CompanyData.Licenses.HasRecievedStartingLicenses)
 	{
-		CompanyData.Licenses.HasRecievedStartingLicenses = true;
 		GiveAllStationSectorLicenses();
+		CompanyData.Licenses.HasRecievedStartingLicenses = true;
 	}
 
 	// Load all trade routes

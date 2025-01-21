@@ -821,7 +821,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		Company->GiveAllStationSectorLicenses();
 		Company->GetAI()->GetData()->CalculatedDefaultBudget = true;
 	}
-
 }
 
 void UFlareScenarioTools::SetupAsteroids()
