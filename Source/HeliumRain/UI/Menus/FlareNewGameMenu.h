@@ -51,6 +51,9 @@ protected:
 
 	/** Sanity check */
 	bool IsLaunchDisabled() const;
+	bool IsTutorialContractDisabled() const;
+	bool IsRandomStationPositionsDisabled() const;
+	
 
 	/** Start the game */
 	void OnLaunch();

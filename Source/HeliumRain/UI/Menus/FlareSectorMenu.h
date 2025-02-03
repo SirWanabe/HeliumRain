@@ -40,10 +40,15 @@ public:
 	void Exit();
 
 	/** Update the ship lists */
-	void UpdateShipLists();//(UFlareFleet* TargetOwnedFleet=nullptr, UFlareFleet* TargetOtherFleet = nullptr);
+	void UpdateShipLists();
 
 	/** Update the fleet list */
 	void UpdateFleetList(); 
+
+	inline UFlareSimulatedSpacecraft* GetSelectedOwnedSpacecraft() const
+	{
+		return SelectedOwnedSpacecraft;
+	}
 
 protected:
 
@@ -122,7 +127,6 @@ protected:
 
 	/** Visibility callback to hide sector controls during skirmish */
 	EVisibility GetSectorControlsVisibility() const;
-	
 
 	/*----------------------------------------------------
 		Action callbacks
@@ -152,6 +156,8 @@ protected:
 	/** Station selected */
 	void OnBuildStationSelected(FFlareSpacecraftDescription* NewStationDescription);
 
+	/** A player owned active spacecraft has been selected*/
+	void OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
 
 protected:
 
@@ -178,4 +184,5 @@ protected:
 	// Station data
 	FFlareSpacecraftDescription*               StationDescription;
 
+	UFlareSimulatedSpacecraft*				   SelectedOwnedSpacecraft;
 };

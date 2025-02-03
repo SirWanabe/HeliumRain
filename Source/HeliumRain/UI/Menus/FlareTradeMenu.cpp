@@ -1,4 +1,3 @@
-
 #include "FlareTradeMenu.h"
 
 #include "../../Flare.h"
@@ -8,12 +7,14 @@
 #include "../../Game/FlareGame.h"
 #include "../../Game/FlareSectorHelper.h"
 #include "../../Game/FlareGameTools.h"
+
 #include "../../Player/FlareHUD.h"
+#include "../../Player/FlareMenuManager.h"
+#include "../../Player/FlarePlayerController.h"
 
 #include "../../Economy/FlareCargoBay.h"
 
-#include "../../Player/FlareMenuManager.h"
-#include "../../Player/FlarePlayerController.h"
+#include "../../UI/Menus/FlareSectorMenu.h"
 
 #include "../Components/FlareRoundButton.h"
 #include "../Components/FlareCargoInfo.h"
@@ -498,6 +499,24 @@ void SFlareTradeMenu::Enter(UFlareSimulatedSector* ParentSector, UFlareSimulated
 
 	// Not first person - list spacecrafts
 	UpdateLeftShips();
+
+	if (!TargetLeftSpacecraft)
+	{
+		if (LeftShipList->GetItemCount() == 1)
+		{
+			//only one valid entry in the source field, autoselect it for convenience.
+			OnSpacecraftSelectedLeft(LeftShipList->GetObjectList()[0]);
+		}
+		else if (MenuManager->GetPC())// && MenuManager->GetCurrentMenu() == EFlareMenu::MENU_Sector)
+		{
+			// a ship is selected in the sector menu by the player, so it assumes the role of the default "left" option"
+			if (MenuManager->GetSectorMenu()->GetSelectedOwnedSpacecraft() && !MenuManager->GetSectorMenu()->GetSelectedOwnedSpacecraft()->IsStation())
+			{
+				TargetLeftSpacecraft = MenuManager->GetSectorMenu()->GetSelectedOwnedSpacecraft();
+
+			}
+		}
+	}
 
 // Add stations (right side)
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ParentSector->GetSectorStations().Num(); SpacecraftIndex++)

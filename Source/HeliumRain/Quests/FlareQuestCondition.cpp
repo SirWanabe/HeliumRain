@@ -2487,7 +2487,6 @@ void UFlareQuestConditionMaxArmyCombatPointsInSector::Load(UFlareQuest* ParentQu
 bool UFlareQuestConditionMaxArmyCombatPointsInSector::IsCompleted()
 {
 	int32 armyPoints = SectorHelper::GetCompanyArmyCombatPoints(TargetSector, TargetCompany, true);
-
 	return armyPoints <= TargetArmyPoints;
 }
 

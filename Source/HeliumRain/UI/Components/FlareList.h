@@ -85,6 +85,12 @@ public:
 		return ObjectList.Num();
 	}
 
+	/** Get the object list */
+	TArray< TSharedPtr<FInterfaceContainer> > GetObjectList() const
+	{
+		return ObjectList;
+	}
+
 protected:
 
 	/*----------------------------------------------------

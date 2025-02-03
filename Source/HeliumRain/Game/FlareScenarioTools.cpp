@@ -286,14 +286,17 @@ void UFlareScenarioTools::GeneratePlayerStartingResearch()
 void UFlareScenarioTools::GeneratePlayerStartingSectorKnowledge()
 {
 	// Setup player sector knowledge
-	PlayerCompany->DiscoverSector(TheDepths);
-	PlayerCompany->DiscoverSector(BlueHeart);
-	PlayerCompany->DiscoverSector(TheSpire);
-	PlayerCompany->DiscoverSector(Outpost);
-	PlayerCompany->DiscoverSector(MinersHome);
-	PlayerCompany->DiscoverSector(NightsHome);
-	PlayerCompany->DiscoverSector(TheFarm);
-	PlayerCompany->DiscoverSector(Lighthouse);
+	if (!PlayerData->QuestData.PlayTutorial)
+	{
+		PlayerCompany->DiscoverSector(TheDepths);
+		PlayerCompany->DiscoverSector(BlueHeart);
+		PlayerCompany->DiscoverSector(TheSpire);
+		PlayerCompany->DiscoverSector(Outpost);
+		PlayerCompany->DiscoverSector(MinersHome);
+		PlayerCompany->DiscoverSector(NightsHome);
+		PlayerCompany->DiscoverSector(TheFarm);
+		PlayerCompany->DiscoverSector(Lighthouse);
+	}
 }
 
 UFlareSimulatedSpacecraft* UFlareScenarioTools::CreateRecoveryPlayerShip()
@@ -310,7 +313,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	// Setup common stuff
 	SetupAsteroids();
 
-	if (PlayerData->QuestData.PlayStory == 0)
+	if (PlayerData->QuestData.PlayStory == 0 && !PlayerData->QuestData.PlayTutorial)
 	{
 		PlayerCompany->DiscoverSector(Pendulum);
 	}

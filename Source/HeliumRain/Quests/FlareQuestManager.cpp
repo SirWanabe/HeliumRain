@@ -242,7 +242,7 @@ void UFlareQuestManager::AcceptQuest(UFlareQuest* Quest)
 {
 	FLOGV("Accept quest %s", *Quest->GetIdentifier().ToString());
 
-	Quest->Accept();
+	Quest->Accept(Game);
 
 	if(Quest->GetQuestCategory() != EFlareQuestCategory::TUTORIAL)
 	{
@@ -395,6 +395,11 @@ void UFlareQuestManager::OnShipDocked(UFlareSimulatedSpacecraft* Station, UFlare
 void UFlareQuestManager::OnWarStateChanged(UFlareCompany* Company1, UFlareCompany* Company2)
 {
 	OnCallbackEvent(EFlareQuestCallback::WAR_STATE_CHANGED);
+}
+
+void UFlareQuestManager::OnPlayerBattleStateChanged()
+{
+	OnCallbackEvent(EFlareQuestCallback::PLAYER_BATTLESTATE_CHANGED);
 }
 
 void UFlareQuestManager::OnSpacecraftDestroyed(UFlareSimulatedSpacecraft* Spacecraft, bool Uncontrollable, DamageCause Cause)
@@ -560,6 +565,7 @@ void UFlareQuestManager::OnQuestSuccess(UFlareQuest* Quest)
 	}
 
 	OnQuestStatusChanged(Quest);
+	Quest->QuestSuccess(GetGame());
 }
 
 void UFlareQuestManager::OnQuestFail(UFlareQuest* Quest, bool Notify)
@@ -588,6 +594,7 @@ void UFlareQuestManager::OnQuestFail(UFlareQuest* Quest, bool Notify)
 		AutoSelectQuest();
 	}
 	OnQuestStatusChanged(Quest);
+	Quest->QuestFailed(GetGame());
 }
 
 void UFlareQuestManager::OnQuestAvailable(UFlareQuest* Quest)

@@ -188,7 +188,7 @@ public:
 	bool IsTyping() const;
 
 	/** Show a notification explaining if we succeeded in docking request */
-	void NotifyDockingResult(bool Success, UFlareSimulatedSpacecraft* Target);
+	void NotifyDockingResult(bool Success, AFlareSpacecraft* DockingShip, UFlareSimulatedSpacecraft* Target);
 
 	/** Notify when docking has actually happened */
 	void NotifyDockingComplete(AFlareSpacecraft* DockStation, bool TellUser);

@@ -332,7 +332,7 @@ void UFlareQuest::MakeAvailable()
 	}
 }
 
-void UFlareQuest::Accept()
+void UFlareQuest::Accept(AFlareGame* Game)
 {
 	Accepted = true;
 	UpdateState();
@@ -469,6 +469,14 @@ bool UFlareQuest::HasAutoAccept()
 bool UFlareQuest::IsActive()
 {
 	return QuestStatus == EFlareQuestStatus::PENDING || QuestStatus == EFlareQuestStatus::AVAILABLE || QuestStatus == EFlareQuestStatus::ONGOING;
+}
+
+void UFlareQuest::QuestSuccess(AFlareGame* Game)
+{
+}
+
+void UFlareQuest::QuestFailed(AFlareGame* Game)
+{
 }
 
 UFlareSimulatedSector* UFlareQuest::FindSector(FName SectorIdentifier)

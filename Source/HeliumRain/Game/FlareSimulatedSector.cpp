@@ -1522,6 +1522,14 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 		LastSectorBattleStates.Add(Company, BattleState);
 	}
 
+	// Signal Player warstate changed
+	if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == this && Company == Game->GetPC()->GetCompany())
+	{
+		if (Game->GetQuestManager())
+		{
+			Game->GetQuestManager()->OnPlayerBattleStateChanged();
+		}
+	}
 	return BattleState;
 }
 

@@ -391,7 +391,7 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 		}
 
 		// Check friendlyness
-		if (Company->GetWarState(PlayerCompany) != EFlareHostility::Hostile)
+		if (Company->GetWarState(PlayerCompany) != EFlareHostility::Hostile	)
 		{
 			UFlareQuestGenerated* Quest = NULL;
 			// Generate a VIP quest
@@ -716,6 +716,60 @@ bool UFlareQuestGenerated::Load(UFlareQuestGenerator* Parent, const FFlareBundle
 	InitData = Data;
 
 	return true;
+}
+
+void UFlareQuestGenerated::AcceptedWarContract(AFlareGame* Game, bool CheckQuestSector, bool MultipleHostiles)
+{
+	if (Game)
+	{
+		UFlareSimulatedSector* Sector = nullptr;
+		if (CheckQuestSector)
+		{
+			Sector = Game->GetGameWorld()->FindSector(InitData.GetName("sector"));
+		}
+		else if (Game->GetActiveSector())
+		{
+			Sector = Game->GetActiveSector()->GetSimulatedSector();
+		}
+
+		if (Sector != nullptr && Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() == Sector)
+		{
+			UFlareCompany* PlayerCompany = Game->GetPC()->GetCompany();
+			UFlareCompany* FriendlyCompany = Game->GetGameWorld()->FindCompany(InitData.GetName("friendly-company"));
+			UFlareCompany* HostileCompany = nullptr;
+			if (!MultipleHostiles)
+			{
+				HostileCompany = Game->GetGameWorld()->FindCompany(InitData.GetName("hostile-company"));
+				if (HostileCompany)
+				{
+					Sector->UpdateSectorBattleState(HostileCompany);
+				}
+			}
+			else
+			{
+				TArray<UFlareCompany*> HostileCompanies;
+				TArray<FName> HostileCompanyNames = InitData.GetNameArray("hostile-companies");
+				for (FName HostileCompanyName : HostileCompanyNames)
+				{
+					UFlareCompany* HostileCompany = Game->GetGameWorld()->FindCompany(HostileCompanyName);
+					if (HostileCompany)
+					{
+						Sector->UpdateSectorBattleState(HostileCompany);
+					}
+				}
+			}
+
+			if (PlayerCompany)
+			{
+				Sector->UpdateSectorBattleState(PlayerCompany);
+			}
+
+			if (FriendlyCompany)
+			{
+				Sector->UpdateSectorBattleState(FriendlyCompany);
+			}
+		}
+	}
 }
 
 void UFlareQuestGenerated::CreateGenericReward(FFlareBundle& Data, int64 QuestValue, UFlareCompany* Client)
@@ -1784,6 +1838,21 @@ UFlareQuestGeneratedStationDefense::UFlareQuestGeneratedStationDefense(const FOb
 {
 }
 
+void UFlareQuestGeneratedStationDefense::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game,true,false);
+}
+
+void UFlareQuestGeneratedStationDefense::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
+
+void UFlareQuestGeneratedStationDefense::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
 
 bool UFlareQuestGeneratedStationDefense::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
 {
@@ -1905,6 +1974,22 @@ bool UFlareQuestGeneratedStationDefense::Load(UFlareQuestGenerator* Parent, cons
 UFlareQuestGeneratedJoinAttack::UFlareQuestGeneratedJoinAttack(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+}
+
+void UFlareQuestGeneratedJoinAttack::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game, true,true);
+}
+
+void UFlareQuestGeneratedJoinAttack::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, true);
+}
+
+void UFlareQuestGeneratedJoinAttack::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, true);
 }
 
 bool UFlareQuestGeneratedJoinAttack::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
@@ -2065,6 +2150,22 @@ UFlareQuestGeneratedSectorDefense::UFlareQuestGeneratedSectorDefense(const FObje
 {
 }
 
+void UFlareQuestGeneratedSectorDefense::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game,true,false);
+}
+
+void UFlareQuestGeneratedSectorDefense::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
+
+void UFlareQuestGeneratedSectorDefense::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
+
 bool UFlareQuestGeneratedSectorDefense::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
 {
 	UFlareQuestGenerated::Load(Parent, Data);
@@ -2205,6 +2306,21 @@ UFlareQuestGeneratedCargoHunt::UFlareQuestGeneratedCargoHunt(const FObjectInitia
 {
 }
 
+void UFlareQuestGeneratedCargoHunt::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game, false,false);
+}
+
+void UFlareQuestGeneratedCargoHunt::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedCargoHunt::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
 
 bool UFlareQuestGeneratedCargoHunt::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
 {
@@ -2270,6 +2386,22 @@ bool UFlareQuestGeneratedCargoHunt::Load(UFlareQuestGenerator* Parent, const FFl
 UFlareQuestGeneratedMilitaryHunt::UFlareQuestGeneratedMilitaryHunt(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+}
+
+void UFlareQuestGeneratedMilitaryHunt::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game,false,false);
+}
+
+void UFlareQuestGeneratedMilitaryHunt::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedMilitaryHunt::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
 }
 
 bool UFlareQuestGeneratedMilitaryHunt::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
@@ -2402,6 +2534,22 @@ UFlareQuestGenerated* UFlareQuestGeneratedStationDefense2::Create(UFlareQuestGen
 	Quest->Load(Parent, Data);
 
 	return Quest;
+}
+
+void UFlareQuestGeneratedStationDefense2::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game,true,false);
+}
+
+void UFlareQuestGeneratedStationDefense2::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
+
+void UFlareQuestGeneratedStationDefense2::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
 }
 
 bool UFlareQuestGeneratedStationDefense2::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
@@ -2557,8 +2705,6 @@ UFlareQuestGenerated* UFlareQuestGeneratedJoinAttack2::Create(UFlareQuestGenerat
 		HostileCompanies.Add(HostileCompany->GetIdentifier());
 	}
 
-
-
 	FFlareBundle Data;
 	Parent->GenerateIdentifer(UFlareQuestGeneratedJoinAttack2::GetClass(), Data);
 	Data.PutName("sector", Target.Sector->GetIdentifier());
@@ -2572,6 +2718,22 @@ UFlareQuestGenerated* UFlareQuestGeneratedJoinAttack2::Create(UFlareQuestGenerat
 	Quest->Load(Parent, Data);
 
 	return Quest;
+}
+
+void UFlareQuestGeneratedJoinAttack2::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game, true,true);
+}
+
+void UFlareQuestGeneratedJoinAttack2::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, true);
+}
+
+void UFlareQuestGeneratedJoinAttack2::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, true);
 }
 
 bool UFlareQuestGeneratedJoinAttack2::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
@@ -2760,6 +2922,22 @@ UFlareQuestGenerated* UFlareQuestGeneratedSectorDefense2::Create(UFlareQuestGene
 	Quest->Load(Parent, Data);
 
 	return Quest;
+}
+
+void UFlareQuestGeneratedSectorDefense2::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game,true,false);
+}
+
+void UFlareQuestGeneratedSectorDefense2::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
+}
+
+void UFlareQuestGeneratedSectorDefense2::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, true, false);
 }
 
 bool UFlareQuestGeneratedSectorDefense2::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
@@ -2988,6 +3166,22 @@ UFlareQuestGenerated* UFlareQuestGeneratedCargoHunt2::Create(UFlareQuestGenerato
 	return Quest;
 }
 
+void UFlareQuestGeneratedCargoHunt2::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedCargoHunt2::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedCargoHunt2::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
+
 bool UFlareQuestGeneratedCargoHunt2::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)
 {
 	UFlareQuestGenerated::Load(Parent, Data);
@@ -3118,6 +3312,22 @@ UFlareQuestGenerated* UFlareQuestGeneratedMilitaryHunt2::Create(UFlareQuestGener
 	Quest->Load(Parent, Data);
 
 	return Quest;
+}
+
+void UFlareQuestGeneratedMilitaryHunt2::Accept(AFlareGame* Game)
+{
+	UFlareQuestGenerated::Accept(Game);
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedMilitaryHunt2::QuestSuccess(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
+}
+
+void UFlareQuestGeneratedMilitaryHunt2::QuestFailed(AFlareGame* Game)
+{
+	AcceptedWarContract(Game, false, false);
 }
 
 bool UFlareQuestGeneratedMilitaryHunt2::Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data)

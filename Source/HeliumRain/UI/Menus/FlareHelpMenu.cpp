@@ -308,8 +308,10 @@ In any case you will need to make money. The simplest method to make money is tr
 											.WrapTextAt(TextWrappingBig)
 											.Text(LOCTEXT("HowToPlayStationsMain", "\
 The most lucrative and safe way to make money is to build stations. Stations are very expensive but can ensure continued and secure revenues. Be careful, your neighbors can be friendly as long as you are small and peaceful, but being more aggressive or ambitious can lead to your fall.\n\n\
-	\u2022Stations and ships are built from resources.Resources are gathered from mines or pumps or produced in other stations from primary resources.\n\
+	\u2022Stations and ships are built from resources. Resources are gathered from mines or pumps or produced in other stations from primary resources.\n\
 	\u2022In the early game, other already existing companies will own stations to allow the economy to work.\n\
+	\u2022Locals will not allow new stations to be built or upgraded in their sector unless a company has paid for an station building license\n\
+	\u2022Station licensing costs can change based upon a variety of factors such as sector population and how many companies either know about the sector or already have their own licenses\n\
 	\u2022During the game, you will build or capture stations / mines / pumps to produce and sell resources and ships yourself.\n\
 	\u2022In end game, you can become partially or totally autonomous for resources and ships production."))
 										]

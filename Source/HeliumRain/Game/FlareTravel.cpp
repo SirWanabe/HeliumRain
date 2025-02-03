@@ -99,10 +99,8 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	Fleet->SetCurrentTravel(this);
 	GenerateTravelDuration();
 
-
 	FFlareSectorOrbitParameters OrbitParameters;
 	OrbitParameters = *OriginSector->GetOrbitParameters();
-
 
 	SectorDescription.Name = LOCTEXT("TravelSectorName", "Traveling ...");
 	SectorDescription.Description = LOCTEXT("TravelSectorDescription", "Travel sector");
@@ -127,6 +125,12 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	TravelSector->AddFleet(Fleet);
 
 	NeedNotification = true;
+
+	if (Fleet->GetFleetCompany() == Game->GetPC()->GetCompany())
+	{
+		Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("travel-begin").PutName("sector", DestinationSector->GetIdentifier()).PutName("fleet", Fleet->GetIdentifier()));
+	}
+
 	return true;
 }
 

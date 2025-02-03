@@ -402,13 +402,14 @@ bool SFlareTechnologyMenu::IsUnlockDisabled() const
 {
 	if (SelectedTechnology)
 	{
-		FText Unused;
-		return !MenuManager->GetPC()->GetCompany()->IsTechnologyAvailable(SelectedTechnology->Identifier, Unused);
+		UFlareQuest* Target = MenuManager->GetGame()->GetQuestManager()->FindQuest("tutorial-contracts");
+		if (Target && MenuManager->GetGame()->GetQuestManager()->IsQuestSuccessfull(Target))
+		{
+			FText Unused;
+			return !MenuManager->GetPC()->GetCompany()->IsTechnologyAvailable(SelectedTechnology->Identifier, Unused);
+		}
 	}
-	else
-	{
-		return true;
-	}
+	return true;
 }
 
 FText SFlareTechnologyMenu::GetCompanyTechnologyInfo() const
@@ -488,7 +489,7 @@ FText SFlareTechnologyMenu::GetTechnologyUnlockHintText() const
 	}
 	else
 	{
-		return LOCTEXT("UnlockTechInfo", "Research this technology by spending some of your available budget");
+		return LOCTEXT("UnlockTechInfo", "Research this technology by spending some of your available research budget");
 	}
 }
 

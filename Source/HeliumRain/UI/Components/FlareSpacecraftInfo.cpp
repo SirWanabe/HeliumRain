@@ -15,6 +15,7 @@
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
 
+#include "../../UI/Menus/FlareSectorMenu.h"
 #include "../../UI/Menus/FlareTradeMenu.h"
 
 #include "FlareCargoInfo.h"
@@ -865,7 +866,8 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 				}
 				else if (!TargetSpacecraft->GetCompany()->IsTechnologyUnlockedStation(TargetSpacecraft->GetDescription()))
 				{
-					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "This station is without technological knowledge");
+//					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "This station is without technological knowledge");
+					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "Station operating without required technology");
 				}
 
 				AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "{0} and operates {1}x slower"), EfficiencyMessage,FText::AsNumber(DurationMalus)),
@@ -1188,9 +1190,18 @@ void SFlareSpacecraftInfo::OnDockAt()
 {
 	if (PC && TargetSpacecraft && TargetSpacecraft->IsActive() && TargetSpacecraft->GetActive()->GetDockingSystem()->GetDockCount() > 0)
 	{
-		bool DockingConfirmed = PC->GetShipPawn()->GetNavigationSystem()->DockAt(TargetSpacecraft->GetActive());
-		PC->NotifyDockingResult(DockingConfirmed, TargetSpacecraft);
-		if (DockingConfirmed)
+		AFlareSpacecraft* DockingShip = PC->GetShipPawn();
+		if(PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Sector)
+		{
+			if (PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft() && !PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->IsStation() && PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->GetActive())
+			{
+				DockingShip = PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->GetActive();
+			}
+		}
+
+		bool DockingConfirmed = DockingShip->GetNavigationSystem()->DockAt(TargetSpacecraft->GetActive());
+		PC->NotifyDockingResult(DockingConfirmed, DockingShip, TargetSpacecraft);
+		if (DockingConfirmed && DockingShip == PC->GetShipPawn())
 		{
 			PC->GetMenuManager()->CloseMenu();
 		}

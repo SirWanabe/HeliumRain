@@ -38,6 +38,7 @@ namespace EFlareQuestCallback
 		QUEST_CHANGED, // Trig when a quest status change
 		SHIP_DOCKED, // Trig a ship is docked
 		WAR_STATE_CHANGED, // Trig when a war state changed
+		PLAYER_BATTLESTATE_CHANGED, // Trig when sector battle state changes for player
 		SPACECRAFT_DESTROYED, // Trig when a spacecraft is destroyed
 		TRADE_DONE, // Trig when a trade is done
 		NEXT_DAY, // Trig after a simulate
@@ -205,6 +206,8 @@ public:
 
 	virtual void OnWarStateChanged(UFlareCompany* Company1, UFlareCompany* Company2);
 
+	virtual void OnPlayerBattleStateChanged();
+
 	virtual void OnNextDay();
 
 	virtual void OnTick(float DeltaSeconds);
@@ -312,6 +315,16 @@ public:
 	inline TArray<UFlareQuest*>& GetPreviousQuests()
 	{
 		return OldQuests;
+	}
+
+	inline bool IsPlayTutorial()
+	{
+		return QuestData.PlayTutorial;
+	}
+
+	inline bool IsPlayStory()
+	{
+		return QuestData.PlayStory;
 	}
 
 	bool IsQuestOngoing(UFlareQuest* Quest);

@@ -47,24 +47,25 @@ UFlareQuestActionDiscoverSector::UFlareQuestActionDiscoverSector(const FObjectIn
 {
 }
 
-UFlareQuestActionDiscoverSector* UFlareQuestActionDiscoverSector::Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam)
+UFlareQuestActionDiscoverSector* UFlareQuestActionDiscoverSector::Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer)
 {
 	UFlareQuestActionDiscoverSector* Action = NewObject<UFlareQuestActionDiscoverSector>(ParentQuest, UFlareQuestActionDiscoverSector::StaticClass());
-	Action->Load(ParentQuest, SectorParam);
+	Action->Load(ParentQuest, SectorParam, NotifyPlayer);
 	return Action;
 }
 
-void UFlareQuestActionDiscoverSector::Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam)
+void UFlareQuestActionDiscoverSector::Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer)
 {
 	LoadInternal(ParentQuest);
 	Sector = SectorParam;
+	ShouldNotifyPlayer = NotifyPlayer;
 }
 
 void UFlareQuestActionDiscoverSector::Perform()
 {
 	if (Sector)
 	{
-		Sector->GetGame()->GetPC()->DiscoverSector(Sector, false, true);
+		Sector->GetGame()->GetPC()->DiscoverSector(Sector, false, ShouldNotifyPlayer);
 	}
 	else
 	{

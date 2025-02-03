@@ -389,6 +389,7 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 							.HelpText(LOCTEXT("TutorialInfo", "Enable or disable helpful tutorial missions"))
 							.Toggle(true)
 							.Width(6.5)
+							.IsDisabled(this, &SFlareNewGameMenu::IsTutorialContractDisabled)
 						]
 						// Story
 						+ SHorizontalBox::Slot()
@@ -397,9 +398,9 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 						[
 							SAssignNew(StoryButton, SFlareButton)
 							.Text(LOCTEXT("Story", "Story contract"))
-						.HelpText(LOCTEXT("StoryInfo", "Enable or disable the storyline Pendulum quest"))
-						.Toggle(true)
-						.Width(6.5)
+							.HelpText(LOCTEXT("StoryInfo", "Enable or disable the storyline Pendulum quest"))
+							.Toggle(true)
+							.Width(6.5)
 						]
 					]
 
@@ -418,7 +419,10 @@ void SFlareNewGameMenu::Construct(const FArguments& InArgs)
 							.HelpText(LOCTEXT("RandomizeInfo", "Randomizes the starting positions of most stations"))
 							.Toggle(true)
 							.Width(6.5)
+							.IsDisabled(this, &SFlareNewGameMenu::IsRandomStationPositionsDisabled)
+
 						]
+
 						+ SHorizontalBox::Slot()
 						.VAlign(VAlign_Center)
 						.HAlign(HAlign_Left)
@@ -689,6 +693,31 @@ ScenarioText, EconomyText, DifficultyText);
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
+
+bool SFlareNewGameMenu::IsTutorialContractDisabled() const
+{
+	if (RandomizeStationButton->IsActive())
+	{
+		return true;
+	}
+
+	int32 ScenarioIndex = ScenarioList.Find(ScenarioSelector->GetSelectedItem());
+	if (ScenarioIndex > 1)
+	{
+		TutorialButton->SetActive(false);
+		return true;
+	}
+	return false;
+}
+
+bool SFlareNewGameMenu::IsRandomStationPositionsDisabled() const
+{
+	if (TutorialButton->IsActive())
+	{
+		return true;
+	}
+	return false;
+}
 
 bool SFlareNewGameMenu::IsLaunchDisabled() const
 {

@@ -69,7 +69,10 @@ public:
 
 	virtual void MakeAvailable();
 
-	virtual void Accept();
+	virtual void Accept(AFlareGame* Game);
+
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 
 	virtual void MakeOngoing();
 

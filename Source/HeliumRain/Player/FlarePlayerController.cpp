@@ -1563,16 +1563,23 @@ bool AFlarePlayerController::IsTyping() const
 	}
 }
 
-void AFlarePlayerController::NotifyDockingResult(bool Success, UFlareSimulatedSpacecraft* Target)
+void AFlarePlayerController::NotifyDockingResult(bool Success, AFlareSpacecraft* DockingShip, UFlareSimulatedSpacecraft* Target)
 {
+	if (!DockingShip)
+	{
+		DockingShip = ShipPawn;
+	}
+
 	if (Success)
 	{
 		if (Target->GetActive())
 		{
-			ShipPawn->SetCurrentTarget(Target->GetActive());
+			DockingShip->SetCurrentTarget(Target->GetActive());
 		}
 
-		Notify(
+		if (DockingShip == ShipPawn)
+		{
+			Notify(
 			LOCTEXT("DockingGranted", "Docking granted"),
 			FText::Format(
 				LOCTEXT("DockingGrantedInfoFormat", "Your ship is now automatically docking at {0}. Using manual controls will abort docking."),
@@ -1581,7 +1588,20 @@ void AFlarePlayerController::NotifyDockingResult(bool Success, UFlareSimulatedSp
 			EFlareNotification::NT_Info,
 			false);
 
-		GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("start-docking").PutName("target", Target->GetImmatriculation()));
+			GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("start-docking").PutName("target", Target->GetImmatriculation()));
+		}
+		else
+		{
+			Notify(
+			LOCTEXT("DockingGranted", "Docking granted"),
+			FText::Format(
+				LOCTEXT("DockingGrantedInfoNonPlayerFormat", "Your ship, {0}, is now docking at {1}."),
+				UFlareGameTools::DisplaySpacecraftName(DockingShip->GetParent()),
+				UFlareGameTools::DisplaySpacecraftName(Target)),
+			"docking-granted",
+			EFlareNotification::NT_Info,
+			false);
+		}
 	}
 	else
 	{
@@ -2353,7 +2373,7 @@ void AFlarePlayerController::EnablePilot()
 			if (TargetSpacecraft && TargetSpacecraft->IsStation())
 			{
 				bool DockingConfirmed = ShipPawn->GetNavigationSystem()->DockAt(TargetSpacecraft);
-				NotifyDockingResult(DockingConfirmed, TargetSpacecraft->GetParent());
+				NotifyDockingResult(DockingConfirmed, nullptr, TargetSpacecraft->GetParent());
 				if (DockingConfirmed)
 				{
 					EnableRegularPilot = false;
@@ -3088,8 +3108,28 @@ void AFlarePlayerController::WheelMenuShowTravelMainMenu()
 	for (int32 BodyIndex = 0; BodyIndex < OrbitalBodies.Num(); BodyIndex++)
 	{
 		FFlareSectorCelestialBodyDescription Body = OrbitalBodies[BodyIndex];
-		MouseMenu->AddWidget("Travel", Body.CelestialBodyName,
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu,Body));
+		bool IsValidBody = false;
+
+		for (int32 SectorIndex = 0; SectorIndex < GetCompany()->GetKnownSectors().Num(); SectorIndex++)
+		{
+			UFlareSimulatedSector* Sector = GetCompany()->GetKnownSectors()[SectorIndex];
+			if (Sector == ShipPawn->GetParent()->GetCurrentFleet()->GetCurrentSector())
+			{
+				continue;
+			}
+
+			if (Sector->GetOrbitParameters()->CelestialBodyIdentifier == Body.CelestialBodyIdentifier)
+			{
+				IsValidBody = true;
+				break;
+			}
+		}
+
+		if (IsValidBody)
+		{
+			MouseMenu->AddWidget("Travel", Body.CelestialBodyName,
+			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu, Body));
+		}
 	}
 
 	GetNavHUD()->SetWheelMenu(true, false);
@@ -3111,6 +3151,7 @@ void AFlarePlayerController::WheelMenuShowTravelOrbitalMenu(FFlareSectorCelestia
 		{
 			continue;
 		}
+
 		if (Sector->GetOrbitParameters()->CelestialBodyIdentifier != OrbitalBody.CelestialBodyIdentifier)
 		{
 			continue;
@@ -3154,7 +3195,7 @@ void AFlarePlayerController::WheelMenuShowTravelOrbitalMenu(FFlareSectorCelestia
 void AFlarePlayerController::WheelMenuConfirmTravelSelection(FFlareSectorCelestialBodyDescription OrbitalBody, UFlareSimulatedSector* Sector)
 {
 	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	if (!MyGameSettings->MouseMenuConfirmSectorChange)
+	if (MyGameSettings->MouseMenuConfirmSectorChange == false)
 	{
 		WheelMenuConfirmedTravel(Sector);
 		return;
@@ -3360,7 +3401,7 @@ void AFlarePlayerController::DockAtTargetSpacecraft()
 		if (TargetSpacecraft)
 		{
 			bool DockingConfirmed = ShipPawn->GetNavigationSystem()->DockAt(TargetSpacecraft);
-			NotifyDockingResult(DockingConfirmed, TargetSpacecraft->GetParent());
+			NotifyDockingResult(DockingConfirmed, nullptr, TargetSpacecraft->GetParent());
 		}
 	}
 }

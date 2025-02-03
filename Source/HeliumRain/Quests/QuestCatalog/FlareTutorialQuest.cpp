@@ -225,6 +225,7 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 
 	FName PickUpShipId = "dock-at-ship-id";
 	UFlareSimulatedSector* Sector = FindSector("the-depths");
+	UFlareSimulatedSector* FirstLightSector = FindSector("first-light");
 	if (!Sector)
 	{
 		return;
@@ -237,18 +238,38 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"OpenTravelMenu"
-		FText Description = LOCTEXT("OpenTravelMenuDescription","You need to learn how to travel between sectors. To start a travel, open the menu bar with <input-action:ToggleOverlay> and click on the orbital map.");
-		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-travel-menu", Description);
+		FText Description = LOCTEXT("TravelWheelDescription", "You need to learn how to travel between sectors. To initiate a travel with your personal fleet open the wheel menu with (<input-action:Wheel>). Highlight \"Travel\" and use (<input-action:StartFire>) to select. Drill further into the travel menu to initiate a travel to \"The Depths\".");
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Orbit));
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "initiate-travel", Description);
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
+			[this](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
+		{
+			if (Bundle.HasTag("travel-begin") && Bundle.GetName("fleet") == GetQuestManager()->GetGame()->GetPC()->GetPlayerFleet()->GetIdentifier())
+			{
+				return true;
+			}
+			return false;
+		},
+			[]()
+		{
+			return LOCTEXT("TravelBegin", "Initiate Travel to \"The Depths\"");
+		},
+			[](UFlareQuestCondition* Condition)
+		{
+			Condition->Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
+		}));
+
+
 		Steps.Add(Step);
 	}
 
 	{
-		#undef QUEST_STEP_TAG
-		#define QUEST_STEP_TAG QUEST_TAG"Travel"
-		FText Description = LOCTEXT("TravelDescription","Select the sector \"The Depths\" and click \"Travel\". Then, on the orbital map, use the \"Fast Forward\" button to wait for the end of the travel.");
-		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "travel", Description);
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG"WheelTravel"
+		FText Description = LOCTEXT("WheelTravelDescription", "Travel can take multiple days. To view the current progress of your travel look at the top screen element. To progress a day press (<input-action:Simulate>) until you arrive at \"The Depths\"");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "wheeltravel", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorVisited::Create(this, Sector));
 		Steps.Add(Step);
@@ -266,18 +287,8 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 
 	{
 		#undef QUEST_STEP_TAG
-		#define QUEST_STEP_TAG QUEST_TAG"CloseMenu"
-		FText Description = LOCTEXT("CloseMenuDescription","You can now dock at stations to trade resources or upgrade your spacecraft ! Close the menu to go back to your ship.");
-		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "close-menu", Description);
-
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_FlyShip));
-		Steps.Add(Step);
-	}
-
-	{
-		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"TargetA"
-		FText Description = FText::Format(LOCTEXT("TargetADescription", "You can use the targeting system to interact with objects. Use <input-action:NextTarget> and <input-action:PreviousTarget> to select {0}."),
+		FText Description = FText::Format(LOCTEXT("TargetADescription", "You can use the targeting system to interact with objects. Use (<input-action:NextTarget>) and (<input-action:PreviousTarget>) to select {0}."),
 			UFlareGameTools::DisplaySpacecraftName(StationA));
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "target-station-a", Description);
 
@@ -285,11 +296,10 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 		Steps.Add(Step);
 	}
 
-
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"TargetB"
-		FText Description = FText::Format(LOCTEXT("TargetBDescription", "Use <input-action:NextTarget> and <input-action:PreviousTarget> to select {0}. The targets are sorted by distance to your nose."),
+		FText Description = FText::Format(LOCTEXT("TargetBDescription", "Use (<input-action:NextTarget>) and (<input-action:PreviousTarget>) to select {0}. The targets are sorted by distance to your nose."),
 			UFlareGameTools::DisplaySpacecraftName(StationB));
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "target-station-b", Description);
 
@@ -300,7 +310,7 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"TargetC"
-		FText Description = FText::Format(LOCTEXT("TargetCDescription", "Use <input-action:NextTarget> and <input-action:PreviousTarget> to select {0}."),
+		FText Description = FText::Format(LOCTEXT("TargetCDescription", "Use (<input-action:NextTarget>) and (<input-action:PreviousTarget>) to select {0}."),
 			UFlareGameTools::DisplaySpacecraftName(StationC));
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "target-station-C", Description);
 
@@ -308,11 +318,9 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 		Steps.Add(Step);
 	}
 
-
-
 	// Manual Docking
 	{
-		int const Distance = 250;
+		int const Distance = 300;
 		int const Speed = 2;
 
 		FText Description = FText::Format(LOCTEXT("Approach1", "Approach and stop at less than {0}m away from the station."), FText::AsNumber(Distance));
@@ -324,6 +332,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			AFlareSpacecraft* PlayerShip = GetQuestManager()->GetGame()->GetPC()->GetShipPawn();
 			if (PlayerShip && StationC->IsActive())
 			{
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					return true;
+				}
+
 				FVector PlayerLocation = PlayerShip->GetActorLocation();
 				FVector StationLocation = StationC->GetActive()->GetActorLocation();
 
@@ -358,13 +372,21 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 
 			if (PlayerShip && StationC->IsActive())
 			{
-				FVector PlayerLocation = PlayerShip->GetActorLocation();
-				FVector StationLocation = StationC->GetActive()->GetActorLocation();
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+				}
+				else
+				{
+					FVector PlayerLocation = PlayerShip->GetActorLocation();
+					FVector StationLocation = StationC->GetActive()->GetActorLocation();
 
-				float CurrentDistance  = (PlayerLocation - StationLocation).Size();
+					float CurrentDistance = (PlayerLocation - StationLocation).Size();
 
-				ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach1DistanceLabel", "{0}m"), FText::AsNumber(FMath::RoundToInt(CurrentDistance /100)));
-				ObjectiveCondition.Progress = InverseRamp(CurrentDistance, 100 * Distance, 100000, 0.5);
+					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach1DistanceLabel", "{0}m"), FText::AsNumber(FMath::RoundToInt(CurrentDistance / 100)));
+					ObjectiveCondition.Progress = InverseRamp(CurrentDistance, 100 * Distance, 100000, 0.5);
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -380,6 +402,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			AFlareSpacecraft* PlayerShip = GetQuestManager()->GetGame()->GetPC()->GetShipPawn();
 			if (PlayerShip)
 			{
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					return true;
+				}
+
 				FVector PlayerVelocity = PlayerShip->GetLinearVelocity();
 				FVector StationLocation = StationC->GetActive()->GetActorLocation();
 
@@ -414,10 +442,18 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 
 			if (PlayerShip)
 			{
-				float CurrentVelocity  = PlayerShip->GetLinearVelocity().Size();
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+				}
+				else
+				{
+					float CurrentVelocity = PlayerShip->GetLinearVelocity().Size();
 
-				ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach1SpeedLabel", "{0} m/s"), FText::AsNumber(FMath::RoundToInt(CurrentVelocity)));
-				ObjectiveCondition.Progress = InverseRamp(CurrentVelocity, Speed, 50, 0.5);
+					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach1SpeedLabel", "{0} m/s"), FText::AsNumber(FMath::RoundToInt(CurrentVelocity)));
+					ObjectiveCondition.Progress = InverseRamp(CurrentVelocity, Speed, 50, 0.5);
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -430,7 +466,7 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		int const Distance = 50;
+		int const Distance = 75;
 		int const Speed = 2;
 
 		FText Description = FText::Format(LOCTEXT("FindDockingPortDescription", "Stations have multiple docking ports for light and heavy ships. Turn around the station to find an available docking port - your docking computer will automatically start.\nApproach a docking port at less than {0}m with your docking computer and stop."), FText::AsNumber(Distance));
@@ -445,6 +481,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			if (!PlayerShip || !StationC->IsActive())
 			{
 				return false;
+			}
+
+			bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+			if (AlreadyDocked)
+			{
+				return true;
 			}
 
 			FText DockInfo;
@@ -494,6 +536,14 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach2DistanceLabel", "{0}m"), FText::AsNumber(FMath::RoundToInt(DockParameters.DockToDockDistance /100)));
 					ObjectiveCondition.Progress = InverseRamp(DockParameters.DockToDockDistance, 100 * Distance, 10000, 0.5);
 				}
+				else
+				{
+					bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+					if (AlreadyDocked)
+					{
+						ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+					}
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -508,6 +558,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			AFlareSpacecraft* PlayerShip = GetQuestManager()->GetGame()->GetPC()->GetShipPawn();
 			if (PlayerShip)
 			{
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					return true;
+				}
+
 				FVector PlayerVelocity = PlayerShip->GetLinearVelocity();
 				FVector StationLocation = StationC->GetActive()->GetActorLocation();
 
@@ -542,10 +598,18 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 
 			if (PlayerShip)
 			{
-				float CurrentVelocity  = PlayerShip->GetLinearVelocity().Size();
+				bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+				if (AlreadyDocked)
+				{
+					ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+				}
+				else
+				{
+					float CurrentVelocity = PlayerShip->GetLinearVelocity().Size();
 
-				ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach2SpeedLabel", "{0} m/s"), FText::AsNumber(FMath::RoundToInt(CurrentVelocity)));
-				ObjectiveCondition.Progress = InverseRamp(CurrentVelocity, Speed, 50, 0.5);
+					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("Approach2SpeedLabel", "{0} m/s"), FText::AsNumber(FMath::RoundToInt(CurrentVelocity)));
+					ObjectiveCondition.Progress = InverseRamp(CurrentVelocity, Speed, 50, 0.5);
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -574,6 +638,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			if (!PlayerShip || !StationC->IsActive())
 			{
 				return false;
+			}
+
+			bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+			if (AlreadyDocked)
+			{
+				return true;
 			}
 
 			FText DockInfo;
@@ -626,6 +696,14 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("LateralErrorDistanceLabel", "{0}m"), FText::AsNumber(FMath::RoundToInt(LinearError)));
 					ObjectiveCondition.Progress = InverseRamp(LinearError, LateralError, 15, 0.5);
 				}
+				else
+				{
+					bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+					if (AlreadyDocked)
+					{
+						ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+					}
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -654,6 +732,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			if (!PlayerShip || !StationC->IsActive())
 			{
 				return false;
+			}
+
+			bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+			if (AlreadyDocked)
+			{
+				return true;
 			}
 
 			FText DockInfo;
@@ -716,6 +800,14 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("RollErrorDistanceLabel", "{0}\u00B0"), FText::AsNumber(FMath::RoundToInt(RollError)));
 					ObjectiveCondition.Progress = InverseRamp(RollErrorTarget, RollError, 20, 0.5);
 				}
+				else
+				{
+					bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+					if (AlreadyDocked)
+					{
+						ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+					}
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -744,6 +836,12 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			if (!PlayerShip || !StationC->IsActive())
 			{
 				return false;
+			}
+
+			bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+			if (AlreadyDocked)
+			{
+				return true;
 			}
 
 			FText DockInfo;
@@ -799,6 +897,14 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 					ObjectiveCondition.TerminalLabel = FText::Format(LOCTEXT("AngularErrorDistanceLabel", "{0}\u00B0"), FText::AsNumber(FMath::RoundToInt(AngularError)));
 					ObjectiveCondition.Progress = InverseRamp(AlignmentErrorTarget, AngularError, 20, 0.5);
 				}
+				else
+				{
+					bool AlreadyDocked = PlayerShip->GetNavigationSystem()->IsDocked();
+					if (AlreadyDocked)
+					{
+						ObjectiveCondition.Progress = ObjectiveCondition.MaxProgress;
+					}
+				}
 			}
 
 			ObjectiveData->ConditionList.Add(ObjectiveCondition);
@@ -811,7 +917,7 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	}
 
 {
-		FText Description = LOCTEXT("NavigationDockAtDescription", "Once all the docking parameters are good, slowly speed up to reduce the distance, keeping all the error values as low as you can. Once you're 3 meters away, the magnetic grab will snap your ship to the docking port. For your first docking, try staying below 5m/s and don't hesitate to stop to correct your alignements.");
+		FText Description = LOCTEXT("NavigationDockAtDescription", "Once all the docking parameters are good, slowly speed up to reduce the distance, keeping all the error values as low as you can. Once you're 3 meters away, the magnetic grab will snap your ship to the docking port. For your first docking, try staying below 5m/s and don't hesitate to stop to correct your alignment.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "dock-at", Description);
 
 		UFlareQuestConditionDockAt* Condition = UFlareQuestConditionDockAt::Create(this, StationC);
@@ -823,9 +929,8 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("CommandUndockDescription", "Congratulations, you are docked ! If you want, you can make docking easier by unlocking autodocking in the technology menu.\nPress <input-action:Wheel> to select the undocking option.");
+		FText Description = LOCTEXT("CommandUndockDescription", "Congratulations, you are docked ! If you want, you can make docking easier by unlocking autodocking in the technology menu.\nOpen the wheel menu with (<input-action:Wheel>) to select the undocking option.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "command-undock", Description);
-
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
 		[this](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
@@ -847,6 +952,55 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 			Condition->Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
 		}));
 
+		Steps.Add(Step);
+	}
+
+
+	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG"OpenTravelMenuBackToFirstLight"
+		FText Description = LOCTEXT("OpenTravelMenuBackToFirstLightDescription", "There are other methods of initiating travel besides just the wheel menu. Open the menu bar with <input - action:ToggleOverlay> and click on the orbital map.");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-travel-menu", Description);
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Orbit));
+		Steps.Add(Step);
+	}
+
+	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG"Travel"
+		FText Description = LOCTEXT("TravelFleetPanelDescription","On the left side of the screen Select \"Trade Fleet 1\" and then select \"First Light\". Use the \"Fast Forward\" button to wait for the end of the travel.");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "travel", Description);
+
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorVisited::Create(this, FirstLightSector));
+		Steps.Add(Step);
+	}
+
+	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG "Activate"
+		FText Description = LOCTEXT("ActivateDescription", "Your ship arrived at destination !");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "activate", Description);
+
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorActive::Create(this, FirstLightSector));
+		Steps.Add(Step);
+	}
+
+	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG "Travel"
+		FText Description = LOCTEXT("TravelDescription", "Select the sector \"The Depths\" and click \"Travel\". Then, on the orbital map, use the \"Fast Forward\" button to wait for the end of the travel.");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "travel", Description);
+
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorVisited::Create(this, Sector));
+		Steps.Add(Step);
+	}
+
+	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG "Activate"
+		FText Description = LOCTEXT("ActivateDescription", "Your ship arrived at destination !");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "activate", Description);
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorActive::Create(this, Sector));
 		Steps.Add(Step);
 	}
 }
@@ -895,12 +1049,39 @@ void UFlareQuestTutorialContracts::Load(UFlareQuestManager* Parent)
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGetContrat::Create(this));
 		Steps.Add(Step);
+
+		Sector = FindSector("blue-heart");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("the-spire");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("outpost");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("miners-home");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("nights-home");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("farm");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		Sector = FindSector("lighthouse");
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+
+		if (!Parent->IsPlayStory())
+		{
+			Sector = FindSector("pendulum");
+			Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Sector, false));
+		}
 	}
 
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"OpenQuestMenu"
-		FText Description = LOCTEXT("OpenQuestMenuDescription","A company has made a new contract available to you.\nOpen the contracts menu with (<input-action:QuestMenu>), or from the menu bar with <input-action:ToggleOverlay>.");
+		FText Description = LOCTEXT("OpenQuestMenuDescription","A company has made a new contract available to you.\nOpen the contracts menu with (<input-action:QuestMenu>), or from the menu bar with (<input-action:ToggleOverlay>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-quest-menu", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Quest));
@@ -966,20 +1147,26 @@ void UFlareQuestTutorialTechnology::Load(UFlareQuestManager* Parent)
 
 	Cast<UFlareQuestConditionGroup>(TriggerCondition)->AddChildCondition(UFlareQuestConditionQuestSuccessful::Create(this, "tutorial-contracts"));
 
+	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID("auto-docking");
+	if (!AutoPilotResearchCost)
+	{
+		AutoPilotResearchCost = 25;
+	}
+
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"GainResearchPoint"
 		FText Description = LOCTEXT("GainResearchPointDescription","You can develop technologies to increase your capabilities and your company's performance. To develop a technology, you need research points. Companies with a high research value sometimes offer you contracts with research points as a reward. You will learn a more efficient way to get research points in the future !\nGain some research points to move forward.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "gain-research-points", Description);
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialResearchValue::Create(this, 25));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialResearchValue::Create(this, AutoPilotResearchCost));
 		Steps.Add(Step);
 	}
 
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"OpenTechnologyMenu"
-		FText Description = LOCTEXT("OpenTechnologyMenuDescription","You can research new technologies with the technology menu. Open it with (<input-action:TechnologyMenu>), or from the menu bar with <input-action:ToggleOverlay> to spend your research points.");
+		FText Description = LOCTEXT("OpenTechnologyMenuDescription","You can research new technologies with the technology menu. Open it with (<input-action:TechnologyMenu>), or from the menu bar with (<input-action:ToggleOverlay>) to spend your research points.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-technology-menu", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Technology));
@@ -999,7 +1186,7 @@ void UFlareQuestTutorialTechnology::Load(UFlareQuestManager* Parent)
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"ReachLevelTechnology3"
-		FText Description = LOCTEXT("ReachLevelTechnology3Description","High level technology require an increased technology level. Your technology level is incremented every new technology.\nResearch more technologies to unlock level 3 technologies.");
+		FText Description = LOCTEXT("ReachLevelTechnology3Description","High level technology requires an increased technology level. Your technology level is incremented every new technology.\nResearch more technologies to unlock level 3 technologies.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "track-quest", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialTechnologyLevel::Create(this, 3));
@@ -1034,7 +1221,6 @@ void UFlareQuestTutorialBuildShip::Load(UFlareQuestManager* Parent)
 	QuestDescription = LOCTEXT("TutorialBuildShipDescription","Learn how to build ships.");
 	QuestCategory = EFlareQuestCategory::TUTORIAL;
 
-
 	UFlareSimulatedSector* Sector = FindSector("blue-heart");
 
 	if (!Sector)
@@ -1046,11 +1232,11 @@ void UFlareQuestTutorialBuildShip::Load(UFlareQuestManager* Parent)
 	UFlareSimulatedSpacecraft* Shipyard = NULL;
 	for(UFlareSimulatedSpacecraft* Station: Sector->GetSectorStations())
 	{
-			if(Station->IsShipyard())
-			{
-				Shipyard = Station;
-				break;
-			}
+		if(Station->IsShipyard())
+		{
+			Shipyard = Station;
+			break;
+		}
 	}
 
 	if (!Shipyard)
@@ -1062,8 +1248,8 @@ void UFlareQuestTutorialBuildShip::Load(UFlareQuestManager* Parent)
 
 	{
 		#undef QUEST_STEP_TAG
-		#define QUEST_STEP_TAG QUEST_TAG"GainMoney"
-		FText Description = LOCTEXT("GainMoneyDescription","You can buy ships to increase your trading force or to defend your estate. Ships are expensive, save some money first !");
+		#define QUEST_STEP_TAG QUEST_TAG"GainMoneyBuildShip"
+		FText Description = LOCTEXT("GainMoneyBuildShipDescription","You can buy ships to increase your trading force or to defend your estate. Ships are expensive, save some money first !");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "gain-money", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialMoney::Create(this, 3000000));
@@ -1131,7 +1317,13 @@ void UFlareQuestTutorialBuildStation::Load(UFlareQuestManager* Parent)
 	QuestDescription = LOCTEXT("TutorialBuildStationDescription","Learn how to build stations.");
 	QuestCategory = EFlareQuestCategory::TUTORIAL;
 
-	Cast<UFlareQuestConditionGroup>(TriggerCondition)->AddChildCondition(UFlareQuestConditionTutorialResearchValue::Create(this, 20));
+	int32 AutoPilotResearchCost = GetQuestManager()->GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID("auto-docking");
+	if (!AutoPilotResearchCost)
+	{
+		AutoPilotResearchCost = 25;
+	}
+
+	Cast<UFlareQuestConditionGroup>(TriggerCondition)->AddChildCondition(UFlareQuestConditionTutorialResearchValue::Create(this, AutoPilotResearchCost));
 	Cast<UFlareQuestConditionGroup>(TriggerCondition)->AddChildCondition(UFlareQuestConditionQuestSuccessful::Create(this, "tutorial-build-ship"));
 
 	{
@@ -1145,9 +1337,18 @@ void UFlareQuestTutorialBuildStation::Load(UFlareQuestManager* Parent)
 	}
 
 	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG"GainMoneyBuildStation"
+		FText Description = LOCTEXT("GainMoneyBuildStationDescription", "Stations and their required licensing is expensive, save some money first !");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "gain-money", Description);
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialMoney::Create(this, 10000000));
+		Steps.Add(Step);
+	}
+
+	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"SectorMenu"
-		FText Description = LOCTEXT("SectorMenuDescription", "You have now unlocked some station-building capabilities. You can build stations in any sector, but there are various limitations depending on the kind of station you want to build, and the sector itself. You can't build solar stations in clouds of dust !\nOpen the current sector menu (<input-action:SectorMenu>), or another known sector from the orbital menu");
+		FText Description = LOCTEXT("SectorMenuDescription", "You have now unlocked some station-building capabilities. You can build stations in any sector, but there are various limitations depending on the kind of station you want to build, and the sector itself. You can't build solar stations in clouds of dust !\nOpen the current sector menu (<input-action:SectorMenu>), or another known sector from the orbital menu.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "dock", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Sector));
@@ -1155,9 +1356,39 @@ void UFlareQuestTutorialBuildStation::Load(UFlareQuestManager* Parent)
 	}
 
 	{
+#undef QUEST_STEP_TAG
+#define QUEST_STEP_TAG QUEST_TAG"BuyStationLicense"
+		FText Description = LOCTEXT("BuyStationLicenseDescription", "Before being allowed to build a station in a sector you must purchase its station license. The cost of station licenses can vary based on various factors.");
+
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "buy-station-license", Description);
+
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
+			[this](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
+		{
+			if (Bundle.HasTag("station-license-bought"))
+			{
+				return true;
+			}
+			return false;
+		},
+			[]()
+		{
+			return LOCTEXT("BuyStationLicense", "Buy a station building license");
+		},
+			[](UFlareQuestCondition* Condition)
+		{
+			Condition->Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
+		}));
+
+
+		Steps.Add(Step);
+	}
+	
+	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"StartConstuction"
-		FText Description = LOCTEXT("StartConstuctionDescription","Open the station-building menu using the button on the bottom left part of the sector menu to build a station. Starting a station construction will cost you fees then you will have to bring construction resources.");
+		FText Description = LOCTEXT("StartConstuctionDescription", "Open the station-building menu using the button on the bottom left part of the sector menu to build a station. Starting a station construction will cost you fees then you will have to bring construction resources.");
+
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "order-station", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialStartStationConstruction::Create(this, false));
@@ -1174,11 +1405,10 @@ void UFlareQuestTutorialBuildStation::Load(UFlareQuestManager* Parent)
 		Steps.Add(Step);
 	}
 
-
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"StartUpgrade"
-		FText Description = LOCTEXT("StartUpgradeDescription","Your station is now ready, you can inspect it to see its production needs. You can upgrade stations to increase their productivity and cargo bay. Upgrading a station will put it back in construction until you bring the missing resources.\nUpgrade a station using the upgrade button in the station details");
+		FText Description = LOCTEXT("StartUpgradeDescription","Your station is now ready, you can inspect it to see its production needs. You can upgrade stations to increase their productivity and cargo bay. Upgrading a station will shut down production until you bring the missing resources.\nUpgrade a station using the upgrade button in the station details");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "start-upgrade", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialStartStationConstruction::Create(this, true));
@@ -1414,7 +1644,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("FlyMilitaryShipDescription", "Fly your new fighter, using the fly button in the sector menu, or <input-action:QuickSwitch> if the fighter is already in your own fleet.");
+		FText Description = LOCTEXT("FlyMilitaryShipDescription", "Fly your new fighter. Merge the fighter fleet into your player fleet. After the merge use the fly button in the sector menu, or (<input-action:QuickSwitch>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "fly-military", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericStateCondition::Create(this,
@@ -1441,7 +1671,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("WeaponToggleOnDescription", "You can enable or disable weapons with the combat key (<input-action:ToggleCombat>).");
+		FText Description = LOCTEXT("WeaponToggleOnDescription", "You can enable or disable weapons with the combat key (<input-action:ToggleCombat>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "toggle-on-weapon", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
@@ -1466,7 +1696,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("WeaponToggleOffDescription", "To disable your weapons, press the combat key again (<input-action:ToggleCombat>).");
+		FText Description = LOCTEXT("WeaponToggleOffDescription", "To disable your weapons, press the combat key again (<input-action:ToggleCombat>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "toggle-off-weapon", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
@@ -1491,7 +1721,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("ActivateWeaponDescription", "You can also activate one of your weapons directly with <input-action:SpacecraftKey2> and following keys. You can have multiple differents weapons in a ship.");
+		FText Description = LOCTEXT("ActivateWeaponDescription", "You can also activate one of your weapons directly with (<input-action:SpacecraftKey2>) and following keys. You can have multiple differents weapons in a ship.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "activate-weapon", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
@@ -1516,7 +1746,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("DeactivateWeaponDescription", "Finally, you can directly disable your weapons with <input-action:SpacecraftKey1>.");
+		FText Description = LOCTEXT("DeactivateWeaponDescription", "Finally, you can directly disable your weapons with (<input-action:SpacecraftKey1>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "deactivate-weapon", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
@@ -1657,7 +1887,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 
 
 	{
-		FText Description = LOCTEXT("ZoomDescription", "If you look at your cargo, you will see a rhombus : the aim indicator. It appears when the target is in weapon range.\nIf the target keeps its current velocity, shooting the aim indicator will hit the center of the target.\nYou can have a better view by holding the zoom key <input-action:CombatZoom>. It can be useful to aim precisely from a distance.");
+		FText Description = LOCTEXT("ZoomDescription", "If you look at your freighter, you will see a rhombus : the aim indicator. It appears when the target is in weapon range.\nIf the target keeps its current velocity, shooting the aim indicator will hit the center of the target.\nYou can have a better view by holding the zoom key (<input-action:CombatZoom>). It can be useful to aim precisely from a distance.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "zoom-cargo	", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
@@ -1725,7 +1955,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 		},
 		[]()
 		{
-			return LOCTEXT("HitCargoConditionLabel", "Hit the target cargo");
+			return LOCTEXT("HitCargoConditionLabel", "Hit the target freighter");
 		},
 		[](UFlareQuestCondition* Condition)
 		{
@@ -1771,7 +2001,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 
 
 	{
-		FText Description = LOCTEXT("MultipleQuickSwitchDescription", "When you have multiple ships in a battle, all the ships your are not piloting are still fighting autonomously for you. You can fly other ships in your fleet at any time, should yours be damaged.\nThe <input-action:QuickSwitch> key allows you to quickly jump to another ship. Press this key a few times.");
+		FText Description = LOCTEXT("MultipleQuickSwitchDescription", "When you have multiple ships in a battle, all the ships you're not piloting are still fighting autonomously for you. You can fly other ships in your fleet at any time, should yours be damaged.\nThe (<input-action:QuickSwitch>) key allows you to quickly jump to another ship. Press this key a few times.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "multiple-quick-switch", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCounterCondition::Create(this,
@@ -1796,7 +2026,7 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("BattleSectorDescription", "Wait for someone to attack you, or start a battle. You can declare war using the diplomatic menu (<input-action:LeaderboardMenu>).\nOnce you are at war, you can see sectors with hostile ships in red in the orbital map. Find one with enemy fighters.");
+		FText Description = LOCTEXT("BattleSectorDescription", "Wait for someone to attack you, or start a battle. You can accept combat contracts using the contracts menu (<input-action:QuestMenu>) or you can declare war using the diplomatic menu (<input-action:LeaderboardMenu>).\nOnce you are at war, you can see sectors with hostile ships in red in the orbital map. Find one with enemy fighters.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "battle-sector", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericStateCondition::Create(this,
@@ -1815,21 +2045,22 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 		},
 		[](UFlareQuestCondition* Condition)
 		{
-			Condition->Callbacks.AddUnique(EFlareQuestCallback::NEXT_DAY);
-			Condition->Callbacks.AddUnique(EFlareQuestCallback::WAR_STATE_CHANGED);
+//			Condition->Callbacks.AddUnique(EFlareQuestCallback::NEXT_DAY);
+//			Condition->Callbacks.AddUnique(EFlareQuestCallback::WAR_STATE_CHANGED);
+			Condition->Callbacks.AddUnique(EFlareQuestCallback::PLAYER_BATTLESTATE_CHANGED);
 		}));
 
 		Steps.Add(Step);
 	}
 
 	{
-		FText Description = LOCTEXT("MakeFighterUncontrollableDescription", "Shoot down an enemy figther. Ships disabled by a wingman don't count, you need the training ! Don't fire at disabled ships - they are prisoners of war.");
-		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "hit-cargo", Description);
+		FText Description = LOCTEXT("MakeFighterUncontrollableDescription", "Shoot down an enemy fighter. Ships disabled by a wingman don't count, you need the training ! Don't fire at disabled ships - they are prisoners of war.");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "disable-enemy", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCondition::Create(this,
-																																			  [](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
+		[this](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
 		{
-			if(Bundle.HasTag("enemy-uncontrollable"))
+			if (Bundle.HasTag("enemy-uncontrollable"))
 			{
 				return true;
 			}
@@ -1846,7 +2077,6 @@ void UFlareQuestTutorialFighter::Load(UFlareQuestManager* Parent)
 
 		Steps.Add(Step);
 	}
-
 }
 
 
@@ -1921,7 +2151,7 @@ void UFlareQuestTutorialSplitFleet::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("FleetMenuDescription","You can split your fleet to manage your ships separately. Open the fleet menu with (<input-action:FleetMenu>).");
+		FText Description = LOCTEXT("FleetMenuDescription","You can split your fleet to manage your ships separately. Open the fleet menu with (<input-action:FleetMenu>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-fleet-menu", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Fleet));
@@ -2230,7 +2460,7 @@ void UFlareQuestTutorialDistantFleet::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("WaitTradeEndDescription","Remote ships don't need to dock at stations, but trades take one day. If you look at your remote ship's status, your will see whether it is trading. Wait for the end of the transaction by waiting a day with <input-action:Simulate>, or the skip button on the orbital map.");
+		FText Description = LOCTEXT("WaitTradeEndDescription","Remote ships don't need to dock at stations, but trades take one day. If you look at your remote ship's status, your will see whether it is trading. Wait for the end of the transaction by waiting a day with (<input-action:Simulate>), or the skip button on the orbital map.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "trade-end", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericStateCondition::Create(this,
@@ -2323,7 +2553,7 @@ void UFlareQuestTutorialMergeFleet::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("FleetMenuMergeDescription","Open the fleet menu with (<input-action:FleetMenu>).");
+		FText Description = LOCTEXT("FleetMenuMergeDescription","Open the fleet menu with (<input-action:FleetMenu>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-fleet-menu", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Fleet));
@@ -2479,7 +2709,7 @@ void UFlareQuestTutorialTradeRoute::Load(UFlareQuestManager* Parent)
 	}
 
 	{
-		FText Description = LOCTEXT("OpenCompanyMenuDescription","Open the company menu (<input-action:CompanyMenu>).");
+		FText Description = LOCTEXT("OpenCompanyMenuDescription","Open the company menu (<input-action:CompanyMenu>)");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-company-menu", Description);
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Company));
@@ -2562,7 +2792,7 @@ void UFlareQuestTutorialTradeRoute::Load(UFlareQuestManager* Parent)
 		},
 		[]()
 		{
-			return LOCTEXT("TradeRouteProfitsLabel", "Win 5000 credits with trade routes");
+			return LOCTEXT("TradeRouteProfitsLabel", "Gain 5000 credits with trade routes");
 		},
 		[](UFlareQuestCondition* Condition)
 		{

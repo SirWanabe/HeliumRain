@@ -368,6 +368,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 				SAssignNew(OwnedShipList, SFlareList)
 				.MenuManager(MenuManager)
 				.Title(LOCTEXT("OwnedSpacecraftsSector", "Owned spacecraft in sector"))
+				.OnItemSelected(this, &SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft)
 			]
 
 			+ SScrollBox::Slot()
@@ -423,6 +424,7 @@ void SFlareSectorMenu::Enter(UFlareSimulatedSector* Sector)
 	FLOG("SFlareSectorMenu::Enter");
 
 	StationDescription = NULL;
+	SelectedOwnedSpacecraft = nullptr;
 	TargetSector = Sector;
 
 	SetEnabled(true);
@@ -531,7 +533,6 @@ void SFlareSectorMenu::UpdateFleetList()
 void SFlareSectorMenu::UpdateShipLists()//(UFlareFleet* TargetOwnedFleet, UFlareFleet* TargetOtherFleet)
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
-
 	OwnedShipList->Reset();
 	OtherShipList->Reset();
 	OwnedReserveShipList->Reset();
@@ -608,6 +609,14 @@ void SFlareSectorMenu::Exit()
 	SetVisibility(EVisibility::Collapsed);
 }
 
+void SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
+{
+	UFlareSimulatedSpacecraft* Spacecraft = SpacecraftContainer->SpacecraftPtr;
+	if (Spacecraft)
+	{
+		SelectedOwnedSpacecraft = Spacecraft;
+	}
+}
 
 /*----------------------------------------------------
 	Callbacks
@@ -734,15 +743,16 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 	}
 	else
 	{
-		int64 LicenseCost = PC->GetCompany()->GetStationLicenseCost(TargetSector);
-		if (PC->GetCompany()->GetMoney() >= LicenseCost)
+		UFlareQuest* Target = MenuManager->GetGame()->GetQuestManager()->FindQuest("tutorial-build-ship");
+		if (Target && MenuManager->GetGame()->GetQuestManager()->IsQuestSuccessfull(Target))
 		{
-			return false;
+			int64 LicenseCost = PC->GetCompany()->GetStationLicenseCost(TargetSector);
+			if (PC->GetCompany()->GetMoney() >= LicenseCost)
+			{
+				return false;
+			}
 		}
-		else
-		{
-			return true;
-		}
+		return true;
 	}
 	return true;
 }
@@ -1565,7 +1575,7 @@ void SFlareSectorMenu::OnBuildStationClicked()
 	{
 		PC->GetCompany()->BuyStationLicense(TargetSector);
 		MenuManager->GetPC()->ClientPlaySound(MenuManager->GetPC()->GetSoundManager()->NotificationTradingSound);
-
+		MenuManager->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("station-license-bought"));
 	}
 }
 

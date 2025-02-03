@@ -119,6 +119,8 @@ public:
 		return QuestClass;
 	}
 
+	void AcceptedWarContract(AFlareGame* Game, bool CheckQuestSector,bool MultipleHostiles);
+
 protected:
 	FName QuestClass;
 	FFlareBundle InitData;
@@ -200,6 +202,10 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
+
 	//static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
@@ -214,6 +220,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	//static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, int32 AttackCombatPoints, WarTarget& Target, int64 TravelDuration);
 };
 
@@ -228,6 +237,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	//static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany, int32 AttackCombatPoints, WarTarget& Target, int64 TravelDuration);
 };
 
@@ -242,6 +254,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	//static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
@@ -256,6 +271,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	//static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
@@ -272,6 +290,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
@@ -286,6 +307,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, int32 AttackCombatPoints, WarTarget& Target, int64 TravelDuration);
 };
 
@@ -300,6 +324,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany, int32 AttackCombatPoints, WarTarget& Target, int64 TravelDuration);
 };
 
@@ -314,6 +341,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
@@ -328,6 +358,9 @@ public:
 
 	/** Load the quest from description file */
 	virtual bool Load(UFlareQuestGenerator* Parent, const FFlareBundle& Data);
+	virtual void Accept(AFlareGame* Game);
+	virtual void QuestSuccess(AFlareGame* Game);
+	virtual void QuestFailed(AFlareGame* Game);
 	static UFlareQuestGenerated* Create(UFlareQuestGenerator* Parent, UFlareCompany* Company, UFlareCompany* HostileCompany);
 };
 
