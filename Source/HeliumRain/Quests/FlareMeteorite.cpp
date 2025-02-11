@@ -126,8 +126,8 @@ void AFlareMeteorite::TickMeteorite(float DeltaSeconds)
 			{
 				MeteoriteData->HasMissed = true;
 
-				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteMiss", "Meteorite miss"),
-										FText::Format(LOCTEXT("MeteoriteMissFormat", "A meteorite missed {0}. It's not dangerous anymore."), UFlareGameTools::DisplaySpacecraftName(Target->GetParent())),
+				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteMiss", "Meteoroid miss"),
+										FText::Format(LOCTEXT("MeteoriteMissFormat", "A meteoroid missed {0}. It's not dangerous anymore."), UFlareGameTools::DisplaySpacecraftName(Target->GetParent())),
 										FName("meteorite-miss"),
 										EFlareNotification::NT_Military,
 										false);
@@ -172,8 +172,8 @@ void AFlareMeteorite::OnCollision(class AActor* Other, FVector HitLocation)
 				EPSCPoolMethod::AutoRelease);
 
 			// Notify PC
-			Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteorite crashed"),
-									FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteorite crashed on {0}."), UFlareGameTools::DisplaySpacecraftName(Spacecraft->GetParent())),
+			Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteoroid crashed"),
+									FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteoroid crashed on {0}."), UFlareGameTools::DisplaySpacecraftName(Spacecraft->GetParent())),
 									FName("meteorite-crash"),
 									EFlareNotification::NT_Military,
 									false);
@@ -283,8 +283,8 @@ void AFlareMeteorite::ApplyDamage(float Energy, float Radius, FVector Location, 
 			// Notify PC
 			if (DamageType != EFlareDamage::DAM_Collision)
 			{
-				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDestroyed", "Meteorite destroyed"),
-										LOCTEXT("MeteoriteDestroyedFormat", "A meteorite has been destroyed."),
+				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDestroyed", "Meteoroid destroyed"),
+										LOCTEXT("MeteoriteDestroyedFormat", "A meteoroid has been destroyed."),
 										FName("meteorite-destroyed"),
 										EFlareNotification::NT_Military,
 										false);

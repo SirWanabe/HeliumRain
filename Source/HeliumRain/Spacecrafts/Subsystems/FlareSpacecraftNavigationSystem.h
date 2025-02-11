@@ -166,7 +166,7 @@ public:
 	virtual void DockingAutopilot(AFlareSpacecraft* DockStation, int32 DockId, float DeltaSeconds);
 
 	/** Confirm that the docking sequence has completed */
-	virtual void ConfirmDock(AFlareSpacecraft* DockStation, int32 DockId, bool TellUser = true);
+	virtual void ConfirmDock(AFlareSpacecraft* DockStation, int32 DockId, bool TellUser = true, bool UseDockingRestraint = true);
 
 	virtual void ForceFinishAutoPilots();
 

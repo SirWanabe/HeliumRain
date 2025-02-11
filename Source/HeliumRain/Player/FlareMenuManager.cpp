@@ -675,7 +675,7 @@ void AFlareMenuManager::ProcessNextMenu()
 	{
 		case EFlareMenu::MENU_CreateGame:         MenuOperationDone = CreateGame();         break;
 		case EFlareMenu::MENU_LoadGame:           MenuOperationDone = LoadGame();           break;
-		case EFlareMenu::MENU_FlyShip:            MenuOperationDone = FlyShip();            break;
+		case EFlareMenu::MENU_FlyShip:            MenuOperationDone = FlyShip(true);            break;
 		case EFlareMenu::MENU_ReloadSector:       MenuOperationDone = ReloadSector();       break;
 		case EFlareMenu::MENU_FastForwardSingle:  MenuOperationDone = FastForwardSingle();  break;
 
@@ -802,7 +802,7 @@ bool AFlareMenuManager::CreateGame()
 	UFlareSimulatedSpacecraft* CurrentShip = PC->GetPlayerShip();
 	NextMenu.Key = EFlareMenu::MENU_FlyShip;
 	NextMenu.Value.Spacecraft = CurrentShip;
-	return FlyShip();
+	return FlyShip(true);
 }
 
 bool AFlareMenuManager::LoadGame()
@@ -841,7 +841,7 @@ bool AFlareMenuManager::LoadGame()
 		// Fly the ship - we create another set of data here to keep with the convention :) 
 		NextMenu.Key = EFlareMenu::MENU_FlyShip;
 		NextMenu.Value.Spacecraft = CurrentShip;
-		return FlyShip();
+		return FlyShip(true);
 	}
 
 	// TODO : handle game over
@@ -854,16 +854,20 @@ bool AFlareMenuManager::LoadGame()
 	return true;
 }
 
-bool AFlareMenuManager::FlyShip()
+bool AFlareMenuManager::FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* Ship)
 {
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
 	if (PC)
 	{
 		// Fly ship
-		if (NextMenu.Value.Spacecraft)
+		if (Ship == nullptr)
+		{
+			Ship = NextMenu.Value.Spacecraft;
+		}
+
+		if (Ship)
 		{
 			AFlareSpacecraft* OldShip = PC->GetShipPawn();
-			UFlareSimulatedSpacecraft* Ship = NextMenu.Value.Spacecraft;
 
 			// Fly the ship - retry at new tick if not possible
 			if (!Ship->IsActive())
@@ -871,7 +875,7 @@ bool AFlareMenuManager::FlyShip()
 				FLOGV("AFlareMenuManager::FlyShip: need ship %s to be active", *Ship->GetImmatriculation().ToString());
 				return false;
 			}
-			PC->FlyShip(Ship->GetActive());
+			PC->FlyShip(Ship->GetActive(), ShouldExitMenu);
 
 			if (OldShip != Ship->GetActive())
 			{
@@ -920,8 +924,11 @@ bool AFlareMenuManager::FlyShip()
 			}
 		}
 
-		ExitMenu();
-		MenuIsOpen = false;
+		if (ShouldExitMenu)
+		{
+			ExitMenu();
+			MenuIsOpen = false;
+		}
 	}
 
 	return true;

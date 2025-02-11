@@ -460,11 +460,13 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	PacifismIncrementRate = 0.8f;
 	PacifismDecrementRate = 0.6f;
 
+	BudgetMinimumRepairFactor = 0.75f;
+
 	DailyProductionCostSensitivityMilitary = 30;
-	DailyProductionCostSensitivityEconomic = 7;
+	DailyProductionCostSensitivityEconomic = 14;
 	CostSafetyMarginMilitaryShip = 1.1f;
 	CostSafetyMarginTradeShip = 1.05f;
-	CostSafetyMarginStation = 1.1f;
+	CostSafetyMarginStation = 1.5f;
 
 	BuildLTradeOnlyTreshhold = 50;
 	BuildLMilitaryOnlyTreshhold = 50;
@@ -555,6 +557,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BudgetWarMilitaryWeight = 0.95f;
 		BudgetWarStationWeight = 0.0375f;
 		BudgetWarTradeWeight = 0.0125f;
+
+		BudgetMinimumRepairFactor = 0.05f;
 
 		WarDeclared_TransferToMilitaryBudgetFactor = 0.50f;
 
@@ -824,6 +828,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BudgetWarStationWeight = 0.15f;
 		BudgetWarTradeWeight = 0.35f;
 
+		BudgetMinimumRepairFactor = 2.f;
+
 		DeclareWarConfidence = 1.f;
 		RequestPeaceConfidence = 0.f;
 		PayTributeConfidence = -0.1f;
@@ -854,6 +860,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BudgetWarMilitaryWeight = 0.75f;
 		BudgetWarStationWeight = 0.15f;
 		BudgetWarTradeWeight = 0.10f;
+
+		BudgetMinimumRepairFactor = 0.10f;
 
 		WarDeclared_TransferToMilitaryBudgetFactor = 0.75f;
 
@@ -919,6 +927,9 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		PacifismDecrementRate = 0.45f;
 		MaxTradeShipsBuildingPeace = 2;
 		MaxTradeShipsBuildingWar = 1;
+
+		BudgetMinimumRepairFactor = 1.f;
+
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -1019,6 +1030,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		MaintenanceAffility = CompanyDescription->AI_Behaviours.MaintenanceAffility;
 	}
+
 	if (CompanyDescription->AI_Behaviours.BudgetTechnologyWeight)
 	{
 		BudgetTechnologyWeight = CompanyDescription->AI_Behaviours.BudgetTechnologyWeight;
@@ -1031,7 +1043,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		BudgetStationWeight = CompanyDescription->AI_Behaviours.BudgetStationWeight;
 	}
-
 	if (CompanyDescription->AI_Behaviours.BudgetTradeWeight)
 	{
 		BudgetTradeWeight = CompanyDescription->AI_Behaviours.BudgetTradeWeight;
@@ -1049,6 +1060,13 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		BudgetWarStationWeight = CompanyDescription->AI_Behaviours.BudgetWarStationWeight;
 	}
+
+	if (CompanyDescription->AI_Behaviours.BudgetMinimumRepairFactor)
+	{
+		BudgetMinimumRepairFactor = CompanyDescription->AI_Behaviours.BudgetMinimumRepairFactor;
+	}
+
+	
 
 	if (CompanyDescription->AI_Behaviours.WarDeclared_StationBudgetFactor)
 	{

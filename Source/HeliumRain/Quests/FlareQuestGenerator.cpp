@@ -430,6 +430,7 @@ void UFlareQuestGenerator::GenerateSectorQuest(UFlareSimulatedSector* Sector)
 
 			// Register quest
 			RegisterQuest(Quest);
+
 			if (Game->GetPC()->GetCompany()->GetCompanyValue().ArmyCurrentCombatPoints > 0)
 			{
 				CompanyValue Value = Company->GetCompanyValue();
@@ -3457,8 +3458,8 @@ Identifier = InitData.GetName("identifier");
 		return false;
 	}
 
-	QuestName = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionName", "Meteorite intercept in {0}"), TargetStation->GetCurrentSector()->GetSectorName());
-	QuestDescription = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionDescription", "A meteorite group will pose a threat to {0} in {1} on {2}. Intercept and destroy."),
+	QuestName = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionName", "Meteoroid intercept in {0}"), TargetStation->GetCurrentSector()->GetSectorName());
+	QuestDescription = FText::Format(LOCTEXT("GeneratedMeteoriteDestructionDescription", "A meteoroid group will pose a threat to {0} in {1} on {2}. Intercept and destroy."),
 		UFlareGameTools::DisplaySpacecraftName(TargetStation),
 		TargetStation->GetCurrentSector()->GetSectorName(),
 		UFlareGameTools::GetDisplayDate(InterceptDate + 1));
@@ -3486,7 +3487,7 @@ Identifier = InitData.GetName("identifier");
 	{
 		FText Description;
 
-		Description = LOCTEXT("GeneratedMeteoriteDestructionInterception", "Destroy the meteorites");
+		Description = LOCTEXT("GeneratedMeteoriteDestructionInterception", "Destroy the meteoroids");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "destroy", Description);
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialGenericEventCounterCondition::Create(this,
 																																			  [=](UFlareQuestCondition* Condition, FFlareBundle& Bundle)
@@ -3504,7 +3505,7 @@ Identifier = InitData.GetName("identifier");
 		},
 		[=]()
 		{
-			return FText::Format(LOCTEXT("MeteoriteDestroyedConditionLabel", "Destroy {0} meteorites in {1}"), FText::AsNumber(MeteoriteCount), TargetStation->GetCurrentSector()->GetSectorName());
+			return FText::Format(LOCTEXT("MeteoriteDestroyedConditionLabel", "Destroy {0} meteoroids in {1}"), FText::AsNumber(MeteoriteCount), TargetStation->GetCurrentSector()->GetSectorName());
 		},
 		[](UFlareQuestCondition* Condition)
 		{
@@ -3534,7 +3535,7 @@ Identifier = InitData.GetName("identifier");
 	},
 	[]()
 	{
-		return LOCTEXT("MeteoriteCrashConditionLabel", "Meteorite crash on a station");
+		return LOCTEXT("MeteoriteCrashConditionLabel", "Meteoroid crash on a station");
 	},
 	[](UFlareQuestCondition* Condition)
 	{

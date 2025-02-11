@@ -589,6 +589,21 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
 					]
 
+					// Include under construction
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					.HAlign(HAlign_Left)
+					[
+						SAssignNew(UnderConstructionFilterButton, SFlareButton)
+						.Text(LOCTEXT("IncludeUnderConstruction", "Filter Under Construction"))
+						.HelpText(LOCTEXT("IncludeUnderConstructionHelp", "Filter Under Construction"))
+						.Toggle(true)
+						.Width(6)
+						.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
+					]		
+
 				// Include Travellers
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -1049,6 +1064,12 @@ bool SFlareWorldEconomyMenu::PassesFilterList(UFlareSimulatedSpacecraft* Station
 		{
 			return false;
 			// Filter out all non-shipyards if shipyard filter is active
+		}
+
+		if (UnderConstructionFilterButton->IsActive() && !StationCandidate->IsUnderConstruction())
+		{
+			return false;
+			// Filter out stations that aren't under construction
 		}
 	}
 

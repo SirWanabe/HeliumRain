@@ -163,7 +163,12 @@ void UFlareCompanyAI::NewSectorLoaded()
 //used for AI Company sending orders for their assets/ships within the actively simulated sector
 void UFlareCompanyAI::SimulateActiveAI()
 {
-	if (Game && Company != Game->GetPC()->GetCompany())
+	if (!Game)
+	{
+		return;
+	}
+
+	if (Company != Game->GetPC()->GetCompany())
 	{
 		UFlareSector* ActiveSector = Game->GetActiveSector();
 		if (ActiveSector&&!ActiveSector->GetIsDestroyingSector())
@@ -642,8 +647,11 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 			AIData.Pacifism -= (Behavior->PacifismDecrementRate * Multiplier);
 		}
 
-		MinimumMoney = TotalValue.TotalDailyProductionCost * ((Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic));
-		if (Company->GetMoney() < MinimumMoney)
+		MinimumMoney = (TotalValue.TotalDailyProductionCost * (Behavior->DailyProductionCostSensitivityMilitary + Behavior->DailyProductionCostSensitivityEconomic))
+			+ ((TotalValue.TotalTradeShipCargoCapacity * (Behavior->DailyProductionCostSensitivityEconomic * 0.75)) * 8)
+			+ ((TotalValue.TotalStationCargoCapacity * (Behavior->DailyProductionCostSensitivityEconomic * 0.75)) * 2);
+
+		if (!IsAboveMinimumMoney())
 		{
 			AIData.Pacifism += Behavior->PacifismIncrementRate * 0.33;
 		}
@@ -1007,16 +1015,62 @@ void UFlareCompanyAI::RepairAndRefill()
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareCompanyAI_RepairAndRefill);
 
-	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	for (UFlareFleet* Fleet : Company->GetCompanyFleets())
 	{
-		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
-		SectorHelper::RepairFleets(Sector, Company);
+		if (Fleet->GetCombatPoints(false) == 0)
+		{
+			if (Fleet->FleetNeedsRepair())
+			{
+				Fleet->RepairFleet();
+			}
+		}
 	}
 
+	bool RepairFirstChance = FMath::FRand() < 0.8;
+	if (RepairFirstChance)
+	{
+		RepairFleets();
+		RefillFleets();
+	}
+	else
+	{
+		RefillFleets();
+		RepairFleets();
+	}
+}
+
+void UFlareCompanyAI::RepairFleets()
+{
+	int64 MinimumMoneyRequired = GetMinimumMoney() * Behavior->BudgetMinimumRepairFactor;
 	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
-		SectorHelper::RefillFleets(Sector, Company);
+		if (Company->GetMoney() >= MinimumMoneyRequired)
+		{
+			SectorHelper::RepairFleets(Sector, Company);
+		}
+		else
+		{
+//			FLOGV("%s not above minimum money of %d, attempting repair in %s", *Company->GetCompanyName().ToString(), MinimumMoneyRequired, *Sector->GetSectorName().ToString());
+			SectorHelper::RepairFleets(Sector, Company, nullptr, true);
+		}
+	}
+}
+
+void UFlareCompanyAI::RefillFleets()
+{
+	int64 MinimumMoneyRequired = GetMinimumMoney() * Behavior->BudgetMinimumRepairFactor;
+	for (int32 SectorIndex = 0; SectorIndex < Company->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* Sector = Company->GetKnownSectors()[SectorIndex];
+		if (Company->GetMoney() >= MinimumMoneyRequired)
+		{
+			SectorHelper::RefillFleets(Sector, Company);
+		}
+		else
+		{
+			SectorHelper::RefillFleets(Sector, Company, nullptr, true);
+		}
 	}
 }
 
@@ -1338,14 +1392,19 @@ void UFlareCompanyAI::ProcessBudgetMilitary(int64 BudgetAmount, bool& Lock, bool
 
 void UFlareCompanyAI::ProcessBudgetTrade(int64 BudgetAmount, bool& Lock, bool& Idle)
 {
+	CompanyValue TotalValue = Company->GetCompanyValue();
+	if (Company->GetMoney() > (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityEconomic))
+	{
+		UpgradeCargoShips();
+	}
+
 	int32 DamagedCargosCapacity = GetDamagedCargosCapacity();
-	UpgradeCargoShips();
+	float IdleRatio = float(IdleCargoCapacity + DamagedCargosCapacity) / GetCargosCapacity();
 
 	//FLOGV("%s DamagedCargosCapacity=%d", *Company->GetCompanyName().ToString(), DamagedCargosCapacity);
 	//FLOGV("%s IdleCargoCapacity=%d", *Company->GetCompanyName().ToString(),IdleCargoCapacity);
 	//FLOGV("%s CargosCapacity=%d", *Company->GetCompanyName().ToString(),GetCargosCapacity());
 
-	float IdleRatio = float(IdleCargoCapacity + DamagedCargosCapacity) / GetCargosCapacity();
 
 	if (IdleRatio > 0.1f)
 	{
@@ -1590,7 +1649,7 @@ void UFlareCompanyAI::ProcessBudgetStation(int64 BudgetAmount, bool Technology, 
 					continue;
 				}
 
-				if (Station->GetLevel() >= Station->GetDescription()->MaxLevel)
+				if (Station->GetLevel() >= Station->GetDescription()->MaxLevel || Station->IsUnderConstruction() || !Company->IsTechnologyUnlockedStation(Station->GetDescription()))
 				{
 					continue;
 				}
@@ -3173,17 +3232,22 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 	// iterate to find best weapon
 	UpgradeShipWeapon(Ship, WeaponTargetSize,AllowSalvager);
 
-	// Chance to upgrade rcs (optional)
-	if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::RCS)) // 50 % chance
+	CompanyValue TotalValue = Company->GetCompanyValue();
+	if (Company->GetMoney() > (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary))
 	{
-		UpgradeShipRCS(Ship, EFlareBudget::Military);
+		// Chance to upgrade rcs (optional)
+		if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::RCS)) // 50 % chance
+		{
+			UpgradeShipRCS(Ship, EFlareBudget::Military);
+		}
+
+		// Chance to upgrade pod (optional)
+		if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::OrbitalEngine)) // 50 % chance
+		{
+			UpgradeShipEngine(Ship, EFlareBudget::Military);
+		}
 	}
 
-	// Chance to upgrade pod (optional)
-	if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::OrbitalEngine)) // 50 % chance
-	{
-		UpgradeShipEngine(Ship, EFlareBudget::Military);
-	}
 	return true;
 }
 
@@ -3274,6 +3338,7 @@ bool UFlareCompanyAI::UpgradeShipWeapon(UFlareSimulatedSpacecraft* Ship, EFlareP
 #endif
 				return false;
 			}
+
 			if (Ship->UpgradePart(BestWeapon, WeaponGroupIndex))
 			{
 				++SuccesfulUpgrades;

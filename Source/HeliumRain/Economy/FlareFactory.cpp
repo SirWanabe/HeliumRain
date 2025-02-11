@@ -440,9 +440,9 @@ void UFlareFactory::BeginProduction()
 		}
 
 		// < Resource->Quantity
-		if (Parent->GetActiveCargoBay()->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
+		if (!Parent->GetActiveCargoBay()->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
 		{
-			FLOGV("Fail to take %d resource '%s' to %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString());
+			FLOGV("Fail to take %d resource '%s' to %s in %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 		}
 
 		if (AlreadyReservedCargo)
@@ -529,9 +529,9 @@ void UFlareFactory::DoProduction()
 	for (int32 ResourceIndex = 0 ; ResourceIndex < OutputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &OutputResources[ResourceIndex];
-		if (Parent->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
+		if (!Parent->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
 		{
-			FLOGV("Fail to give %d resource '%s' to %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString());
+			FLOGV("Fail to give %d resource '%s' to %s in %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 		}
 	}
 
@@ -1070,6 +1070,20 @@ uint32 UFlareFactory::GetOutputResourceQuantity(FFlareResourceDescription* Resou
 	return 0;
 }
 
+int64 UFlareFactory::GetInputResourceDailyProductionInCredits()
+{
+	int64 ReturnValue = 0;
+
+	float TotalResourceMargin = GetResourceInputMultiplier();
+
+	for (int32 ResourceIndex = 0; ResourceIndex < GetCycleData().InputResources.Num(); ResourceIndex++)
+	{
+		FFlareResourceDescription* ResourceCandidate = &GetCycleData().InputResources[ResourceIndex].Resource->Data;
+		ReturnValue += ((GetCycleData().InputResources[ResourceIndex].Quantity / GetCycleData().ProductionTime) * ResourceCandidate->MinPrice);
+	}
+
+	return ReturnValue;
+}
 
 FText UFlareFactory::GetFactoryCycleCost(const FFlareProductionData* Data)
 {

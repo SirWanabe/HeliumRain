@@ -42,6 +42,7 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 #endif
 
 	DestroySector();
+	IsPaused = false;
 	ParentSector = Parent;
 	LocalTime = Parent->GetData()->LocalTime;
 	CompanyShipsPerCompanyCache.Empty();
@@ -117,7 +118,7 @@ void UFlareSector::Load(UFlareSimulatedSector* Parent)
 
 void UFlareSector::Tick(float DeltaSeconds)
 {
-	if (IsDestroyingSector)
+	if (IsDestroyingSector || IsPaused)
 	{
 		return;
 	}
@@ -345,6 +346,7 @@ void UFlareSector::DestroySector()
 {
 	FLOG("UFlareSector::DestroySector");
 	IsDestroyingSector = true;
+	IsPaused = false;
 
 	SignalLocalSectorUpdateSectorBattleStates = false;
 	AFlareSpacecraft* PlayerShip = nullptr;

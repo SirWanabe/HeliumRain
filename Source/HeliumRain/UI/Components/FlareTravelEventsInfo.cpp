@@ -31,7 +31,7 @@ void SFlareTravelEventsInfo::Construct(const FArguments& InArgs)
 		[
 			SNew(SVerticalBox)
 
-			// Automated fleets title
+			// Events title
 			+ SVerticalBox::Slot()
 			.Padding(Theme.TitlePadding)
 			.AutoHeight()
@@ -39,7 +39,7 @@ void SFlareTravelEventsInfo::Construct(const FArguments& InArgs)
 				UFlareUITypes::Header(LOCTEXT("TravelsTitle", "Events"))
 			]
 
-			// Automated fleets list
+			// Events list
 			+ SVerticalBox::Slot()
 			.HAlign(HAlign_Left)
 			.AutoHeight()

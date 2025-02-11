@@ -316,7 +316,7 @@ public:
 	int32 GetFleetResourceQuantity(FFlareResourceDescription* Resource);
 	int32 GetFleetFreeSpaceForResource(FFlareResourceDescription* Resource);
 
-	int32 GetCombatPoints(bool ReduceByDamage, bool FilterForMilitary = false) const;
+	int32 GetCombatPoints(bool ReduceByDamage) const;
 
 	bool IsRepairing() const;
 	bool IsRefilling() const;

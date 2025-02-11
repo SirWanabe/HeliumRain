@@ -158,7 +158,7 @@ void AFlareMenuPawn::Tick(float DeltaSeconds)
 	SetCameraPitch(ExternalCameraPitch);
 	FRotator DeltaRot = FRotator::MakeFromEuler(FVector(0, 0, ExternalCameraYaw - LastExternalCameraYaw));
 
-	if (CurrentSpacecraft)
+	if (CurrentSpacecraft && !CurrentSpacecraft->bHidden)
 	{
 		CurrentSpacecraft->AddActorLocalRotation(DeltaRot);
 	}
@@ -286,7 +286,7 @@ void AFlareMenuPawn::ShowPart(const FFlareSpacecraftComponentDescription* PartDe
 	FFlareSpacecraftComponentSave Data;
 	Data.Damage = 0;
 	Data.ComponentIdentifier = PartDesc->Identifier;
-	CurrentPart->Initialize(&Data, TargetCompany, this, true,nullptr);
+	CurrentPart->Initialize(&Data, TargetCompany, this, true);
 	CurrentPart->SetWorldScale3D(FVector(1, 1, 1));
 	float Scale = DisplaySize / CurrentPart->GetMeshScale();
 	CurrentPart->SetWorldScale3D(Scale * FVector(1, 1, 1));
@@ -332,6 +332,7 @@ void AFlareMenuPawn::ResetContent(bool Unsafe, bool DeleteSpacecraft)
 		else
 		{
 			CurrentSpacecraft->SetActorHiddenInGame(true);
+			CurrentSpacecraft->ClearBombs();
 		}
 	}
 

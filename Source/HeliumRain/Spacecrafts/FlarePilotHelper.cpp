@@ -90,7 +90,7 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	// Select dangerous ships
 	for (auto SpacecraftCandidate : ActiveSector->GetSpacecrafts())
 	{
-		if (SpacecraftCandidate != Ship
+		if (SpacecraftCandidate && SpacecraftCandidate != Ship
 		 && SpacecraftCandidate != IgnoreConfig.SpacecraftToIgnore
 		 && !(IgnoreConfig.IgnoreAllStations && SpacecraftCandidate->IsStation())
 		 && !Ship->GetDockingSystem()->IsGrantedShip(SpacecraftCandidate)

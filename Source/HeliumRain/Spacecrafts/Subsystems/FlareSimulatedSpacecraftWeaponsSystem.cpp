@@ -243,7 +243,7 @@ int32 UFlareSimulatedSpacecraftWeaponsSystem::FindBestWeaponGroup(UFlareSimulate
 	int32 BestWeaponGroup = -1;
 	float BestScore = 0;
 
-	if (!ShipTarget || !MeteoriteTarget)
+	if (!ShipTarget && !MeteoriteTarget)
 	{
 		return -1;
 	}

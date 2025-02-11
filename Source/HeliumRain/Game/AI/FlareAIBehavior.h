@@ -95,6 +95,8 @@ public:
 	float BudgetWarStationWeight;
 	float BudgetWarTradeWeight;
 
+	float BudgetMinimumRepairFactor;
+
 	float AttackThreshold;
 	float RetreatThreshold;
 

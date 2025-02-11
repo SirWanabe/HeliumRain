@@ -47,9 +47,9 @@ struct SectorHelper
 	static void GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArray<UFlareSimulatedSpacecraft*>& ships, int32& CurrentNeededFleetSupply, int32& TotalNeededFleetSupply, int64& MaxDuration, bool OnlyPossible);
 
 
-	static void RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr);
+	static void RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr, bool UseOwnedFleetMaterialsOnly = false);
 
-	static void RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr);
+	static void RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet = nullptr, bool UseOwnedFleetMaterialsOnly = false);
 
 	static void ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair, UFlareFleet* ForFleet = nullptr);
 

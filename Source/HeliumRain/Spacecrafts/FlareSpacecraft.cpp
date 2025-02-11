@@ -526,6 +526,23 @@ void AFlareSpacecraft::NotifyHit(class UPrimitiveComponent* MyComp, class AActor
 	// Strictly disallow self-collision : this should never happen
 	if (Other == this)
 	{
+/*
+		GetGame()->GetActiveSector()->IsPaused = true;
+		FString MyCOMP = FString::Printf(TEXT("%s"), (MyComp ? *MyComp->GetName() : TEXT("null")));
+		FString OtherC = FString::Printf(TEXT("%s"), (Other ? *Other->GetName() : TEXT("null")));
+		FString OtherCOMP = FString::Printf(TEXT("%s"), (OtherComp ? *OtherComp->GetName() : TEXT("null")));
+
+		GetGame()->GetPC()->Notify(
+		LOCTEXT("SelfCollisionError", "Warning: SELF COLLISION"),
+		FText::Format(LOCTEXT("SelfCollisionInfo", "{0} Collided with self. {1}/{2}"),
+		UFlareGameTools::DisplaySpacecraftName(GetParent()),
+		FText::FromString(MyCOMP),
+		FText::FromString(OtherC),
+		FText::FromString(OtherCOMP)),
+		"collision error",
+		EFlareNotification::NT_Info);
+		return;
+*/
 		FString SelfCollisionReport = FString::Printf(
 			TEXT("AFlareSpacecraft::NotifyHit : %s (%d) self-collision: %s/%s collided with %s/%s in %s"),
 			*GetImmatriculation().ToString(),
@@ -1048,7 +1065,6 @@ void AFlareSpacecraft::SafeDestroy()
 			GetGame()->GetActiveSector()->RemoveSpacecraft(this,true);
 		}
 
-		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		this->SetActorTickEnabled(false);
 		Airframe->SetSimulatePhysics(false);
 		this->SetActorHiddenInGame(true);
@@ -1115,6 +1131,13 @@ void AFlareSpacecraft::Destroyed()
 	}
 
 	// Clear bombs
+	ClearBombs();
+	CurrentTarget.Clear();
+}
+
+
+void AFlareSpacecraft::ClearBombs()
+{
 	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
 		UFlareWeapon* Weapon = Cast<UFlareWeapon>(ActiveSpacecraftComponents[ComponentIndex]);
@@ -1123,7 +1146,6 @@ void AFlareSpacecraft::Destroyed()
 			Weapon->ClearBombs();
 		}
 	}
-	CurrentTarget.Clear();
 }
 
 void AFlareSpacecraft::TrackIncomingBomb(AFlareBomb* Bomb)
@@ -1479,6 +1501,15 @@ void AFlareSpacecraft::SetParent(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	// Look for parent company
 	SetOwnerCompany(ParentSpacecraft->GetCompany());
 
+	Airframe->SetSimulatePhysics(false);
+	Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	if (!IsPresentationMode())
+	{
+		Parent->SetActiveSpacecraft(this);
+	}
+	
+/*
 	if (!IsPresentationMode())
 	{
 		Airframe->SetSimulatePhysics(true);
@@ -1490,6 +1521,7 @@ void AFlareSpacecraft::SetParent(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		Airframe->SetSimulatePhysics(false);
 		Airframe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
+	*/
 }
 
 void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
@@ -1545,7 +1577,6 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 	}
 
 	NavigationSystem->Initialize(this, &GetData());
-
 	SetRCSDescription(RCSDescription);
 
 	// Look for an asteroid component
@@ -1745,7 +1776,6 @@ void AFlareSpacecraft::Save()
 void AFlareSpacecraft::SetOwnerCompany(UFlareCompany* NewCompany)
 {
 	SetCompany(NewCompany);
-
 	AFlarePlayerController* PC = GetGame()->GetPC();
 	if (PC)
 	{

@@ -10,7 +10,7 @@
 
 #include "../Player/FlarePlayerController.h"
 
-#define MAXIMUM_TURNS_METEORITES 25
+#define MAXIMUM_TURNS_METEORITES 20
 #define MAXIMUM_TURNS_SHIPBATTLE 1000
 
 struct BattleTargetPreferences
@@ -144,17 +144,17 @@ void UFlareBattle::FindFightingCompanies()
 	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
+/*
 		if (Company == PlayerCompany)
 		{
-/*
+
 			if (Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
 			{
 				// Local sector, don't check if the player want fight
 				continue;
 			}
-*/
 		}
-
+*/
 		FFlareSectorBattleState BattleState;
 		if (ShipDisabledPreviousTurn)
 		{
@@ -179,6 +179,7 @@ void UFlareBattle::FindFightingCompanies()
 		}
 
 		FightingCompanies.Add(Company);
+//		FLOGV("Add %s to fighting companies", *Company->GetCompanyName().ToString());
 	}
 
 	ShipDisabledPreviousTurn = false;
@@ -200,6 +201,7 @@ bool UFlareBattle::SimulateTurn()
 			CurrentSectorViableFightingShips.Remove(Ship);
 			ShipIndex--;
 			ShipDisabledPreviousTurn = true;
+			FLOGV("%s removed from viable fighting ships", *Ship->GetImmatriculation().ToString());
 			continue;
 		}
 
@@ -232,6 +234,7 @@ bool UFlareBattle::SimulateTurn()
 
 bool UFlareBattle::SimulateShipTurn(UFlareSimulatedSpacecraft* Ship)
 {
+	FLOGV("%s Simulating turn", *Ship->GetImmatriculation().ToString());
     if(Ship->GetSize() == EFlarePartSize::S)
     {
         return SimulateSmallShipTurn(Ship);
@@ -314,6 +317,7 @@ bool UFlareBattle::SimulateSmallShipTurn(UFlareSimulatedSpacecraft* Ship)
     {
 		MeteoriteTarget = GetMeteoriteTarget();
 	}
+
 
 	if (Target || MeteoriteTarget)
 	{
@@ -598,8 +602,12 @@ bool UFlareBattle::SimulateShipAttack(UFlareSimulatedSpacecraft* Ship, int32 Wea
 
 	// TODO configure Fire probability
 	float FireProbability = 0.8f;
+	if (SwitchedToFightingMeteorites)
+	{
+		FireProbability = 0.9f;
+	}
 
-	if(SwitchedToFightingMeteorites || FMath::FRand() < FireProbability)
+	if(FMath::FRand() < FireProbability)
 	{
 		// Fire with all weapon
 		for (int32 WeaponIndex = 0; WeaponIndex <  WeaponGroup->Weapons.Num(); WeaponIndex++)
@@ -662,7 +670,7 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 		}
 		else if (MeteoriteTarget)
 		{
-			TargetCoef = 0.50f;
+			TargetCoef = 0.90f;
 		}
 
 		if(WeaponDescription->WeaponCharacteristics.FuzeType == EFlareShellFuzeType::Proximity)
@@ -672,7 +680,7 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 
 		float Precision = UsageRatio * FMath::Max(0.01f, 1.f-(WeaponDescription->WeaponCharacteristics.GunCharacteristics.AmmoPrecision * TargetCoef));
 
-//		FLOGV("Fire %d ammo with a hit probability of %f", AmmoToFire, Precision);
+		FLOGV("%s fires %d ammo with a hit probability of %f", *Ship->GetImmatriculation().ToString(), AmmoToFire, Precision);
 		for (int32 BulletIndex = 0; BulletIndex <  AmmoToFire; BulletIndex++)
 		{
 			if(FMath::FRand() < Precision)
@@ -777,8 +785,10 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 void UFlareBattle::ApplyMeteoriteDamage(FFlareMeteoriteSave* MeteoriteTarget, float Energy, UFlareSimulatedSpacecraft* DamageSource)
 {
 	MeteoriteTarget->Damage += Energy;
-	if (MeteoriteTarget->Damage >= MeteoriteTarget->BrokenDamage)
+	if (!MeteoriteTarget->HasMissed && MeteoriteTarget->Damage >= MeteoriteTarget->BrokenDamage)
 	{
+		FLOG("Meteorite Destroyed");
+		MeteoriteTarget->HasMissed = true;
 		LocalMeteorites.RemoveSwap(MeteoriteTarget);
 		if (PlayerAssetsFighting)
 		{

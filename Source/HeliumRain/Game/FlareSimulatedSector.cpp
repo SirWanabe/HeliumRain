@@ -1756,8 +1756,8 @@ void UFlareSimulatedSector::ProcessMeteorites()
 			{
 				if(Meteorite.DaysBeforeImpact == 0)
 				{
-					GetGame()->GetPC()->Notify(FText::Format(LOCTEXT("MeteoriteHere", "Meteorites in {0}"), GetSectorName()),
-										FText::Format(LOCTEXT("MeteoriteHereFormat", "A meteorite group has entered {0} and threatens stations"), GetSectorName()),
+					GetGame()->GetPC()->Notify(FText::Format(LOCTEXT("MeteoriteHere", "Meteoroids in {0}"), GetSectorName()),
+										FText::Format(LOCTEXT("MeteoriteHereFormat", "A meteoroid group has entered {0} and threatens stations"), GetSectorName()),
 										FName("meteorite-in-sector"),
 										EFlareNotification::NT_Military,
 										false);
@@ -1765,8 +1765,8 @@ void UFlareSimulatedSector::ProcessMeteorites()
 				}
 				else if(Meteorite.DaysBeforeImpact == 1 && !GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("early-warning") && PlayerTarget)
 				{
-					GetGame()->GetPC()->Notify(LOCTEXT("ImminentMeteoriteDetected", "Meteorites detected"),
-										FText::Format(LOCTEXT("ImminentMeteoriteDetectedFormat", "A meteorite group has been detected as potential danger at {0}"), GetSectorName()),
+					GetGame()->GetPC()->Notify(LOCTEXT("ImminentMeteoriteDetected", "Meteoroids detected"),
+										FText::Format(LOCTEXT("ImminentMeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger at {0}"), GetSectorName()),
 										FName("meteorite-detected"),
 										EFlareNotification::NT_Military,
 										false);
@@ -1810,8 +1810,8 @@ void UFlareSimulatedSector::ProcessMeteorites()
 				// Notify PC
 				if(GetGame()->GetQuestManager()->IsInterestingMeteorite(Meteorite))
 				{
-					GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteorite crashed"),
-										FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteorite crashed on {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft)),
+					GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteoroid crashed"),
+										FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteoroid crashed on {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft)),
 										FName("meteorite-crash"),
 										EFlareNotification::NT_Military,
 										false);
@@ -1932,8 +1932,8 @@ void UFlareSimulatedSector::GenerateMeteoriteGroup(UFlareSimulatedSpacecraft* Ta
 	{
 		if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("early-warning"))
 		{
-			GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDetected", "Meteorites detected"),
-								FText::Format(LOCTEXT("MeteoriteDetectedFormat", "A meteorite group has been detected as potential danger for one of your stations at {0}"), GetSectorName()),
+			GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDetected", "Meteoroid detected"),
+								FText::Format(LOCTEXT("MeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger for one of your stations at {0}"), GetSectorName()),
 								FName("meteorite-detected"),
 								EFlareNotification::NT_Military,
 								false);

@@ -331,13 +331,14 @@ void AFlareHUD::DrawHUDTexture(UCanvas* TargetCanvas, int32 Width, int32 Height)
 void AFlareHUD::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
-	AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
 
 	if (!GEngine)
 	{
 		return;
 	}
+
+	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
+	AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
 
 	bool PlayerShipIsAlive = false;
 	// Power timer

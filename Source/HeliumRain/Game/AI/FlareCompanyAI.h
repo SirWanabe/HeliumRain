@@ -141,6 +141,8 @@ public:
 
 	/** Repair then refill all ships and stations */
 	void RepairAndRefill();
+	void RepairFleets();
+	void RefillFleets();
 
 	/*----------------------------------------------------
 		Military AI
@@ -284,7 +286,7 @@ protected:
 
 	int32									BuildingMilitaryShips;
 	int32									BuildingTradeShips;
-	int32									MinimumMoney;
+	int64									MinimumMoney;
 
 	bool									CheckedBuildingShips;
 
@@ -311,9 +313,7 @@ public:
 		return Game;
 	}
 
-
-
-	int32 GetMinimumMoney() const
+	int64 GetMinimumMoney() const
 	{
 		return MinimumMoney;
 	}

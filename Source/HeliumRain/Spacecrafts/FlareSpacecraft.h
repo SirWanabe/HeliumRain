@@ -64,6 +64,7 @@ public:
 //	virtual void LifeSpanExpired() override;
 
 	virtual void Destroyed() override;
+	void ClearBombs();
 
 	virtual void OnRepaired();
 

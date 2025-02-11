@@ -99,7 +99,8 @@ public:
 	int64 GetStationLicenseCost(UFlareSimulatedSector* BuyingSector);
 	int64 GetTotalStationLicenseValue();
 
-	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation);
+	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation, UFlareCompany* OldOwner);
+	void RemoveFromStationCache(UFlareSimulatedSector* Sector);
 
 	/** Set whether this company is hostile to an other company */
 	virtual void SetHostilityTo(UFlareCompany* TargetCompany, bool Hostile, bool SuppressMessages = false);

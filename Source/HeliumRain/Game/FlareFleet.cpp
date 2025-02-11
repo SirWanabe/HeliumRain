@@ -939,7 +939,7 @@ uint32 UFlareFleet::GetMaxShipCount()
 	return 20;
 }
 
-int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage, bool FilterForMilitary) const
+int32 UFlareFleet::GetCombatPoints(bool ReduceByDamage) const
 {
 	int32 CombatPoints = 0;
 

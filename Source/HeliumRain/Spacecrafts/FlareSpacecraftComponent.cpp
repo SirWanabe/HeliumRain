@@ -78,6 +78,7 @@ void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, 
 	SetOwnerCompany(Company);
 
 	Spacecraft = Cast<AFlareSpacecraft>(SpacecraftPawn);
+
 	if (Spacecraft)
 	{
 		LocalTemperature = Spacecraft->GetParent()->GetDamageSystem()->GetTemperature();

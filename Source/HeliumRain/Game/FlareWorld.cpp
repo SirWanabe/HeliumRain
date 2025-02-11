@@ -246,22 +246,25 @@ void UFlareWorld::CompanyMutualAssistance()
 		UFlareCompany* Company = Companies[CompanyIndex];
 		if (Company != PlayerCompany)
 		{
-			// 0.02 % given to others
-			int64 MoneyToTake;
-			if (Company == GetGame()->GetScenarioTools()->AxisSupplies)
+			if (Company->GetMoney() > 0)
 			{
-				MoneyToTake = Company->GetMoney() / 350;
-			}
-			else
-			{
-				MoneyToTake = Company->GetMoney() / 500;
-			}
-
-			if (MoneyToTake > 0)
-			{
-				if (Company->TakeMoney(MoneyToTake, false, FFlareTransactionLogEntry::LogMutualAssistance()))
+				// 0.02 % given to others
+				int64 MoneyToTake;
+				if (Company == GetGame()->GetScenarioTools()->AxisSupplies)
 				{
-					SharedPool += MoneyToTake;
+					MoneyToTake = Company->GetMoney() / 350;
+				}
+				else
+				{
+					MoneyToTake = Company->GetMoney() / 500;
+				}
+
+				if (MoneyToTake > 0)
+				{
+					if (Company->TakeMoney(MoneyToTake, false, FFlareTransactionLogEntry::LogMutualAssistance()))
+					{
+						SharedPool += MoneyToTake;
+					}
 				}
 			}
 			SharingCompanyCount++;
@@ -789,8 +792,8 @@ void UFlareWorld::Simulate()
 				GlobalMeteorStormEvent->EventDate = WorldData.Date;
 				GlobalMeteorStormEvent->EventDateEnd = WorldData.Date + FMath::RandRange(7, 21);
 
-				GetGame()->GetPC()->Notify(LOCTEXT("MeteorStorm", "Meteor Activity"),
-				FText::Format(LOCTEXT("MeteorStormInfo", "Warning: Nema is entering a period of heightened meteorite activity. This period of activity is expected to pass in {0} days."),
+				GetGame()->GetPC()->Notify(LOCTEXT("MeteorStorm", "Meteoroid Activity"),
+				FText::Format(LOCTEXT("MeteorStormInfo", "Warning: Nema is entering a period of heightened meteoroid activity. This period of activity is expected to pass in {0} days."),
 				(GlobalMeteorStormEvent->EventDateEnd - GlobalMeteorStormEvent->EventDate) - 1),
 				FName("MeteorStorm"),
 				EFlareNotification::NT_Info,
@@ -1444,7 +1447,7 @@ void UFlareWorld::ProcessStationCapture()
 		Owner->GetAI()->FinishedConstruction(Spacecraft);
 		Owner->DestroySpacecraft(Spacecraft);
 		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
-		Capturer->CapturedStation(NewShip);
+		Capturer->CapturedStation(NewShip, Owner);
 
 		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
 		{
@@ -2352,7 +2355,7 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 		int64 RemainingDuration = GlobalMeteorStormEvent->EventDateEnd - WorldData.Date;
 		FFlareIncomingEvent MeteoriteEvent;
 
-		MeteoriteEvent.Text = FText::Format(LOCTEXT("IncreasedMeteoriteActivities", "\u2022 <WarningText>Increased meteorite activity ({0} left)</>"),
+		MeteoriteEvent.Text = FText::Format(LOCTEXT("IncreasedMeteoroidActivities", "\u2022 <WarningText>Increased meteoroid activity ({0} left)</>"),
 		UFlareGameTools::FormatDate(RemainingDuration, 1));
 		MeteoriteEvent.RemainingDuration = RemainingDuration;
 		IncomingEvents.Add(MeteoriteEvent);
@@ -2439,7 +2442,7 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 			{
 				FFlareIncomingEvent Event;
 				Event.RemainingDuration = DangerDelay;
-				FText MeteoriteText = (DangerCount > 1 ? LOCTEXT("MultipleMeteorites", "meteorites") : LOCTEXT("OneMeteorite", "meteorite"));
+				FText MeteoriteText = (DangerCount > 1 ? LOCTEXT("MultipleMeteorites", "meteoroids") : LOCTEXT("OneMeteorite", "meteoroid"));
 
 				if (DangerDelay == 0)
 				{
@@ -2462,7 +2465,7 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 					}
 					else
 					{
-						Event.Text = FText::Format(LOCTEXT("MeteoriteSoonNoRadarTextFormat", "\u2022 <WarningText>Meteorite group threatening {0} in {1} !</>"),
+						Event.Text = FText::Format(LOCTEXT("MeteoriteSoonNoRadarTextFormat", "\u2022 <WarningText>Meteoroid group threatening {0} in {1} !</>"),
 							Sector->GetSectorName(),
 							DelayText);
 					}

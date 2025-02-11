@@ -174,7 +174,7 @@ void SFlareMainMenu::Construct(const FArguments& InArgs)
 							.Padding(Theme.ContentPadding)
 							[
 								SNew(STextBlock)
-								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.4.1 / {0} / \u00A9 DEIMOS GAMES 2018"),
+								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.4.2 / {0} / \u00A9 DEIMOS GAMES 2018"),
 									MenuManager->GetGame()->GetBuildDate())) // FString neded here
 								.TextStyle(&Theme.TextFont)
 							]

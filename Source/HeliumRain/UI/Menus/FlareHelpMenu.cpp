@@ -613,6 +613,137 @@ There are several ways to find worthwhile deals or trade routes.\n\n\
 						]
 					]
 				]
+
+				+ SFlareTabView::Slot()
+				.Header(LOCTEXT("CombatTab", "Combat"))
+				.HeaderHelp(LOCTEXT("CombatInfo", "View information about combat"))
+				[
+					SNew(SBox)
+					.WidthOverride(2.2 * Theme.ContentWidth)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Fill)
+					[
+						SNew(SHorizontalBox)
+						// Info block
+						+ SHorizontalBox::Slot()
+						.HAlign(HAlign_Left)
+						.VAlign(VAlign_Top)
+						.AutoWidth()
+						[
+							// Data
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(Theme.ContentPadding)
+							[
+								SNew(SScrollBox)
+								.Style(&Theme.ScrollBoxStyle)
+								.ScrollBarStyle(&Theme.ScrollBarStyle)
+
+								+ SScrollBox::Slot()
+								.Padding(Theme.ContentPadding)
+								[
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.Padding(Theme.ContentPadding)
+									.AutoWidth()
+									.HAlign(HAlign_Left)
+									.VAlign(VAlign_Top)
+									[
+										SNew(SVerticalBox)
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.Text(LOCTEXT("CombatTopMainTitle", "Combat"))
+											.TextStyle(&Theme.NameFontBold)
+										]
+
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.TextStyle(&Theme.TextFont)
+											.WrapTextAt(TextWrappingBig)
+											.Text(LOCTEXT("CombatTopMain", "While trading and producing goods will provide your cash flow, it is important that you also expand your military to protect those means. Having a solid military will allow you to maintain peace but also give you the means to eliminate and possibly even absorb competitors."))
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.Text(LOCTEXT("BuildingYourMilitaryTitle", "\nBuilding Your Military"))
+											.TextStyle(&Theme.NameFontBold)
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.TextStyle(&Theme.TextFont)
+											.WrapTextAt(TextWrappingBig)
+											.Text(LOCTEXT("BuildingMilitaryMain", "In the beginning of the game you will not need to worry about having a military force but as you surpass other companies total credits value they will be more difficult to placate. If your reputation drops to zero or below they may initiate wars with you. You can make use of a military force at any time, but especially as your overall wealth increases you must increase your military forces to protect your assets.\n\
+											\nIdeally you should aim to have a military force that is slightly larger than the largest other military. This will help dissuade pirates and other companies from attacking you and allow you to earn some credits by getting involved in wars between other companies.\n\
+											\nNote that you do NOT want to have a military much larger than any others, it's ok to be the biggest, but only by a handful of points. All the other companies will start hating you if your military grows too large and one day you could find yourself in a war with all the other companies simultaneously. At some point you may wish to start conquering the world, when you do make sure you build up your military quickly and are ready for every company to attack you at the same time."))
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.Text(LOCTEXT("FleetCompositionTitle", "\nFleet Composition"))
+											.TextStyle(&Theme.NameFontBold)
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.TextStyle(&Theme.TextFont)
+											.WrapTextAt(TextWrappingBig)
+											.Text(LOCTEXT("FleetCompositionMain", "It is important to note that bigger ships generally travel at a slower pace compared to smaller ships and that the slowest ship in a fleet dictates the overall speed of the fleet. It is recommended to have your largest combat ships in their own fleet and used in a more defensive stance and have seperate fleets with faster ships which can respond to threats with haste. It is also important to make sure that your fleets are able to deal damage to fighters as well as large ships. Ultimately, having a mix of fighters and heavy ships in your fleet ensures that you can perform both of those tasks.\n\
+											\nUpgrades are also important to manage on each ship. They can be an easy way to add some military points to each ship but you will not necessarily want the most expensive upgrade for every slot on every ship. Especially on heavy ships, weapons upgrade will have different capabilities, most will either be good against fighter or good against heavy ships/stations but not both."))
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.Text(LOCTEXT("UsingYourMilitaryTitle", "\nUsing Your Military"))
+											.TextStyle(&Theme.NameFontBold)
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.TextStyle(&Theme.TextFont)
+											.WrapTextAt(TextWrappingBig)
+											.Text(LOCTEXT("UsingYourMilitaryMain", "Battles are slightly different than most games, instead of ships being completely destroyed they are generally just disabled. Navies will fight again after being defeated, they just need to be repaired and rearmed. It is possible to manually destroy a ship after it has been disabled but this will result in a steep drop in reputation with other companies.\n\
+											\nThis dynamic means that wars are usually a battle of credit and resource attrition instead of a single clash of units. If you win a battle, you need to plan for the defeated forces to come back in a couple days and if you lose, you will be able to use those forces again. If you are planning to start a war, you should make sure you have a war chest to fight it with.\n\
+											\nOnce all enemy ships are disabled in a sector, if the fleet remains in the sector they can start taking over all of the enemy stations. After a period of days (look at progress bars in Sector menu) the stations will be taken over by the victor and be under their control after the war ends unless taken back."))
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.Text(LOCTEXT("TacticsTipsTitle", "\nTactics Tips"))
+											.TextStyle(&Theme.NameFontBold)
+										]
+										+ SVerticalBox::Slot()
+										.AutoHeight()
+										[
+											SNew(STextBlock)
+											.TextStyle(&Theme.TextFont)
+											.WrapTextAt(TextWrappingBig)
+											.Text(LOCTEXT("TacticsTipsMain", "During times of peace AI companies tend to spread their ships around areas where they have stations in order to protect them against meteoroids or have them ready to respond to threats of war. During wars AI companies will attempt to unite their ships into powerful fleets to then be sent on attacks or defensive missions. You can take advantage of the AI splitting its forces during peace by concentrating all of your forces when invading or defending a sector. Using this tactic can allow you to either defeat or cause trouble for a company with a military force that exceeds your own.\n\
+											\nWhen a war starts, it is easy to panic as many of your sectors and logisitics ships will come under attack, but remember that your ships will almost always be just disabled and your stations take a fair amount of time to be taken over, especially by small fleets. Gather your forces, determine what forces your enemy has in each sector, and then methodologically destroy them one by one.\n\
+											\nIt is critical that you try and prevent your stations from being taken and so timing is important. Larger fleets will take over stations faster and take many days to defeat while smaller fleets take a long time to capture a station but can only take a day to disable. Identify a sequence of invasions that will allow you to knock out as many of the enemy fleets as possible before they capture your statoins. Researching Fast Travel as soon as possible will make this task alot easier."))
+										]
+									]
+								]
+							]
+						]
+					]
+				]
+
+
+
+
 				+ SFlareTabView::Slot()
 				.Header(LOCTEXT("TechnologyTab", "Technology"))
 				.HeaderHelp(LOCTEXT("Technologyinfo", "View information about technology"))

@@ -71,6 +71,8 @@ protected:
 	/** Can we see edit buttons */
 	EVisibility GetEditVisibility() const;
 
+	EVisibility GetFlyVisibility() const;
+
 	/** Is the "add to fleet" button disabled */
 	bool IsAddDisabled() const;
 	
@@ -79,6 +81,10 @@ protected:
 
 	/** Is the "remove from fleet" button disabled */
 	bool IsRemoveDisabled() const;
+
+	bool IsFlyDisabled() const;
+
+	FText GetFlyHintText() const;
 
 	/** Get hint text about removing a ship from the fleet */
 	FText GetRemoveHintText() const;
@@ -153,6 +159,8 @@ protected:
 	/** Toggle Hide Travel*/
 	void OnToggleHideTravel();
 
+	void OnFly();
+
 	void OnSelectWhiteList();
 	void OnRemoveWhiteList();
 	bool IsWhiteListSelectDisabled() const;
@@ -184,6 +192,7 @@ protected:
 	TSharedPtr<SFlareButton>						TradeRouteButton;
 	TSharedPtr<SFlareButton>				        AutoTradeButton;
 	TSharedPtr<SFlareButton>						HideTravelButton;
+	TSharedPtr<SFlareButton>						FlyButton;
 	TSharedPtr<SFlareButton>					    RefillButton;
 	TSharedPtr<SFlareButton>					    RepairButton;
 

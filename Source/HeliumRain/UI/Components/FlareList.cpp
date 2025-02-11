@@ -759,6 +759,22 @@ void SFlareList::UnselectPreviousWidget()
 	}
 }
 
+void SFlareList::RefreshPreviousWidget()
+{
+	// De-select previous item
+	if (PreviousWidget.IsValid())
+	{
+		if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareSpacecraftInfo")
+		{
+			StaticCastSharedRef<SFlareSpacecraftInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(false);
+		}
+		else if (PreviousWidget->GetContainer()->GetContent()->GetTypeAsString() == "SFlareFleetInfo")
+		{
+			StaticCastSharedRef<SFlareFleetInfo>(PreviousWidget->GetContainer()->GetContent())->SetMinimized(false);
+		}
+	}
+}
+
 void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectInfo::Type SelectInfo)
 {
 	FLOG("SFlareList::OnTargetSelected");

@@ -59,8 +59,8 @@ public:
 	/*----------------------------------------------------
 		Gameplay
 	----------------------------------------------------*/
-	static UFlareQuestActionDiscoverSector* Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer = true);
-	void Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer);
+	static UFlareQuestActionDiscoverSector* Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer = true, bool GiveSectorLicense = false);
+	void Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer, bool GiveSectorLicense);
 
 	virtual void Perform();
 
@@ -70,6 +70,7 @@ public:
 	}
 
 	bool ShouldNotifyPlayer = true;
+	bool ShouldGiveSectorLicense = false;
 
 protected:
 

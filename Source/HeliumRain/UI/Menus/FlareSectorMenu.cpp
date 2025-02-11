@@ -462,6 +462,10 @@ void SFlareSectorMenu::UpdateFleetList()
 					{
 						continue;
 					}
+					if (Fleet->IsHiddenTravel())
+					{
+						continue;
+					}
 				}
 
 				FleetList.Add(Fleet);
@@ -614,7 +618,18 @@ void SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterface
 	UFlareSimulatedSpacecraft* Spacecraft = SpacecraftContainer->SpacecraftPtr;
 	if (Spacecraft)
 	{
+		bool RefreshRightSelectedWidget = false;
+		if (SelectedOwnedSpacecraft != Spacecraft)
+		{
+			RefreshRightSelectedWidget = true;
+		}
+
 		SelectedOwnedSpacecraft = Spacecraft;
+
+		if (RefreshRightSelectedWidget)
+		{
+			OtherShipList->RefreshPreviousWidget();
+		}
 	}
 }
 

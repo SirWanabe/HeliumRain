@@ -117,7 +117,6 @@ protected:
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanyShipsPerCompanyCache;
 	TMap<UFlareCompany*, TArray<AFlareSpacecraft*>> CompanySpacecraftsPerCompanyCache;
 	TMap<FName, AFlareSpacecraft*> SectorSpacecraftsCache;
-
 public:
 
 	/*----------------------------------------------------
@@ -125,6 +124,7 @@ public:
 	----------------------------------------------------*/
 
 	bool SignalLocalSectorUpdateSectorBattleStates;
+	bool IsPaused = false;
 
 	inline TArray<AFlareBomb*> GetSectorBombs() const
 	{

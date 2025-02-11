@@ -91,6 +91,8 @@ public:
 		return ObjectList;
 	}
 
+	void RefreshPreviousWidget();
+
 protected:
 
 	/*----------------------------------------------------

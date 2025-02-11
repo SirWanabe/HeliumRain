@@ -82,6 +82,13 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 		CultureList.Add(MakeShareable(new FString(Culture->GetName())));
 	}
 
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("EasyDifficulty", "Easy Difficulty"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("NormalDifficulty", "Normal Difficulty"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("HardDifficulty", "Hard Difficulty"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("VeryHardDifficulty", "Very Hard Difficulty"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("ExpertDifficulty", "Expert Difficulty"))));
+	DifficultyList.Add(MakeShareable(new FText(LOCTEXT("UnfairDifficulty", "Unfair Difficulty"))));
+
 	// Build structure
 	ChildSlot
 	.HAlign(HAlign_Fill)
@@ -147,7 +154,34 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 						]
 					]
 				
-					// Options line 1
+					// Difficulty
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SHorizontalBox)
+						+SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SAssignNew(DifficultySelector, SFlareDropList<TSharedPtr<FText>>)
+							.OptionsSource(&DifficultyList)
+							.OnGenerateWidget(this, &SFlareSettingsMenu::OnGenerateDifficultyComboLine)
+							.OnSelectionChanged(this, &SFlareSettingsMenu::OnDifficultyLineSelectionChanged)
+							.HeaderWidth(10.1)
+							.ItemWidth(10.1)
+							[
+								SNew(SBox)
+								.Padding(Theme.ListContentPadding)
+								[
+									SNew(STextBlock)
+									.TextStyle(&Theme.TextFont)
+								]
+							]
+						]
+					]			
+						
+						// Options line 1
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.Padding(Theme.ContentPadding)
@@ -1277,7 +1311,7 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	MotionBlurButton->SetActive(MyGameSettings->UseMotionBlur);
 	TemporalAAButton->SetActive(MyGameSettings->UseTemporalAA);
 	FullscreenButton->SetActive(MyGameSettings->GetFullscreenMode() == EWindowMode::Fullscreen);
-//	SupersamplingButton->SetActive(MyGameSettings->ScreenPercentage > 100);
+	//	SupersamplingButton->SetActive(MyGameSettings->ScreenPercentage > 100);
 
 	// Gameplay defaults
 	InvertYButton->SetActive(MyGameSettings->InvertY);
@@ -1617,6 +1651,17 @@ void SFlareSettingsMenu::Enter()
 			break;
 		}
 	}
+
+	if (Game->IsLoadedOrCreated())
+	{
+		DifficultySelector->SetVisibility(EVisibility::Visible);
+		DifficultySelector->RefreshOptions();
+		DifficultySelector->SetSelectedIndex(MenuManager->GetPC()->GetPlayerData()->DifficultyId + 1);
+	}
+	else
+	{
+		DifficultySelector->SetVisibility(EVisibility::Hidden);
+	}
 }
 
 void SFlareSettingsMenu::Exit()
@@ -1666,6 +1711,24 @@ TSharedRef<SWidget> SFlareSettingsMenu::OnGenerateCultureComboLine(TSharedPtr<FS
 		.Text(FText::FromString(NativeName))
 		.TextStyle(&Theme.TextFont)
 	];
+}
+
+TSharedRef<SWidget> SFlareSettingsMenu::OnGenerateDifficultyComboLine(TSharedPtr<FText> Item)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
+	return SNew(SBox)
+	.Padding(Theme.ListContentPadding)
+	[
+		SNew(STextBlock)
+		.Text(*Item)
+		.TextStyle(&Theme.TextFont)
+	];
+}
+
+void SFlareSettingsMenu::OnDifficultyLineSelectionChanged(TSharedPtr<FText> StringItem, ESelectInfo::Type SelectInfo)
+{
+	MenuManager->GetPC()->GetPlayerData()->DifficultyId = DifficultyList.Find(DifficultySelector->GetSelectedItem()) - 1;
 }
 
 void SFlareSettingsMenu::OnCultureComboLineSelectionChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo)
@@ -3068,4 +3131,3 @@ void FSimpleBind::WriteBind()
 }
 
 #undef LOCTEXT_NAMESPACE
-

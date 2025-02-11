@@ -214,6 +214,8 @@ public:
 
 	uint32 GetInputResourceQuantityCycles(FFlareResourceDescription* Resource);
 
+	int64 GetInputResourceDailyProductionInCredits();
+
 	uint32 GetOutputResourceQuantity(FFlareResourceDescription* Resource);
 
 	bool HasOutputResource(FFlareResourceDescription* Resource);

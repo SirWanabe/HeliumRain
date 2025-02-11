@@ -3873,8 +3873,8 @@ void UFlareQuestConditionTutorialHaveStation::OnEvent(FFlareBundle& Bundle)
 
 	for (UFlareSimulatedSpacecraft* Station : StationsArray)
 	{
-		if (!Station->IsUnderConstruction() &&
-			(!TargetUpgrade || (Station->GetLevel() > 1))
+		if (!Station->IsUnderConstruction()
+			&& (!TargetUpgrade || (Station->GetLevel() > 1))
 			&& (TargetSector == NULL || TargetSector->GetIdentifier() == Station->GetCurrentSector()->GetIdentifier()))
 		{
 
@@ -3886,7 +3886,7 @@ void UFlareQuestConditionTutorialHaveStation::OnEvent(FFlareBundle& Bundle)
 			{
 				for (UFlareSimulatedSpacecraft* Child : Station->GetComplexChildren())
 				{
-					if (TargetStationIdentifier == Station->GetDescription()->Identifier)
+					if (TargetStationIdentifier == Child->GetDescription()->Identifier)
 					{
 						Completed = true;
 						break;

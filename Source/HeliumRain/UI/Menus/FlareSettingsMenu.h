@@ -98,6 +98,10 @@ protected:
 		Callbacks
 	----------------------------------------------------*/
 
+	//Difficulty
+	TSharedRef<SWidget> OnGenerateDifficultyComboLine(TSharedPtr<FText> Item);
+	void OnDifficultyLineSelectionChanged(TSharedPtr<FText> StringItem, ESelectInfo::Type SelectInfo);
+
 	// Culture
 	FText OnGetCurrentCultureComboLine() const;
 	TSharedRef<SWidget> OnGenerateCultureComboLine(TSharedPtr<FString> Item);
@@ -303,6 +307,10 @@ protected:
 	// Culture data
 	TSharedPtr<SFlareDropList<TSharedPtr<FString>>>  CultureSelector;
 	TArray<TSharedPtr<FString>>						 CultureList;
+
+	// Difficulty mode
+	TSharedPtr<SFlareDropList<TSharedPtr<FText>>>    DifficultySelector;
+	TArray<TSharedPtr<FText>>		                 DifficultyList;
 
 	// Gamepad data
 	TSharedPtr<SFlareDropList<TSharedPtr<FText>>>    GamepadSelector;

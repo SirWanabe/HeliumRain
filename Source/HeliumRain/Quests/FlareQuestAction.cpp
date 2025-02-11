@@ -47,18 +47,19 @@ UFlareQuestActionDiscoverSector::UFlareQuestActionDiscoverSector(const FObjectIn
 {
 }
 
-UFlareQuestActionDiscoverSector* UFlareQuestActionDiscoverSector::Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer)
+UFlareQuestActionDiscoverSector* UFlareQuestActionDiscoverSector::Create(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer, bool GiveSectorLicense)
 {
 	UFlareQuestActionDiscoverSector* Action = NewObject<UFlareQuestActionDiscoverSector>(ParentQuest, UFlareQuestActionDiscoverSector::StaticClass());
-	Action->Load(ParentQuest, SectorParam, NotifyPlayer);
+	Action->Load(ParentQuest, SectorParam, NotifyPlayer, GiveSectorLicense);
 	return Action;
 }
 
-void UFlareQuestActionDiscoverSector::Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer)
+void UFlareQuestActionDiscoverSector::Load(UFlareQuest* ParentQuest, UFlareSimulatedSector* SectorParam, bool NotifyPlayer, bool GiveSectorLicense)
 {
 	LoadInternal(ParentQuest);
 	Sector = SectorParam;
 	ShouldNotifyPlayer = NotifyPlayer;
+	ShouldGiveSectorLicense = GiveSectorLicense;
 }
 
 void UFlareQuestActionDiscoverSector::Perform()
@@ -66,6 +67,10 @@ void UFlareQuestActionDiscoverSector::Perform()
 	if (Sector)
 	{
 		Sector->GetGame()->GetPC()->DiscoverSector(Sector, false, ShouldNotifyPlayer);
+		if (ShouldGiveSectorLicense)
+		{
+			Sector->GetGame()->GetPC()->GetCompany()->BuyStationLicense(Sector,true);
+		}
 	}
 	else
 	{

@@ -561,6 +561,10 @@ struct FFlareCompanyAIDescription
 	/** Default: 0.125*/
 	float BudgetWarTradeWeight;
 
+	/** Default 1.0*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float BudgetMinimumRepairFactor;
+
 	UPROPERTY(EditAnywhere, Category = Company)
 	/** Default: 1.05*/
 	float WarDeclared_StationBudgetFactor;
@@ -831,6 +835,8 @@ struct CompanyValue
 	int32 ArmyCurrentCombatPoints;
 
 	int64 StationsValue;
+	int64 TotalTradeShipCargoCapacity;
+	int64 TotalStationCargoCapacity;
 
 	/** Ships + Stations*/
 	int64 SpacecraftsValue;

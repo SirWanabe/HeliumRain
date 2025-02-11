@@ -529,20 +529,29 @@ void SFlareSpacecraftInfo::Show()
 			DockedStation = ActiveTargetSpacecraft->GetNavigationSystem()->GetDockStation();
 		}
 
+		AFlareSpacecraft* SelectedShip = PlayerShip->GetActive();
+		if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_Sector)
+		{
+			if (PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft() && !PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->IsStation() && PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->GetActive())
+			{
+				SelectedShip = PC->GetMenuManager()->GetSectorMenu()->GetSelectedOwnedSpacecraft()->GetActive();
+			}
+		}
+
 		// Helpers
 		bool InActiveSector = (PC->GetGame()->GetActiveSector() && PC->GetGame()->GetActiveSector()->GetSimulatedSector() == TargetSpacecraft->GetCurrentSector());
 		bool Owned = TargetSpacecraft->GetCompany()->GetPlayerHostility() == EFlareHostility::Owned;
 		bool OwnedAndNotSelf = Owned && TargetSpacecraft != PlayerShip;
 		bool IsFriendly = !TargetSpacecraft->IsPlayerHostile();
 		bool IsOutsidePlayerFleet = (TargetSpacecraft->GetCurrentFleet() != PlayerShip->GetCurrentFleet()) || !ActiveTargetSpacecraft;
-		bool IsDocked = ActiveTargetSpacecraft && InActiveSector && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(PlayerShip->GetActive()));
+		bool IsDocked = ActiveTargetSpacecraft && InActiveSector && (DockedStation || ActiveTargetSpacecraft->GetDockingSystem()->IsDockedShip(SelectedShip));
 		bool IsStation = TargetSpacecraft->IsStation();
 		bool IsCargoShip = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && !IsStation;
 		bool IsCargoStation = (TargetSpacecraft->GetDescription()->CargoBayCount > 0) && IsStation && !Owned && IsFriendly;
 		bool IsAutoDocking = PlayerShip->GetCompany()->IsTechnologyUnlocked("auto-docking");
 
 		// Permissions
-		bool CanDock =     !IsDocked && InActiveSector && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(PlayerShip->GetActive());
+		bool CanDock =     !IsDocked && InActiveSector && IsFriendly && ActiveTargetSpacecraft && ActiveTargetSpacecraft->GetDockingSystem()->HasCompatibleDock(SelectedShip);
 		bool CanUpgradeDistant = (IsOutsidePlayerFleet || IsAutoDocking) && TargetSpacecraft->GetCurrentSector() && TargetSpacecraft->GetCurrentSector()->CanUpgrade(TargetSpacecraft->GetCompany());
 		bool CanUpgradeDocked = ActiveTargetSpacecraft && DockedStation && DockedStation->GetParent()->HasCapability(EFlareSpacecraftCapability::Upgrade);
 		bool CanUpgrade = !TargetSpacecraft->IsStation() && (CanUpgradeDistant || CanUpgradeDocked);

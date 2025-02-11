@@ -119,10 +119,12 @@ public:
 
 	void SetActiveSpacecraft(AFlareSpacecraft* Spacecraft)
 	{
+/*
 		if(Spacecraft)
 		{
 			FCHECK(ActiveSpacecraft == NULL || ActiveSpacecraft == Spacecraft);
 		}
+*/
 		ActiveSpacecraft = Spacecraft;
 	}
 

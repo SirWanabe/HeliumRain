@@ -774,7 +774,7 @@ void SectorHelper::GetRefillFleetSupplyNeeds(UFlareSimulatedSector* Sector, TArr
 }
 
 
-void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet)
+void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet, bool UseOwnedFleetMaterialsOnly)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSectorHelper_RepairFleets);
 	if (Sector->IsInDangerousBattle(Company))
@@ -801,6 +801,12 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 		GetRepairFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
 		GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, Fleet);
 		ShipsLookingAt = Fleet->GetShips();
+	}
+
+	if (UseOwnedFleetMaterialsOnly)
+	{
+		AvailableFS = OwnedFS;
+		AffordableFS = OwnedFS;
 	}
 
 	// Note not available fleet supply as consumed
@@ -863,7 +869,7 @@ void SectorHelper::RepairFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 	}
 }
 
-void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet)
+void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Company, UFlareFleet* Fleet, bool UseOwnedFleetMaterialsOnly)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareSectorHelper_RefillFleets);
 
@@ -887,6 +893,12 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 		SectorHelper::GetRefillFleetSupplyNeeds(Sector, Fleet->GetShips(), CurrentNeededFleetSupply, TotalNeededFleetSupply, MaxDuration, true);
 		SectorHelper::GetAvailableFleetSupplyCount(Sector, Fleet->GetFleetCompany(), OwnedFS, AvailableFS, AffordableFS, nullptr, Fleet);
 		ShipsLookingAt = Fleet->GetShips();
+	}
+
+	if (UseOwnedFleetMaterialsOnly)
+	{
+		AvailableFS = OwnedFS;
+		AffordableFS = OwnedFS;
 	}
 
 	// Note not available fleet supply as consumed
@@ -957,10 +969,10 @@ void SectorHelper::RefillFleets(UFlareSimulatedSector* Sector, UFlareCompany* Co
 
 void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 ConsumedFS, bool ForRepair, UFlareFleet* ForFleet)
 {
-	// First check for owned FS
 	Sector->OnFleetSupplyConsumed(ConsumedFS);
-
 	FFlareResourceDescription* FleetSupply = Sector->GetGame()->GetScenarioTools()->FleetSupply;
+
+	// First check for owned FS
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
@@ -973,12 +985,13 @@ void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompa
 		int TakenQuantity = Spacecraft->GetActiveCargoBay()->TakeResources(FleetSupply, ConsumedFS, Company);
 		ConsumedFS -= TakenQuantity;
 
-		if(ConsumedFS == 0)
+		if(ConsumedFS <= 0)
 		{
 			return;
 		}
 	}
 
+	// Then buy unowned FS
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
@@ -1026,7 +1039,6 @@ void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompa
 			{
 				Spacecraft->GetCurrentFleet()->GetData()->AutoTradeStatsUnloadResources += TakenQuantity;
 				Spacecraft->GetCurrentFleet()->GetData()->AutoTradeStatsMoneySell += Cost;
-
 #if DEBUG_AI_TRADING_STATS
 
 			FLOGV("Auto trading %s sell %d %s to %s for %lld", *Spacecraft->GetImmatriculation().ToString(), TakenQuantity, *FleetSupply->Name.ToString(), *Company->GetCompanyName().ToString(), Cost);
@@ -1040,9 +1052,10 @@ void SectorHelper::ConsumeFleetSupply(UFlareSimulatedSector* Sector, UFlareCompa
 #endif
 			}
 
+//			FLOGV("%s bought %d fleet supplies for %lld",*Company->GetCompanyName().ToString(), TakenQuantity, Cost);
 			ConsumedFS -= TakenQuantity;
 
-			if(ConsumedFS == 0)
+			if(ConsumedFS <= 0)
 			{
 				return;
 			}

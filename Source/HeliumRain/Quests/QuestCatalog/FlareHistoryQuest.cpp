@@ -172,7 +172,7 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"telescope"
-		FText Description = LOCTEXT("telescopeDescription","Congratulations, you've just acquired the blueprints for a new orbital extractor. This is huge ! Two things are still needed : construction resources, and a massive counterweight for the space elevator. Build a telescope station to help finding a good sector.");
+		FText Description = LOCTEXT("telescopeDescription","Congratulations, you've just acquired the blueprints for a new orbital extractor. This is huge ! Two things are still needed : construction resources, and a massive counterweight for the space elevator. Build a telescope station to help find a suitable sector.");
 
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "telescope", Description);
 
@@ -231,7 +231,7 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "travel-to-pendulum", Description);
 
-		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Pendulum));
+		Step->GetInitActions().Add(UFlareQuestActionDiscoverSector::Create(this, Pendulum,true, true));
 
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionSectorVisited::Create(this, Pendulum));
 		Steps.Add(Step);
@@ -249,7 +249,6 @@ void UFlareQuestPendulum::Load(UFlareQuestManager* Parent)
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-ch4-pump", Pendulum));
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-h2-pump", Pendulum));
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialHaveStation::Create(this, false, "station-he3-pump", Pendulum));
-
 		Steps.Add(Step);
 	}
 

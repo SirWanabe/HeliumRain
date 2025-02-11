@@ -564,12 +564,26 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 	CompanyAI->Simulate(GlobalWar, TotalReservedResources);
 }
 
-void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation)
+void UFlareCompany::CapturedStation(UFlareSimulatedSpacecraft* CapturedStation, UFlareCompany* OldOwner)
 {
 	if (CapturedStation)
 	{
 		GetAI()->CapturedStation(CapturedStation);
 		CheckStationLicenseStateStation(CapturedStation);
+
+		RemoveFromStationCache(CapturedStation->GetCurrentSector());
+		if (OldOwner)
+		{
+			OldOwner->RemoveFromStationCache(CapturedStation->GetCurrentSector());
+		}
+	}
+}
+
+void UFlareCompany::RemoveFromStationCache(UFlareSimulatedSector* Sector)
+{
+	if (Sector)
+	{
+		LicenseStationCache.Remove(Sector);
 	}
 }
 
@@ -2497,32 +2511,13 @@ void UFlareCompany::AddOrRemoveCompanySectorStation(UFlareSimulatedSpacecraft* S
 				if (CompanyStationsBySectors.Contains(Sector))
 				{
 					CompanyStationsBySectors[Sector].AddUnique(Station);
-/*
-					GetGame()->GetPC()->Notify(
-						LOCTEXT("TestInfo0", "Test Notification"),
-						FText::Format(
-							LOCTEXT("TestInfoFormat0", "{0} adding entry to existing value, found {1} in {2}"),
-							GetCompanyName(), CompanyStationsBySectors[Sector].Num(),Sector->GetSectorName()),
-						"discover-sector0",
-						EFlareNotification::NT_Info,
-						false);
-*/
+
 				}
 				else
 				{
 					TArray<UFlareSimulatedSpacecraft*> NewCompanyStations;
 					NewCompanyStations.AddUnique(Station);
 					CompanyStationsBySectors.Add(Sector, NewCompanyStations);
-/*
-					GetGame()->GetPC()->Notify(
-						LOCTEXT("TestInfo1", "Test Notification"),
-						FText::Format(
-							LOCTEXT("TestInfoFormat1", "{0} adding brand new entry in their stations by sector array"),
-							GetCompanyName()),
-						"discover-sector1",
-						EFlareNotification::NT_Info,
-						false);
-*/
 				}
 			}
 		}
@@ -2703,7 +2698,7 @@ int64 UFlareCompany::GetStationLicenseCost(UFlareSimulatedSector* BuyingSector)
 		}
 	}
 
-	LicenseCost = LicenseCost + (500000 * this->GetCompanyStationLicenses().Num()) + (BuyingSector->GetPeople()->GetPopulation() * 50) + (50000 * TotalUnlicencedStations);
+	LicenseCost = LicenseCost + (500000 * this->GetCompanyStationLicenses().Num()) + (BuyingSector->GetPeople()->GetPopulation() * 50) + (500000 * TotalUnlicencedStations);
 
 	LicenseStationCache.Add(BuyingSector, LicenseCost);
 	return LicenseCost;
@@ -2793,6 +2788,8 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	CompanyValue.ArmyValue = 0;
 	CompanyValue.ArmyCurrentCombatPoints = 0;
 	CompanyValue.ArmyTotalCombatPoints = 0;
+	CompanyValue.TotalTradeShipCargoCapacity = 0;
+	CompanyValue.TotalStationCargoCapacity = 0;
 	CompanyValue.StationsValue = 0;
 	CompanyValue.TotalDailyProductionCost = 0;
 	CompanyValue.TotalShipCount = 0;
@@ -2882,18 +2879,31 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 				}
 			}
 		}
-		else if (Spacecraft->GetSize() == EFlarePartSize::S)
-		{
-			CompanyValue.TotalShipCountTradeS++;
-		}
 		else
 		{
-			CompanyValue.TotalShipCountTradeL++;
+			if (Spacecraft->IsStation())
+			{
+				CompanyValue.TotalStationCargoCapacity += Spacecraft->GetProductionCargoBay()->GetCapacity();
+			}
+			else
+			{
+				CompanyValue.TotalTradeShipCargoCapacity += Spacecraft->GetProductionCargoBay()->GetCapacity();
+			}
+
+			if (Spacecraft->GetSize() == EFlarePartSize::S)
+			{
+				CompanyValue.TotalShipCountTradeS++;
+			}
+			else
+			{
+				CompanyValue.TotalShipCountTradeL++;
+			}
 		}
 
 		// Value of the stock
 		{
 		TArray<FFlareCargo>& CargoBaySlots = Spacecraft->GetProductionCargoBay()->GetSlots();
+
 		for (int CargoIndex = 0; CargoIndex < CargoBaySlots.Num(); CargoIndex++)
 		{
 			FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
@@ -2913,6 +2923,7 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 		{
 			FFlareCargo& Cargo = CargoBaySlots[CargoIndex];
 
+
 			if (!Cargo.Resource)
 			{
 				continue;
@@ -2930,30 +2941,12 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			int64 FactoryDuration = Factory->GetProductionDuration();
 			if (FactoryDuration > 0)
 			{
-
-
-//				if (Game->GetPC()->GetCompany() == this)
-					FText ProductionCostText;
-					uint32 CycleProductionCost = Factory->GetProductionCost();
-					if (CycleProductionCost > 0)
-					{
-
-						if (Factory->HasCostReserved())
-						{
-							CompanyValue.TotalDailyProductionCost += CycleProductionCost / FactoryDuration;
-						}
-
-						ProductionCostText = FText::Format(LOCTEXT("ProductionCostFormat", "{0} credits"), FText::AsNumber(UFlareGameTools::DisplayMoney(CycleProductionCost)));
-					}
-					/*
-					Game->GetPC()->Notify(
-						LOCTEXT("Prodcost", "Fact duration"),
-						FText::Format(LOCTEXT("Prodcost", "Factory Duration {0}, money {1}"),
-							FactoryDuration,
-							ProductionCostText),
-						"Prodcost",
-						EFlareNotification::NT_Info);
-					*/
+				uint32 CycleProductionCost = Factory->GetProductionCost();
+				if (CycleProductionCost > 0)
+				{
+					CompanyValue.TotalDailyProductionCost += CycleProductionCost / FactoryDuration;
+				}
+//				CompanyValue.TotalDailyProductionCost += Factory->GetInputResourceDailyProductionInCredits();
 			}
 
 			for (int32 ReservedResourceIndex = 0 ; ReservedResourceIndex < Factory->GetReservedResources().Num(); ReservedResourceIndex++)
@@ -2973,15 +2966,6 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 			}
 		}
 	}
-/*
-//	if (Game->GetPC()->GetCompany() == this)
-		Game->GetPC()->Notify(
-			LOCTEXT("Prodcost1", "Returned Existing Cache"),
-			FText::Format(LOCTEXT("Prodcost1", "Daily Production Cost {0}"),
-				CompanyValue.TotalDailyProductionCost),
-			"Prodcost1",
-			EFlareNotification::NT_Info);
-		*/
 
 	CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
 	CompanyValue.TotalValue = CompanyValue.MoneyValue + CompanyValue.StockValue + CompanyValue.SpacecraftsValue;

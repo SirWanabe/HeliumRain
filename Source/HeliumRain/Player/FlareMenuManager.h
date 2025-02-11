@@ -143,6 +143,9 @@ public:
 	/** Skirmish is done */
 	void PrepareSkirmishEnd();
 
+	/** Fly this ship */
+	bool FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* Ship = nullptr);
+
 protected:
 
 	/*----------------------------------------------------
@@ -180,9 +183,6 @@ protected:
 
 	/** Load the game */
 	bool LoadGame();
-
-	/** Fly this ship */
-	bool FlyShip();
 
 	/** Travel here */
 	void Travel();

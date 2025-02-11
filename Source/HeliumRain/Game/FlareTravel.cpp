@@ -73,9 +73,7 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 	}
 
 	if (!Fleet)
-	{
-		//TODO: There is a rare issue where the Fleet linked with a Travel is possibly disbanded/deleted	
-		
+	{		
 		//Somehow bogus travel? Discard.
 		FLOGV("UFlareTravel::Load : Disconnected travel from fleet, deleting. %s->%s. Fleet was %s. Departure %d. Travel %d", 
 			*Data.OriginSectorIdentifier.ToString(),

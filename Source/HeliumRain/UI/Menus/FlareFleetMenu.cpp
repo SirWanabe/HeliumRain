@@ -240,21 +240,20 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 								.OnClicked(this, &SFlareFleetMenu::OnOpenTradeRoute)
 								.Width(4)
 							]
+							// Fly this ship
 							+ SHorizontalBox::Slot()
-								.HAlign(HAlign_Left)
-								.Padding(Theme.SmallContentPadding)
-								.AutoWidth()
-								[
-									// Auto Trade Button
-									SAssignNew(AutoTradeButton, SFlareButton)
-									.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
-									.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
-									.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
-									.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
-									.Toggle(true)
+							.AutoWidth()
+							[
+								SAssignNew(FlyButton, SFlareButton)
+									.Text(LOCTEXT("ShipFly", "Fly Ship"))
+									.HotkeyText(LOCTEXT("SpacecraftKey3", "M3"))
+									.HelpText(this, &SFlareFleetMenu::GetFlyHintText)
+									.Visibility(this, &SFlareFleetMenu::GetFlyVisibility)
+									.IsDisabled(this, &SFlareFleetMenu::IsFlyDisabled)
+									.OnClicked(this, &SFlareFleetMenu::OnFly)
 									.Width(4)
-								]
 							]
+						]
 							// Inspect trade route
 
 						// Hide Travel
@@ -268,18 +267,30 @@ void SFlareFleetMenu::Construct(const FArguments& InArgs)
 							.Padding(Theme.SmallContentPadding)
 							.AutoWidth()
 							[
+								// Auto Trade Button
+								SAssignNew(AutoTradeButton, SFlareButton)
+								.Text(LOCTEXT("AutoTrade", "AUTO-TRADE"))
+								.HelpText(this, &SFlareFleetMenu::GetAutoTradeHintText)
+								.IsDisabled(this, &SFlareFleetMenu::IsAutoTradeDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnToggleAutoTrade)
+								.Toggle(true)
+								.Width(4)
+							]
+							+ SHorizontalBox::Slot()
+							.HAlign(HAlign_Left)
+							.Padding(Theme.SmallContentPadding)
+							.AutoWidth()
+							[
 								// Hide Travel Button
 								SAssignNew(HideTravelButton, SFlareButton)
-								.Text(LOCTEXT("HideTravel", "HIDE-TRAVEL"))
-						
-							.HelpText(this, &SFlareFleetMenu::GetToggleHideTravelHintText)
-							.IsDisabled(this, &SFlareFleetMenu::IsToggleHideTravelDisabled)
-							.OnClicked(this, &SFlareFleetMenu::OnToggleHideTravel)
-							.Toggle(true)
-							.Width(4)
+								.Text(LOCTEXT("HideTravel", "HIDE-TRAVEL"))				
+								.HelpText(this, &SFlareFleetMenu::GetToggleHideTravelHintText)
+								.IsDisabled(this, &SFlareFleetMenu::IsToggleHideTravelDisabled)
+								.OnClicked(this, &SFlareFleetMenu::OnToggleHideTravel)
+								.Toggle(true)
+								.Width(4)
 							]
 						]
-
 						// Select White List
 						+ SVerticalBox::Slot()
 						.AutoHeight()
@@ -682,6 +693,15 @@ void SFlareFleetMenu::OnToggleHideTravel()
 	}
 }
 
+void SFlareFleetMenu::OnFly()
+{
+	FText Unused;
+	if (MenuManager->GetPC() && ShipToRemove && ShipToRemove->IsActive() && ShipToRemove->CanBeFlown(Unused))
+	{
+		MenuManager->FlyShip(false, ShipToRemove);
+
+	}
+}
 
 FText SFlareFleetMenu::GetRepairText() const
 {
@@ -810,6 +830,49 @@ void SFlareFleetMenu::OnRepairClicked()
 EVisibility SFlareFleetMenu::GetEditVisibility() const
 {
 	return FleetToEdit ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+EVisibility SFlareFleetMenu::GetFlyVisibility() const
+{
+	if (FleetToEdit && FleetToEdit == FleetToEdit->GetGame()->GetPC()->GetPlayerFleet())
+	{
+		return EVisibility::Visible;
+	}
+	return EVisibility::Collapsed;
+}
+
+bool SFlareFleetMenu::IsFlyDisabled() const
+{
+	if (ShipToRemove == NULL || ShipToRemove == MenuManager->GetPC()->GetPlayerShip() || FleetToEdit == NULL)
+	{
+		return true;
+	}
+	return false;
+}
+
+FText SFlareFleetMenu::GetFlyHintText() const
+{
+	if (ShipToRemove)
+	{
+		FText Reason;
+		if (!ShipToRemove->CanBeFlown(Reason))
+		{
+			return Reason;
+		}
+
+		else if (ShipToRemove == MenuManager->GetPC()->GetPlayerShip())
+		{
+			return LOCTEXT("CantFlySelfInfo", "You are already flying this ship");
+		}
+		else
+		{
+			return LOCTEXT("ShipFlyInfo", "Take command of this spacecraft");
+		}
+	}
+	else
+	{
+		return LOCTEXT("NoShipSelectedFlyInfo", "No ship selected");
+	}
 }
 
 bool SFlareFleetMenu::IsAddDisabled() const
