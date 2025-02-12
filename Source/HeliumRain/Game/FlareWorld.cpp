@@ -512,13 +512,7 @@ void UFlareWorld::Simulate()
 				UFlareCompany* Company = Companies[CompanyIndex];
 
 				FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(Company);
-/*
-				if (Company == PlayerCompany && Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
-				{
-					// Local sector, don't check if the player want fight
-					continue;
-				}
-*/
+
 				if (!BattleState.WantFight())
 				{
 					// Don't want fight
@@ -529,6 +523,14 @@ void UFlareWorld::Simulate()
 					*Sector->GetSectorName().ToString());
 
 				HasBattle = true;
+			}
+		}
+		else
+		{
+			for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
+			{
+				UFlareCompany* Company = Companies[CompanyIndex];
+				FFlareSectorBattleState BattleState = Sector->UpdateSectorBattleState(Company);
 			}
 		}
 
@@ -1208,8 +1210,13 @@ void UFlareWorld::ProcessShipCapture()
 				}
 				else if(!SpacecraftOwnerBattleState.HasDanger)
 				{
+//					Spacecraft->RemoveCapturePoint(HarpoonOwner->GetIdentifier(), Spacecraft->GetCapturePointThreshold());
 					Spacecraft->SetHarpooned(NULL);
 				}
+			}
+			else
+			{
+				Spacecraft->ResetCapture();
 			}
 		}
 	}
@@ -1237,10 +1244,25 @@ void UFlareWorld::ProcessShipCapture()
 		FFlareSpacecraftSave Data = Spacecraft->GetData();
 		FFlareSpacecraftDescription* ShipDescription = Spacecraft->GetDescription();
 
+
+		float NegotiationRatio = 1.f;
+		if (HarpoonOwner->IsTechnologyUnlocked("negociations"))
+		{
+			NegotiationRatio *= 1.5;
+		}
+		if (Spacecraft->GetCompany()->IsTechnologyUnlocked("negociations"))
+		{
+			NegotiationRatio *= 0.5;
+		}
+
+		int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(HarpoonOwner) * NegotiationRatio;
+		if (!Spacecraft->TryCapture(HarpoonOwner, CompanyCapturePoint))
+		{
+			continue;
+		}
+
 		Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
-
 		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, HarpoonOwner, SpawnLocation, SpawnRotation, &Data);
-
 		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
 
 		if (GetGame()->GetPC()->GetCompany() == HarpoonOwner)
@@ -1395,17 +1417,17 @@ void UFlareWorld::ProcessStationCapture()
 				}
 
 				// Capture
-				float NegociationRatio = 1.f;
+				float NegotiationRatio = 1.f;
 				if(Company->IsTechnologyUnlocked("negociations"))
 				{
-					NegociationRatio *= 1.5;
+					NegotiationRatio *= 1.5;
 				}
 				if(Spacecraft->GetCompany()->IsTechnologyUnlocked("negociations"))
 				{
-					NegociationRatio *= 0.5;
+					NegotiationRatio *= 0.5;
 				}
 
-				int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(Company) * NegociationRatio;
+				int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(Company) * NegotiationRatio;
 				if(Spacecraft->TryCapture(Company, CompanyCapturePoint))
 				{
 					StationToCapture.Add(Spacecraft);

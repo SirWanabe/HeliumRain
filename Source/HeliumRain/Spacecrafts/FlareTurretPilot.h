@@ -25,7 +25,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Initialize this pilot and register the master ship object */
-	void Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret, AFlareSpacecraft* OwnerShip);
+	void Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret);
 
 	/** Update this system */
 	void TickPilot(float DeltaSeconds);

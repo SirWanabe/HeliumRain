@@ -1760,6 +1760,12 @@ void SFlareWorldEconomyMenu::Exit()
 	StationsArray.Empty();
 }
 
+void SFlareWorldEconomyMenu::MainMenuOpened()
+{
+	TargetCompany = nullptr;
+	TargetCompanies.Empty();
+	RefreshAddRemoveSelectedCompanyButton();
+}
 
 /*----------------------------------------------------
 	Callbacks

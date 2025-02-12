@@ -177,15 +177,7 @@ void AFlareSpacecraftPawn::SetCompany(UFlareCompany* NewCompany)
 
 void AFlareSpacecraftPawn::ReloadPart(UFlareSpacecraftComponent* Target, FFlareSpacecraftComponentSave* Data)
 {
-	AFlarePlayerController* PC = GetGame()->GetPC();
-	if (PC)
-	{
-		Target->Initialize(Data, Company, this, false, PC->GetShipPawn());
-	}
-	else
-	{
-		Target->Initialize(Data, Company, this, false, nullptr);
-	}
+	Target->Initialize(Data, Company, this, false);
 }
 
 void AFlareSpacecraftPawn::UpdateCustomization()

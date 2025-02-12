@@ -830,6 +830,10 @@ struct FFlareSpacecraftDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 MaxLevel;
 
+	/** How many capture points this ship adds. Fallback Small ship = 1, Large ship = 10.*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	int32 CapturePointContribution;
+
 	/** Capture point to capture (scale with level.*/
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 CapturePointThreshold;

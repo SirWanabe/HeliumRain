@@ -699,7 +699,6 @@ void SFlareFleetMenu::OnFly()
 	if (MenuManager->GetPC() && ShipToRemove && ShipToRemove->IsActive() && ShipToRemove->CanBeFlown(Unused))
 	{
 		MenuManager->FlyShip(false, ShipToRemove);
-
 	}
 }
 
@@ -858,11 +857,6 @@ FText SFlareFleetMenu::GetFlyHintText() const
 		if (!ShipToRemove->CanBeFlown(Reason))
 		{
 			return Reason;
-		}
-
-		else if (ShipToRemove == MenuManager->GetPC()->GetPlayerShip())
-		{
-			return LOCTEXT("CantFlySelfInfo", "You are already flying this ship");
 		}
 		else
 		{

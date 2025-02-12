@@ -2052,7 +2052,6 @@ bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 
 	if(StationCount >= MaxStationCount)
 	{
-
 		return false;
 	}
 
@@ -2069,7 +2068,6 @@ bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)
 	}
 	
 	return true;
-
 }
 
 /*----------------------------------------------------

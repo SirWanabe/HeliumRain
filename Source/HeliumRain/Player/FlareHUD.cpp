@@ -1888,6 +1888,13 @@ FVector2D AFlareHUD::DrawHUDDesignatorHint(FVector2D Position, float DesignatorI
 			}
 		}
 	}
+	else
+	{
+		if (TargetSpacecraft->GetParent()->IsBeingCaptured())
+		{
+			Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDHarpoonedIcon, Color);
+		}
+	}
 
 	return Position;
 }

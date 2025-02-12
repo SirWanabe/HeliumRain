@@ -17,7 +17,7 @@ public:
 		Public methods
 	----------------------------------------------------*/
 	
-	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip) override;
+	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu) override;
 
 	virtual FFlareSpacecraftComponentSave* Save() override;
 

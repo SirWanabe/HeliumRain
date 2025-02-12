@@ -1459,6 +1459,11 @@ FFlareSectorBattleState UFlareSimulatedSector::UpdateSectorBattleState(UFlareCom
 		BattleState.HasDanger = true;
 	}
 
+	if (HostileSpacecraftCount > 0)
+	{
+		BattleState.HasEnemies = true;
+	}
+
 	// No friendly or no hostile ship
 	if (FriendlySpacecraftCount == 0 || HostileSpacecraftCount == 0)
 	{
@@ -2487,12 +2492,17 @@ int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company) con
 			continue;
 		}
 
-		if (Ship->GetSize() ==  EFlarePartSize::S)
+		if (Ship->GetDescription()->CapturePointContribution)
+		{
+			CapturePoints += Ship->GetDescription()->CapturePointContribution;
+		}
+
+		else if (Ship->GetSize() ==  EFlarePartSize::S)
 		{
 			CapturePoints += 1;
 		}
 
-		if (Ship->GetSize() ==  EFlarePartSize::L)
+		else if (Ship->GetSize() ==  EFlarePartSize::L)
 		{
 			CapturePoints += 10;
 		}

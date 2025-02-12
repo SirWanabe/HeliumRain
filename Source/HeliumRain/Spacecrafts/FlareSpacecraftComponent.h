@@ -377,7 +377,7 @@ public:
 	virtual void TickForComponentAlive(float DeltaTime);
 
 	/** Initialize this component and register the master ship object */
-	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr);
+	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false);
 
 	virtual void SetOwnerCompany(UFlareCompany* Company);
 

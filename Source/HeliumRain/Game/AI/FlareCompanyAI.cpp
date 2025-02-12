@@ -26,17 +26,19 @@
 
 #include "../../Spacecrafts/FlareSimulatedSpacecraft.h"
 
-#define AI_DEBUG_AUTOSCRAP 0
 #define AI_MAX_SHIP_COUNT 200
 
 // If one cargo out of X ships is wrecked, the fleet is unhealthy
 #define AI_CARGO_HEALTHY_THRESHOLD 5
 #define AI_TRADESHIP_UPGRADE_ENGINE_CHANCE 0.80
-#define AI_TRADESHIP_UPGRADE_RCS_CHANCE 0.25
+#define AI_TRADESHIP_UPGRADE_RCS_CHANCE 0.20
 
+//#define AI_DEBUG_AUTOSCRAP
 //#define DEBUG_AI_WAR_MILITARY_MOVEMENT
 //#define DEBUG_AI_BATTLE_STATES
 //#define DEBUG_AI_BUDGET
+//#define DEBUG_AI_SHIP_ORDER
+
 #define LOCTEXT_NAMESPACE "FlareCompanyAI"
 
 DECLARE_CYCLE_STAT(TEXT("FlareCompanyAI UpdateDiplomacy"), STAT_FlareCompanyAI_UpdateDiplomacy, STATGROUP_Flare);
@@ -543,10 +545,9 @@ void UFlareCompanyAI::Simulate(bool GlobalWar, int32 TotalReservedResources)
 		CreatedWorldResourceVariations = false;
 
 		GlobalReservedResources = TotalReservedResources;
-		AutoScrap();
-
 		Behavior->Load(Company);
 
+		AutoScrap();
 		CheckBattleResolution();
 		UpdateDiplomacy(GlobalWar);
 
@@ -696,19 +697,21 @@ void UFlareCompanyAI::AutoScrap()
 
 		bool ScrapMilitary = ExtraMilitary >= ExtraCargo;
 
-#if AI_DEBUG_AUTOSCRAP
+#ifdef AI_DEBUG_AUTOSCRAP
 		FLOGV("UFlareCompanyAI::AutoScrap %s need autoscrap : %d/%d ships. %d/%d cargo S ships, %d/%d military S ships. Scrap military ? %d ",
 			  *Company->GetCompanyName().ToString(),
+
 			  TotalShipCount,
-				Behavior->Scrap_Minimum_Ships,
+			  Behavior->Scrap_Minimum_Ships,
+
 			  SCargoShipCount,
-				Behavior->Scrap_Min_S_Cargo,
+			  Behavior->Scrap_Min_S_Cargo,
+			
 			  SMilitaryShipCount,
 			  Behavior->Scrap_Min_S_Military,
+			  
 			  ScrapMilitary);
 #endif
-
-
 
 		// Find scrap candidate
 		UFlareSimulatedSpacecraft* BestScrapCandidate = nullptr;
@@ -771,7 +774,7 @@ void UFlareCompanyAI::AutoScrap()
 			break;
 		}
 
-#if AI_DEBUG_AUTOSCRAP
+#ifdef AI_DEBUG_AUTOSCRAP
 		FLOGV("UFlareCompanyAI::AutoScrap %s can be scraped",
 			  *BestScrapCandidate->GetImmatriculation().ToString());
 #endif
@@ -784,7 +787,7 @@ void UFlareCompanyAI::AutoScrap()
 			if (SectorStations[Index]->GetCompany() == BestScrapCandidate->GetCompany())
 			{
 				TargetStation = SectorStations[Index];
-#if AI_DEBUG_AUTOSCRAP
+#ifdef AI_DEBUG_AUTOSCRAP
 				FLOGV("UFlareCompanyAI::AutoScrap : found company station '%s'", *TargetStation->GetImmatriculation().ToString());
 #endif
 				break;
@@ -798,7 +801,7 @@ void UFlareCompanyAI::AutoScrap()
 		// Scrap
 		if (TargetStation)
 		{
-#if AI_DEBUG_AUTOSCRAP
+#ifdef AI_DEBUG_AUTOSCRAP
 			FLOGV("UFlareCompanyAI::AutoScrap : scrapping at '%s'", *TargetStation->GetImmatriculation().ToString());
 #endif
 			TargetStation->GetGame()->Scrap(BestScrapCandidate->GetImmatriculation(), TargetStation->GetImmatriculation());
@@ -815,7 +818,7 @@ void UFlareCompanyAI::AutoScrap()
 		}
 		else
 		{
-#if AI_DEBUG_AUTOSCRAP
+#ifdef AI_DEBUG_AUTOSCRAP
 			FLOGV("UFlareCompanyAI::AutoScrap : fail to find scrap station in '%s'", *BestScrapCandidate->GetCurrentSector()->GetSectorName().ToString());
 #endif
 			break;
@@ -1017,7 +1020,21 @@ void UFlareCompanyAI::RepairAndRefill()
 
 	for (UFlareFleet* Fleet : Company->GetCompanyFleets())
 	{
-		if (Fleet->GetCombatPoints(false) == 0)
+		if (Company->AtWar())
+		{
+			if (Fleet->GetCombatPoints(false) >= 1)
+			{
+				if (Fleet->FleetNeedsRepair())
+				{
+					Fleet->RepairFleet();
+				}
+				if (Fleet->FleetNeedsRefill())
+				{
+					Fleet->RefillFleet();
+				}
+			}
+		}
+		else  if (Fleet->GetCombatPoints(false) == 0)
 		{
 			if (Fleet->FleetNeedsRepair())
 			{
@@ -1995,7 +2012,7 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 		}
 		else
 		{
-			if (WarContext.Allies.Contains(Travel->GetFleet()->GetFleetCompany()))
+			if (!WarContext.Enemies.Contains(Travel->GetFleet()->GetFleetCompany()))
 			{
 				continue;
 			}
@@ -2003,6 +2020,10 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 
 		int64 TravelDuration = Travel->GetRemainingTravelDuration();
 		int32 ArmyCombatPoints = 0;
+
+		int32 ArmySmallCombatPoints = 0;
+		int32 ArmyLargeCombatPoints = 0;
+
 		int32 ArmyAntiLCombatPoints = 0;
 		int32 ArmyAntiSCombatPoints = 0;
 
@@ -2010,6 +2031,17 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 		{
 			int32 ShipCombatPoints = Ship->GetCombatPoints(true);
 			ArmyCombatPoints += ShipCombatPoints;
+
+			if (Ship->GetSize() == EFlarePartSize::L)
+			{
+				ArmyLargeCombatPoints += ShipCombatPoints;
+			}
+			else if (Ship->GetSize() == EFlarePartSize::L)
+			{
+				ArmySmallCombatPoints += ShipCombatPoints;
+			}
+
+
 			if (Ship->GetWeaponsSystem()->HasAntiLargeShipWeapon())
 			{
 				ArmyAntiLCombatPoints += ShipCombatPoints;
@@ -2027,6 +2059,8 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 			if (Fleet.TravelDuration  == TravelDuration)
 			{
 				Fleet.ArmyCombatPoints += ArmyCombatPoints;
+				Fleet.ArmySmallCombatPoints += ArmySmallCombatPoints;
+				Fleet.ArmyLargeCombatPoints += ArmyLargeCombatPoints;
 				Fleet.ArmyAntiLCombatPoints += ArmyAntiLCombatPoints;
 				Fleet.ArmyAntiSCombatPoints += ArmyAntiSCombatPoints;
 				ExistingTravelFound = true;
@@ -2039,6 +2073,8 @@ TArray<WarTargetIncomingFleet> UFlareCompanyAI::GenerateWarTargetIncomingFleets(
 			WarTargetIncomingFleet Fleet;
 			Fleet.TravelDuration = TravelDuration;
 			Fleet.ArmyCombatPoints = ArmyCombatPoints;
+			Fleet.ArmySmallCombatPoints = ArmySmallCombatPoints;
+			Fleet.ArmyLargeCombatPoints = ArmyLargeCombatPoints;
 			Fleet.ArmyAntiLCombatPoints = ArmyAntiLCombatPoints;
 			Fleet.ArmyAntiSCombatPoints = ArmyAntiSCombatPoints;
 			IncomingFleetList.Add(Fleet);
@@ -2273,14 +2309,12 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 	{
 		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
 
-		if (BattleState.HasDanger)
-		{
-			continue;
-		}
-
 		DefenseSector Target;
 		Target.Sector = Sector;
-		Target.CombatPoints = 0;
+		Target.TotalCombatPoints = 0;
+		Target.AlliedCombatPoints = 0;
+		Target.OwnedCombatPoints = 0;
+
 		Target.ArmyAntiSCombatPoints = 0;
 		Target.ArmyAntiLCombatPoints = 0;
 		Target.ArmyLargeShipCombatPoints = 0;
@@ -2343,8 +2377,17 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 			{
 				continue;
 			}
+
+			if (Ship->GetCompany() != Company)
+			{
+				Target.AlliedCombatPoints += ShipCombatPoints;
+			}
+			else
+			{
+				Target.OwnedCombatPoints += ShipCombatPoints;
+			}
 			
-			Target.CombatPoints += ShipCombatPoints;
+			Target.TotalCombatPoints += ShipCombatPoints;
 
 			if (Ship->GetSize() == EFlarePartSize::L)
 			{
@@ -2368,51 +2411,60 @@ TArray<DefenseSector> UFlareCompanyAI::GenerateDefenseSectorList(AIWarContext& W
 			}
 		}
 
-		Target.CapturingStation = false;
-		Target.CapturingShip = false;
+		Target.CapturingStations.Empty();
+		Target.CapturingShips.Empty();
 		TArray<UFlareSimulatedSpacecraft*>& Stations =  Sector->GetSectorStations();
+		TArray<UFlareSimulatedSpacecraft*> FilteredStations;
 
-		if(Company->GetCaptureOrderCountInSector(Sector) > 0)
+		for (UFlareSimulatedSpacecraft* Station : Stations)
 		{
-			Target.CapturingStation = true;
-		}
-		else
-		{
-			for (UFlareSimulatedSpacecraft* Station : Stations)
+			// Capturing station
+			if (WarContext.Enemies.Contains(Station->GetCompany()))
 			{
-				// Capturing station
-
-				if (WarContext.Enemies.Contains(Station->GetCompany()))
-				{
-					if (Behavior->FinishedResearch)
-					{
-						if (Station->GetDescription()->IsResearch())
-						{
-							continue;
-						}
-					}
-/*
-					if (Company->GetCompanyTelescopes().Num() >= 1 && Station->GetDescription()->IsTelescope())
-					{
-						continue;
-					}
-*/
-
-					if(Company->CanStartCapture(Station))
-					{
-						Target.CapturingStation = true;
-						break;
-					}
-				}
+				FilteredStations.Add(Station);
 			}
 		}
 
-		if (Company->GetCaptureShipOrderCountInSector(Sector) > 0)
+		for (UFlareCompany* AlliedCompany : WarContext.Allies)
 		{
-			Target.CapturingShip = true;
+			if (AlliedCompany->GetCaptureOrderCountInSector(Sector) > 0)
+			{
+				Target.CapturingStations.Add(true);
+			}
+			else
+			{
+				bool BegunCapture = false;
+				for (UFlareSimulatedSpacecraft* Station : FilteredStations)
+				{
+					// Capturing station
+					if (AlliedCompany->CanStartCapture(Station))
+					{
+						if (!BegunCapture)
+						{
+							BegunCapture = true;
+							Target.CapturingStations.Add(true);
+						}
+						continue;
+					}
+				}
+				if (!BegunCapture)
+				{
+					Target.CapturingStations.Add(false);
+				}
+			}
+
+
+			if (AlliedCompany->GetCaptureShipOrderCountInSector(Sector) > 0)
+			{
+				Target.CapturingShips.Add(true);
+			}
+			else
+			{
+				Target.CapturingShips.Add(false);
+			}
 		}
 
-		if (Target.CombatPoints > 0 || Target.PrisonersKeeper != nullptr)
+		if (Target.TotalCombatPoints > 0 || Target.PrisonersKeeper != nullptr)
 		{
 			DefenseSectorList.Add(Target);
 		}
@@ -2691,16 +2743,21 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 		IncomingFleetSlowestTravelDuration);
 #endif
 
-			for (DefenseSector& Sector : SortedDefenseSectorList)
+		for (DefenseSector& Sector : SortedDefenseSectorList)
 		{
+			if (Target.Sector == Sector.Sector)
+			{
+				continue;
+			}
+
 			// Check if there is an allied incoming fleet
-			int64 TotalCombatPoints = Sector.CombatPoints + IncomingFleetTotalCombatPoints;
+			int64 TotalCombatPoints = Sector.TotalCombatPoints + IncomingFleetTotalCombatPoints;
 
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("check attack from %s to %s : CombatPoints=%d (total = %d), EnemyArmyCombatPoints=%d",
 				*Sector.Sector->GetSectorName().ToString(),
 				*Target.Sector->GetSectorName().ToString(),
-				Sector.CombatPoints, TotalCombatPoints, Target.EnemyArmyCombatPoints);
+				Sector.TotalCombatPoints, TotalCombatPoints, Target.EnemyArmyCombatPoints);
 #endif
 
 			// Check if the army is strong enough
@@ -2717,26 +2774,50 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 				continue;
 			}
 
-			if (Target.EnemyArmyCombatPoints == 0 && (Sector.CapturingStation || Sector.CapturingShip))
+			bool CapturingStation = Sector.CapturingStations[WarContext.Allies.Find(Company)];
+			bool CapturingShip = Sector.CapturingShips[WarContext.Allies.Find(Company)];
+			if (Target.EnemyArmyCombatPoints == 0 && (CapturingStation || CapturingShip))
 			{
-				// Capturing station, don't move
+				// Capturing station or ship, don't consider moving from here just for enemy trade ships/stations
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
-				FLOGV("army at %s won't move to attack %s : capturing station",
+				FLOGV("army at %s won't move to attack %s : no enemies at possible target and capturing something Station = %d Ship = %d",
 					*Sector.Sector->GetSectorName().ToString(),
-					*Target.Sector->GetSectorName().ToString());
+					*Target.Sector->GetSectorName().ToString(),
+					CapturingStation, CapturingShip);
 #endif
 
 				continue;
 			}
 
+			if (CapturingStation || CapturingShip)
+			{
+				int32 DefenseIncomingEnemyArmyCombatPoints = 0;
+
+				TArray<WarTargetIncomingFleet> WarTargetIncomingFleets = GenerateWarTargetIncomingFleets(WarContext, Sector.Sector, true);
+				for (WarTargetIncomingFleet& Fleet : WarTargetIncomingFleets)
+				{
+					DefenseIncomingEnemyArmyCombatPoints += Fleet.ArmyCombatPoints;
+				}
+
+				if (WarTargetIncomingFleets.Num())
+				{
+					if (Sector.OwnedCombatPoints >= (DefenseIncomingEnemyArmyCombatPoints * Behavior->RetreatThreshold))
+					{
+						// Capturing station or ship, don't consider moving from here just for enemy trade ships/stations
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+						FLOGV("army at %s won't move to attack %s : incoming enemy force smaller than ours, defensive position. %d vs %d",
+							*Sector.Sector->GetSectorName().ToString(),
+							*Target.Sector->GetSectorName().ToString(),
+							Sector.OwnedCombatPoints,
+							DefenseIncomingEnemyArmyCombatPoints);
+#endif
+						continue;
+					}
+				}
+			}
+
 			// Should go defend ! Assemble a fleet
-//			TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector,Sector.PrisonersKeeper);
 			TMap<UFlareCompany*, TArray<UFlareFleet*>> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector,Sector.PrisonersKeeper);
-
-
-
-
-
 
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("Initial MovableFleets = %d", MovableFleets.Num());
@@ -2819,6 +2900,31 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 #endif
 				for (UFlareFleet* SelectedFleet : UsableFleets)
 				{
+					if (SelectedFleet->GetFleetCompany() != Company)
+					{
+						//allied fleet, extra checks before grabbing
+						bool CapturingStation = Sector.CapturingStations[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
+
+						if (CapturingStation)
+						{
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+							FLOGV("Allied fleet %s is still capturing a station, they are unavailable for a joint attack",
+								*SelectedFleet->GetFleetName().ToString());
+#endif
+							continue;
+						}
+
+						bool CapturingShip = Sector.CapturingShips[WarContext.Allies.Find(SelectedFleet->GetFleetCompany())];
+						if (CapturingShip)
+						{
+#ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
+							FLOGV("Allied fleet %s is still capturing a ship, they are unavailable for a joint attack",
+								*SelectedFleet->GetFleetName().ToString());
+#endif
+							continue;
+						}
+					}
+
 					int64 FleetTravelDuration = UFlareTravel::ComputeTravelDuration(GetGame()->GetGameWorld(), Sector.Sector, Target.Sector, SelectedFleet->GetFleetCompany(), SelectedFleet);
 					if (FleetTravelDuration != SlowestTravelDuration)
 					{
@@ -2843,14 +2949,33 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						if (SelectedShip->GetWeaponsSystem()->HasAntiLargeShipWeapon())
 						{
 							SentAntiLFleetCombatPoints += ShipCombatPoints;
-							Sector.CombatPoints -= ShipCombatPoints;
+							Sector.TotalCombatPoints -= ShipCombatPoints;
 							Sector.ArmyAntiLCombatPoints -= ShipCombatPoints;
+
+							if (SelectedFleet->GetFleetCompany() == Company)
+							{
+								Sector.OwnedCombatPoints -= ShipCombatPoints;
+							}
+							else
+							{
+								Sector.AlliedCombatPoints -= ShipCombatPoints;
+							}
+
 						}
 						else if (SelectedShip->GetWeaponsSystem()->HasAntiSmallShipWeapon())
 						{
 							SentAntiSFleetCombatPoints += ShipCombatPoints;
-							Sector.CombatPoints -= ShipCombatPoints;
+							Sector.TotalCombatPoints -= ShipCombatPoints;
 							Sector.ArmyAntiSCombatPoints -= ShipCombatPoints;
+
+							if (SelectedFleet->GetFleetCompany() == Company)
+							{
+								Sector.OwnedCombatPoints -= ShipCombatPoints;
+							}
+							else
+							{
+								Sector.AlliedCombatPoints -= ShipCombatPoints;
+							}
 						}
 
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -2879,10 +3004,10 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 				FLOGV("- Attack Sent %d total ships", SentShips);
 				FLOGV("- Sent Total Combat Points = %d", SentCombatPoints);
-				FLOGV("- Sent AntiLFleetCombatPointsLimit= %d", SentAntiLFleetCombatPoints);
-				FLOGV("- Sent AntiSFleetCombatPointsLimit= %d", SentAntiSFleetCombatPoints);
+				FLOGV("- Sent AntiLFleetCombatPointsLimit = %d", SentAntiLFleetCombatPoints);
+				FLOGV("- Sent AntiSFleetCombatPointsLimit = %d", SentAntiSFleetCombatPoints);
 #endif
-				if (Sector.CombatPoints == 0)
+				if (Sector.OwnedCombatPoints == 0)
 				{
 					DefenseSectorList.Remove(Sector);
 				}
@@ -2897,20 +3022,31 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 		{
 			//Prisoner ship is the only combat ship in the sector, check if we need to retreat
 			int32 PrisonerShipCombatPoints = Sector.PrisonersKeeper->GetCombatPoints(true);
-			if (Sector.CombatPoints == PrisonerShipCombatPoints)
+			if (Sector.OwnedCombatPoints == PrisonerShipCombatPoints)
 			{
 				bool IncomingEnemyFleet = false;
+				bool IncomingEnemyFleetNeedRetreat = false;
+				int32 IncomingEnemyFleetArmySmallCombatPoints = 0;
+				int32 IncomingEnemyFleetArmyLargeCombatPoints = 0;
+
 				TArray<WarTargetIncomingFleet> WarTargetIncomingFleets = GenerateWarTargetIncomingFleets(WarContext, Sector.Sector,true);
 				for (WarTargetIncomingFleet& Fleet : WarTargetIncomingFleets)
 				{
-					if (Fleet.TravelDuration <= 2 && PrisonerShipCombatPoints <= Fleet.ArmyCombatPoints * Behavior->RetreatThreshold)
+					if (Fleet.TravelDuration <= 2)
 					{
 						IncomingEnemyFleet = true;
-						break;
+						IncomingEnemyFleetArmySmallCombatPoints = Fleet.ArmySmallCombatPoints;
+						IncomingEnemyFleetArmyLargeCombatPoints = Fleet.ArmyLargeCombatPoints;
+
+						if (PrisonerShipCombatPoints <= Fleet.ArmyCombatPoints * Behavior->RetreatThreshold)
+						{
+							IncomingEnemyFleetNeedRetreat = true;
+							break;
+						}
 					}
 				}
 
-				if (IncomingEnemyFleet)
+				if (IncomingEnemyFleetNeedRetreat)
 				{
 					// Find nearest sector without danger with available FS and travel there
 					UFlareSimulatedSector* RetreatSector = FindNearestSectorWithFS(WarContext, Sector.Sector, Sector.PrisonersKeeper->GetCurrentFleet());
@@ -2932,28 +3068,34 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						Sector.PrisonersKeeper = nullptr;
 					}
 				}
+
+				else if (IncomingEnemyFleet)
+				{
+					//make sure the prisoner ship attempts to actually arm itself even if its combat points is above the incoming threat
+					Sector.PrisonersKeeper->GetCompany()->GetAI()->UpgradeShip(Sector.PrisonersKeeper, IncomingEnemyFleetArmySmallCombatPoints > IncomingEnemyFleetArmyLargeCombatPoints ? EFlarePartSize::S : EFlarePartSize::L, false, false);
+				}
+				else if (Sector.PrisonersKeeper->GetSize() == EFlarePartSize::S)
+				{
+					for (UFlareSimulatedSpacecraft* Ship : Sector.Sector->GetSectorShips())
+					{
+						if (WarContext.Enemies.Contains(Ship->GetCompany()))
+						{
+							Sector.PrisonersKeeper->GetCompany()->GetAI()->UpgradeShip(Sector.PrisonersKeeper, Ship->GetSize(), true, false);
+							break;
+						}
+					}
+				}
 			}
 		}
 
+		bool CapturingStations = Sector.CapturingStations[WarContext.Allies.Find(Company)];
+
 		// Capturing station, don't move
-		if (Sector.CapturingStation)
+		if (CapturingStations)
 		{
 			// Start capture
 			for (UFlareSimulatedSpacecraft* Station : Sector.Sector->GetSectorStations())
 			{
-				if (Behavior->FinishedResearch)
-				{
-					if (Station->GetDescription()->IsResearch())
-					{
-						continue;
-					}
-				}
-/*
-				if (Company->GetCompanyTelescopes().Num() >= 1 && Station->GetDescription()->IsTelescope())
-				{
-					continue;
-				}
-*/
 				Company->StartCapture(Station);
 			}
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
@@ -2962,7 +3104,10 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 #endif
 			continue;
 		}
-		if (Sector.CapturingShip)
+
+		bool CapturingShip = Sector.CapturingShips[WarContext.Allies.Find(Company)];
+
+		if (CapturingShip)
 		{
 #ifdef DEBUG_AI_WAR_MILITARY_MOVEMENT
 			FLOGV("army at %s won't move to defend: capturing ship",
@@ -3037,11 +3182,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 		{
 			UsableFleets.Append(MovableFleets[InvolvedCompanies]);
 		}
-/*
-		TMap<UFlareCompany*, UFlareFleet*> MovableFleets = GenerateWarFleetList(WarContext, Sector.Sector, Sector.PrisonersKeeper);
-		TArray<UFlareFleet*> UsableFleets;
-		MovableFleets.GenerateValueArray(UsableFleets);
-*/
+
 		for (UFlareFleet* SelectedFleet : UsableFleets)
 		{
 
@@ -3067,16 +3208,16 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 				// Find bigger
 				DefenseSector StrongestSector;
 				StrongestSector.Sector = NULL;
-				StrongestSector.CombatPoints = 0;
+				StrongestSector.TotalCombatPoints = 0;
 				for (DefenseSector& DistantSector : DefenseSectorListInRange)
 				{
-					if (!StrongestSector.Sector || StrongestSector.CombatPoints < DistantSector.CombatPoints)
+					if (!StrongestSector.Sector || StrongestSector.TotalCombatPoints < DistantSector.TotalCombatPoints)
 					{
 						StrongestSector = DistantSector;
 					}
 				}
 
-				if (StrongestSector.CombatPoints > Sector.CombatPoints)
+				if (StrongestSector.TotalCombatPoints > Sector.TotalCombatPoints)
 				{
 					// There is a stronger sector, travel here if no incoming army before
 					bool IncomingFleet = false;
@@ -3109,8 +3250,18 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 						*Ship->GetImmatriculation().ToString(),
 						*Ship->GetCurrentSector()->GetSectorName().ToString(),
 						*StrongestSector.Sector->GetSectorName().ToString());
+
 						int32 ShipCombatPoints = Ship->GetCombatPoints(true);
-						Sector.CombatPoints -= ShipCombatPoints;
+						Sector.TotalCombatPoints -= ShipCombatPoints;
+
+						if (SelectedFleet->GetFleetCompany() == Company)
+						{
+							Sector.OwnedCombatPoints -= ShipCombatPoints;
+						}
+						else
+						{
+							Sector.AlliedCombatPoints -= ShipCombatPoints;
+						}
 					}
 
 					Game->GetGameWorld()->StartTravel(SelectedFleet, StrongestSector.Sector);
@@ -3121,7 +3272,7 @@ void UFlareCompanyAI::UpdateWarMilitaryMovement()
 					FLOGV("army at %s won't move to defend at %s: army is weaker (StrongestSector.CombatPoints=%d Sector.CombatPoints=%d)",
 						*Sector.Sector->GetSectorName().ToString(),
 						*StrongestSector.Sector->GetSectorName().ToString(),
-						StrongestSector.CombatPoints, Sector.CombatPoints);
+						StrongestSector.TotalCombatPoints, Sector.TotalCombatPoints);
 #endif
 				}
 				break;
@@ -3137,6 +3288,11 @@ UFlareSimulatedSector* UFlareCompanyAI::FindNearestSectorWithPeace(AIWarContext&
 
 	for (UFlareSimulatedSector* Sector : WarContext.KnownSectors)
 	{
+		if (Sector == OriginSector)
+		{
+			continue;
+		}
+
 		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
 		if (BattleState.HasDanger)
 		{
@@ -3162,6 +3318,11 @@ UFlareSimulatedSector* UFlareCompanyAI::FindNearestSectorWithFS(AIWarContext& Wa
 
 	for (UFlareSimulatedSector* Sector : WarContext.KnownSectors)
 	{
+		if (Sector == OriginSector)
+		{
+			continue;
+		}
+
 		FFlareSectorBattleState BattleState = Sector->GetSectorBattleState(Company);
 		if (BattleState.HasDanger)
 		{
@@ -3186,7 +3347,6 @@ UFlareSimulatedSector* UFlareCompanyAI::FindNearestSectorWithFS(AIWarContext& Wa
 			NearestSector = Sector;
 			NearestDuration = Duration;
 		}
-
 	}
 	return NearestSector;
 }
@@ -3215,7 +3375,7 @@ UFlareSimulatedSector* UFlareCompanyAI::FindNearestSectorWithUpgradePossible(AIW
 	return NearestSector;
 }
 
-bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager)
+bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager, bool AllowEngineUpgrades)
 {
 	UFlareSpacecraftComponentsCatalog* Catalog = Game->GetPC()->GetGame()->GetShipPartsCatalog();
 
@@ -3232,19 +3392,22 @@ bool UFlareCompanyAI::UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSiz
 	// iterate to find best weapon
 	UpgradeShipWeapon(Ship, WeaponTargetSize,AllowSalvager);
 
-	CompanyValue TotalValue = Company->GetCompanyValue();
-	if (Company->GetMoney() > (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary))
+	if (AllowEngineUpgrades)
 	{
-		// Chance to upgrade rcs (optional)
-		if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::RCS)) // 50 % chance
+		CompanyValue TotalValue = Company->GetCompanyValue();
+		if (Company->GetMoney() > (TotalValue.TotalDailyProductionCost * Behavior->DailyProductionCostSensitivityMilitary))
 		{
-			UpgradeShipRCS(Ship, EFlareBudget::Military);
-		}
+			// Chance to upgrade rcs (optional)
+			if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::RCS)) // 50 % chance
+			{
+				UpgradeShipRCS(Ship, EFlareBudget::Military);
+			}
 
-		// Chance to upgrade pod (optional)
-		if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::OrbitalEngine)) // 50 % chance
-		{
-			UpgradeShipEngine(Ship, EFlareBudget::Military);
+			// Chance to upgrade pod (optional)
+			if (FMath::RandBool() && Ship->CanUpgrade(EFlarePartType::OrbitalEngine)) // 50 % chance
+			{
+				UpgradeShipEngine(Ship, EFlareBudget::Military);
+			}
 		}
 	}
 
@@ -3293,13 +3456,20 @@ bool UFlareCompanyAI::UpgradeShipWeapon(UFlareSimulatedSpacecraft* Ship, EFlareP
 
 			if (AllowSalvager)
 			{
-				if (Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::LightSalvage || Part->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage)
+				if (WeaponTargetSize == EFlarePartSize::L && Part->WeaponCharacteristics.DamageType != EFlareShellDamageType::HeavySalvage)
 				{
-					bool HasChance = FMath::FRand() < 0.7;
-					if (!BestWeapon || (BestWeapon->Cost < Part->Cost && HasChance))
-					{
-						BestWeapon = Part;
-					}
+					continue;
+				}
+
+				if (WeaponTargetSize == EFlarePartSize::S && Part->WeaponCharacteristics.DamageType != EFlareShellDamageType::LightSalvage)
+				{
+					continue;
+				}
+
+				bool HasChance = FMath::FRand() < 0.7;
+				if (!BestWeapon || HasChance)
+				{
+					BestWeapon = Part;
 				}
 				continue;
 			}
@@ -3533,7 +3703,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 			//if no enought anti L, upgrade to anti L
 			if (!EnoughAntiL && !HasAntiLargeShipWeapon)
 			{
-				bool Upgraded = UpgradeShip(Ship, EFlarePartSize::L);
+				bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::L);
 				if (Upgraded)
 				{
 					Sector.ArmyAntiLCombatPoints += CombatPoints;
@@ -3557,7 +3727,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 				bool EnoughAntiLWithoutShip = (Sector.ArmyAntiLCombatPoints - CombatPoints) >= Target.EnemyArmyLCombatPoints * WarContext.AttackThreshold;
 				if (EnoughAntiLWithoutShip)
 				{
-					bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S);
+					bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::S);
 					if (Upgraded)
 					{
 						Sector.ArmyAntiSCombatPoints += CombatPoints;
@@ -3579,7 +3749,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 				float EquippedRatio = TotalValue.TotalShipCountMilitaryLSalvager / TotalValue.TotalShipCountMilitaryL;
 				if (EquippedRatio < Behavior->UpgradeMilitarySalvagerLRatio)
 				{
-					bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S, true);
+					bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, FMath::RandBool() ? EFlarePartSize::S : EFlarePartSize::L, true);
 					if (Upgraded)
 					{
 					}
@@ -3605,7 +3775,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 			//if no enought anti S, upgrade to anti S
 			if (!EnoughAntiS && !HasAntiSmallShipWeapon)
 			{
-				bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S);
+				bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::S);
 				if (Upgraded)
 				{
 					Sector.ArmyAntiSCombatPoints += CombatPoints;
@@ -3629,7 +3799,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 				bool EnoughAntiSWithoutShip = (Sector.ArmyAntiSCombatPoints - CombatPoints) >= Target.EnemyArmySCombatPoints * WarContext.AttackThreshold;
 				if (EnoughAntiSWithoutShip)
 				{
-					bool Upgraded = UpgradeShip(Ship, EFlarePartSize::L);
+					bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::L);
 					if (Upgraded)
 					{
 						Sector.ArmyAntiLCombatPoints += CombatPoints;
@@ -3651,7 +3821,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 				float EquippedRatio = TotalValue.TotalShipCountMilitarySSalvager / TotalValue.TotalShipCountMilitaryS;
 				if (EquippedRatio < Behavior->UpgradeMilitarySalvagerSRatio)
 				{
-					bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S, true);
+					bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, FMath::RandBool() ? EFlarePartSize::S : EFlarePartSize::L, true);
 					if (Upgraded)
 					{
 					}
@@ -3696,7 +3866,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 						if (FutureAntiLRatio > FutureAntiSRatio)
 						{
 							// Ratio of ratio still unchanged, upgrade to S
-							bool Upgraded = UpgradeShip(Ship, EFlarePartSize::S);
+							bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::S);
 							if (Upgraded)
 							{
 								Sector.ArmyAntiSCombatPoints += CombatPoints;
@@ -3724,7 +3894,7 @@ bool UFlareCompanyAI::UpgradeMilitaryFleet(AIWarContext& WarContext,  WarTarget 
 						if (FutureAntiSRatio > FutureAntiLRatio)
 						{
 							// Ratio of ratio still unchanged, upgrade to L
-							bool Upgraded = UpgradeShip(Ship, EFlarePartSize::L);
+							bool Upgraded = Ship->GetCompany()->GetAI()->UpgradeShip(Ship, EFlarePartSize::L);
 							if (Upgraded)
 							{
 								Sector.ArmyAntiLCombatPoints += CombatPoints;
@@ -4030,7 +4200,6 @@ int64 UFlareCompanyAI::OrderOneShip(const FFlareSpacecraftDescription* ShipDescr
 	return 0;
 }
 
-//#define DEBUG_AI_SHIP_ORDER
 const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Military)
 {
 	int32 TotalCompanyShipCount = Company->GetCompanyShips().Num();
@@ -4152,6 +4321,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 			FLOGV("- ShipLCount %d", ShipLCount);
 			FLOGV("- SizeDiversity %d", SizeDiversity);
 			FLOGV("- Diversity %d", Diversity);
+			FLOGV("- Initial EfficiencyChance %f", EfficiencyChance);
 #endif
 
 	// List possible ship candidates
@@ -4238,8 +4408,17 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 	const FFlareSpacecraftDescription* BestShipDescriptionEfficiency = NULL;
 	TMap<const FFlareSpacecraftDescription*, int32>* OwnedShipCount = (PickLShip ? &OwnedShipLCount : &OwnedShipSCount);
 
+#ifdef DEBUG_AI_SHIP_ORDER
+	FLOG("Beginning CanditateShipLoop");
+#endif
+
 	for (const FFlareSpacecraftDescription* Description : CandidateShips)
 	{
+
+#ifdef DEBUG_AI_SHIP_ORDER
+		FLOGV("Looking at %s", *Description->Name.ToString());
+#endif
+
 		if (BestShipDescription == NULL)
 		{
 			BestShipDescription = Description;
@@ -4257,19 +4436,17 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 		{
 			BestCount = (*OwnedShipCount)[BestShipDescription];
 		}
-/*
-		int32 BestEfficiencyCount = 0;
-		if (OwnedShipCount->Contains(BestShipDescriptionEfficiency))
-		{
-			BestEfficiencyCount = (*OwnedShipCount)[BestShipDescriptionEfficiency];
-		}
-*/
+
 		if (FMath::FRand() <= EfficiencyChance)
 		{
 			int64 ShipPriceA = UFlareGameTools::ComputeSpacecraftPrice(Description->Identifier, RandomSector, true);
 			int64 ShipPriceB = UFlareGameTools::ComputeSpacecraftPrice(BestShipDescription->Identifier, RandomSector, true);
 			float CostRatio = ShipPriceA / ShipPriceB;
 			bool BestEfficiency;
+
+#ifdef DEBUG_AI_SHIP_ORDER
+			FLOGV("Passed Efficiency chance. CostRatio=%f", CostRatio);
+#endif
 
 			if (Military)
 			{
@@ -4281,7 +4458,7 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 					Ratio1 /= (BestShipDescription->CombatPoints);
 				}
 
-				if (BestShipDescription->CombatPoints)
+				if (BestShipDescription->DroneMaximum > 0 && Behavior->BuildDroneCombatWorth > 0)
 				{
 					Ratio2 /= (BestShipDescription->DroneMaximum * Behavior->BuildDroneCombatWorth);
 				}
@@ -4294,6 +4471,12 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 				{
 					BestEfficiency = Ratio1 > CostRatio;
 				}
+
+#ifdef DEBUG_AI_SHIP_ORDER
+				FLOGV("- EfficiencyRatio 1 = %f", Ratio1);
+				FLOGV("- EfficiencyRatio 2 = %f", Ratio2);
+				FLOGV("- BestEfficiency %d", BestEfficiency);
+#endif
 			}
 			else
 			{
@@ -4347,16 +4530,26 @@ const FFlareSpacecraftDescription* UFlareCompanyAI::FindBestShipToBuild(bool Mil
 
 		if (BestEfficiencyCount < BestCount || (BestEfficiencyCount == 0))
 		{
+#ifdef DEBUG_AI_SHIP_ORDER
+			FLOGV("- Chose to build efficient ship, %s", *BestShipDescriptionEfficiency->Name.ToString());
+#endif
+
 			return BestShipDescriptionEfficiency;
 		}
 		else
 		{
+#ifdef DEBUG_AI_SHIP_ORDER
+			FLOGV("- Chose to build standard diversity ship, %s", *BestShipDescription->Name.ToString());
+#endif
 			return BestShipDescription;
 		}
-//		return (BestCount + Diversity) > (BestEfficiencyCount + DiversityEfficiency) ? BestShipDescription : BestShipDescriptionEfficiency;
+		return (BestCount + Diversity) > (BestEfficiencyCount + DiversityEfficiency) ? BestShipDescription : BestShipDescriptionEfficiency;
 	}
 	else
 	{
+#ifdef DEBUG_AI_SHIP_ORDER
+		FLOGV("- Chose to build standard diversity ship with no efficiency comparisons, %s", *BestShipDescription->Name.ToString());
+#endif
 		return BestShipDescription;
 	}
 }

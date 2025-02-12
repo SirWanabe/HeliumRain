@@ -171,6 +171,8 @@ public:
 
 	bool TryCapture(UFlareCompany* Company, int32 CapturePoint);
 
+	void RemoveCapturePoint(FName CompanyIdentifier, int32 CapturePoint);
+
 	bool UpgradePart(FFlareSpacecraftComponentDescription* NewPartDesc, int32 WeaponGroupIndex);
 
 	bool CanUpgrade(EFlarePartType::Type Type);
@@ -304,9 +306,6 @@ public:
 
 
 protected:
-
-	void RemoveCapturePoint(FName CompanyIdentifier, int32 CapturePoint);
-
     /*----------------------------------------------------
         Protected data
     ----------------------------------------------------*/
@@ -352,6 +351,9 @@ protected:
 
 	UFlareCompanyWhiteList*									ShipSelectedWhiteList;
 	float													EngineAccelerationPower = 0.f;
+
+	UFlareCompany*											HarpooningCompany;
+
 
 
 public:

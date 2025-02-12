@@ -860,6 +860,9 @@ struct WarTargetIncomingFleet
 {
 	int64 TravelDuration;
 	int32 ArmyCombatPoints;
+	int32 ArmySmallCombatPoints;
+	int32 ArmyLargeCombatPoints;
+
 	int32 ArmyAntiLCombatPoints;
 	int32 ArmyAntiSCombatPoints;
 };

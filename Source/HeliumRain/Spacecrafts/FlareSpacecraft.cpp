@@ -1776,15 +1776,7 @@ void AFlareSpacecraft::Save()
 void AFlareSpacecraft::SetOwnerCompany(UFlareCompany* NewCompany)
 {
 	SetCompany(NewCompany);
-	AFlarePlayerController* PC = GetGame()->GetPC();
-	if (PC)
-	{
-		Airframe->Initialize(NULL, Company, this, false, PC->GetShipPawn());
-	}
-	else
-	{
-		Airframe->Initialize(NULL, Company, this, false, nullptr);
-	}
+	Airframe->Initialize(NULL, Company, this, false);
 }
 
 UFlareSpacecraftDamageSystem* AFlareSpacecraft::GetDamageSystem() const
@@ -2007,7 +1999,7 @@ void AFlareSpacecraft::UpdateDynamicComponents()
 							FFlareSpacecraftComponentSave Data;
 							Data.Damage = 0;
 							Data.ComponentIdentifier = NAME_None;
-							ChildRootComponent->Initialize(&Data, Company, this, false, this);
+							ChildRootComponent->Initialize(&Data, Company, this, false);
 						}
 					}
 				}

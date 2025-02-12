@@ -67,7 +67,6 @@ struct FFlareSectorBattleState
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool ActiveFightWon;
 
-
 	/** Indicate if the company can travel. */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool RetreatPossible;
@@ -75,6 +74,10 @@ struct FFlareSectorBattleState
 	/** Indicate if there is dangerous enemy ships */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool HasDanger;
+
+	/** Indicate if there is dangerous enemy ships */
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool HasEnemies;
 
 	int32 FriendlyControllableShipCount;
 	int32 FriendlyStationCount;
@@ -98,6 +101,7 @@ struct FFlareSectorBattleState
 		ActiveFightWon = false;
 		RetreatPossible = false;
 		HasDanger = false;
+		HasEnemies = false;
 		FriendlyControllableShipCount = 0;
 		FriendlyStationCount = 0;
 		FriendlyStationInCaptureCount = 0;

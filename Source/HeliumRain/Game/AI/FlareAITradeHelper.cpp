@@ -60,9 +60,10 @@ void AITradeHelper::CompanyAutoTrade(UFlareCompany* Company)
 		//DumpSectorResourceVariation(Sector, &Variation);
 	}
 
+
 	for(UFlareFleet* Fleet : Company->GetCompanyFleets())
 	{
-		if(Fleet->IsAutoTrading())
+		if(Fleet->IsAutoTrading() && Fleet != Fleet->GetGame()->GetPC()->GetPlayerFleet())
 		{
 			Fleet->GetData()->AutoTradeStatsDays++;
 			FleetAutoTrade(Fleet, WorldResourceVariation);

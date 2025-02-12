@@ -71,7 +71,7 @@ void UFlareSpacecraftComponent::OnRegister()
 	Activate(true);
 }
 
-void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
+void UFlareSpacecraftComponent::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu)
 {
 	// Main data
 	SpacecraftPawn = OwnerSpacecraftPawn;

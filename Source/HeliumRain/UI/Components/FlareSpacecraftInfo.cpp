@@ -619,12 +619,6 @@ void SFlareSpacecraftInfo::Show()
 			FlyButton->SetHelpText(Reason);
 			FlyButton->SetDisabled(true);
 		}
-
-		else if (TargetSpacecraft == PlayerShip)
-		{
-			FlyButton->SetHelpText(LOCTEXT("CantFlySelfInfo", "You are already flying this ship"));
-			FlyButton->SetDisabled(true);
-		}
 		else
 		{
 			FlyButton->SetHelpText(LOCTEXT("ShipFlyInfo", "Take command of this spacecraft"));
@@ -991,33 +985,33 @@ bool SFlareSpacecraftInfo::UpdateCaptureList()
 			.HAlign(HAlign_Left)
 			[
 				SNew(SFlareButton)
-					.Text(CaptureText)
-					.HelpText(LOCTEXT("CaptureInfo", "Capturing a station requires control of the sector for a few days"))
-					.OnClicked(this, &SFlareSpacecraftInfo::OnCapture)
-					.IsDisabled(this, &SFlareSpacecraftInfo::IsCaptureDisabled)
-					.Icon(FFlareStyleSet::GetIcon("Capture"))
-					.Width(14.8)
+				.Text(CaptureText)
+				.HelpText(LOCTEXT("CaptureInfo", "Capturing a station requires control of the sector for a few days"))
+				.OnClicked(this, &SFlareSpacecraftInfo::OnCapture)
+				.IsDisabled(this, &SFlareSpacecraftInfo::IsCaptureDisabled)
+				.Icon(FFlareStyleSet::GetIcon("Capture"))
+				.Width(14.8)
 			];
 		}
+	}
 
-		// Find all companies that could capture this
-		TArray<UFlareCompany*> Companies = PC->GetGame()->GetGameWorld()->GetCompanies();
-		for (int32 CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
+	// Find all companies that could capture this
+	TArray<UFlareCompany*> Companies = PC->GetGame()->GetGameWorld()->GetCompanies();
+	for (int32 CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
+	{
+		UFlareCompany* Company = Companies[CompanyIndex];
+		if (TargetSpacecraft->GetCapturePoint(Company) > 0 || Company->WantCapture(TargetSpacecraft))
 		{
-			UFlareCompany* Company = Companies[CompanyIndex];
-			if (TargetSpacecraft->GetCapturePoint(Company) > 0 || Company->WantCapture(TargetSpacecraft))
-			{
-				FText CaptureInfo = FText::Format(LOCTEXT("CaptureInfoFormat", "Capture in progress by {0} ({1})"),
-					Company->GetCompanyName(),
-					Company->GetPlayerHostilityText());
+			FText CaptureInfo = FText::Format(LOCTEXT("CaptureInfoFormat", "Capture in progress by {0} ({1})"),
+				Company->GetCompanyName(),
+				Company->GetPlayerHostilityText());
 
-				CaptureInProgress = true;
+			CaptureInProgress = true;
 
-				AddMessage(CaptureInfo,
-					NULL,
-					Company,
-					static_cast<float>(TargetSpacecraft->GetCapturePoint(Company)) / static_cast<float>(TargetSpacecraft->GetCapturePointThreshold()));
-			}
+			AddMessage(CaptureInfo,
+				NULL,
+				Company,
+				static_cast<float>(TargetSpacecraft->GetCapturePoint(Company)) / static_cast<float>(TargetSpacecraft->GetCapturePointThreshold()));
 		}
 	}
 
@@ -1554,17 +1548,17 @@ EVisibility SFlareSpacecraftInfo::GetBuildVisibility() const
 	// Check the target
 	if (TargetSpacecraft && TargetSpacecraft->IsValidLowLevel())
 	{
+		if (TargetSpacecraft->IsBeingCaptured())
+		{
+			CapturingIcon->SetVisibility(EVisibility::Visible);
+		}
+		else
+		{
+			CapturingIcon->SetVisibility(EVisibility::Collapsed);
+		}
+
 		if (TargetSpacecraft->IsStation())
 		{
-			if (TargetSpacecraft->IsBeingCaptured())
-			{
-				CapturingIcon->SetVisibility(EVisibility::Visible);
-			}
-			else
-			{
-				CapturingIcon->SetVisibility(EVisibility::Collapsed);
-			}
-
 			if (TargetSpacecraft->GetOwnerHasStationLicense())
 			{
 				UnlicencedIcon->SetVisibility(EVisibility::Collapsed);

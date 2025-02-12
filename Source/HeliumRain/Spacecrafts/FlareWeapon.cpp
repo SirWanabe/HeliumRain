@@ -49,9 +49,9 @@ UFlareWeapon::UFlareWeapon(const class FObjectInitializer& PCIP)
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareWeapon::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualShip)
+void UFlareWeapon::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualShip);
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
 	TraceDelegate.BindUObject(this, &UFlareWeapon::OnTraceCompleted);
 
 	// Destroy attached bombs

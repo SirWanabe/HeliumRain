@@ -638,6 +638,9 @@ void AFlarePlayerController::SetPlayerShip(UFlareSimulatedSpacecraft* NewPlayerS
 {
 	PlayerData.LastFlownShipIdentifier = NewPlayerShip->GetImmatriculation();
 	PlayerShip = NewPlayerShip;
+
+	PlayerData.PlayerFleetIdentifier = PlayerShip->GetCurrentFleet()->GetIdentifier();
+	PlayerFleet = PlayerShip->GetCurrentFleet();
 }
 
 void AFlarePlayerController::SignalHit(AFlareSpacecraft* HitSpacecraft, EFlareDamage::Type DamageType)
@@ -1126,7 +1129,7 @@ bool AFlarePlayerController::SwitchToNextShip(bool Instant)
 					OffsetIndex = (ShipIndex + QuickSwitchOffset) % CompanyShips.Num();
 					AFlareSpacecraft* Candidate = CompanyShips[OffsetIndex];
 
-					if (Candidate && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons) && Candidate->GetParent()->CanFight() && !Candidate->GetDescription()->IsDroneShip)
+					if (Candidate && Candidate->GetParent()->GetCurrentFleet() == PlayerFleet && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons) && Candidate->GetParent()->CanFight() && !Candidate->GetDescription()->IsDroneShip)
 					{
 						SeletedCandidate = Candidate;
 						break;
@@ -1141,7 +1144,7 @@ bool AFlarePlayerController::SwitchToNextShip(bool Instant)
 				{
 					OffsetIndex = (ShipIndex + QuickSwitchOffset) % CompanyShips.Num();
 					AFlareSpacecraft* Candidate = CompanyShips[OffsetIndex];
-					if (Candidate && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons))
+					if (Candidate && Candidate->GetParent()->GetCurrentFleet() == PlayerFleet && Candidate != ShipPawn && Candidate->GetParent()->CanBeFlown(CantFlyReasons))
 					{
 						SeletedCandidate = Candidate;
 						break;

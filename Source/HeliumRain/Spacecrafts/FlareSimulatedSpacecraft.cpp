@@ -850,7 +850,6 @@ void UFlareSimulatedSpacecraft::SetSpawnMode(EFlareSpawnMode::Type SpawnMode)
 bool UFlareSimulatedSpacecraft::CanBeFlown(FText& OutInfo) const
 {
 	UFlareFleet* PlayerFleet = GetGame()->GetPC()->GetPlayerFleet();
-
 	if (IsStation())
 	{
 		return false;
@@ -865,20 +864,20 @@ bool UFlareSimulatedSpacecraft::CanBeFlown(FText& OutInfo) const
 		OutInfo = LOCTEXT("CantFlyDestroyedInfo", "This ship is uncontrollable");
 		return false;
 	}
+/*
 	else if (PlayerFleet && GetCurrentFleet() != PlayerFleet)
 	{
 		OutInfo = LOCTEXT("CantFlyOtherInfo", "You can only switch ships from within the same fleet");
 		return false;
 	}
+*/
 	else if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() != PlayerFleet->GetCurrentSector())
 	{
 		OutInfo = LOCTEXT("CantFlyDistantInfo", "Can't fly a ship from another sector");
 		return false;
 	}
-	else
-	{
-		return true;
-	}
+
+	return true;
 }
 
 
@@ -1742,7 +1741,6 @@ void UFlareSimulatedSpacecraft::Refill()
 			}
 		}
 	}
-
 }
 
 void UFlareSimulatedSpacecraft::SetHarpooned(UFlareCompany* OwnerCompany)
@@ -1752,14 +1750,15 @@ void UFlareSimulatedSpacecraft::SetHarpooned(UFlareCompany* OwnerCompany)
 		{
 			CombatLog::SpacecraftHarpooned(this, OwnerCompany);
 			SpacecraftData.HarpoonCompany  = OwnerCompany->GetIdentifier();
+			HarpooningCompany = OwnerCompany;
 		}
 	}
 	else
 	{
 		SpacecraftData.HarpoonCompany = NAME_None;
+		HarpooningCompany = nullptr;
 	}
 }
-
 
 void UFlareSimulatedSpacecraft::SetInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip)
 {
@@ -1826,7 +1825,12 @@ void UFlareSimulatedSpacecraft::SetOwnerShip(UFlareSimulatedSpacecraft* OwnerShi
 
 UFlareCompany* UFlareSimulatedSpacecraft::GetHarpoonCompany()
 {
-	return Game->GetGameWorld()->FindCompany(SpacecraftData.HarpoonCompany);
+	if (!HarpooningCompany)
+	{
+		HarpooningCompany = Game->GetGameWorld()->FindCompany(SpacecraftData.HarpoonCompany);
+	}
+
+	return HarpooningCompany;
 }
 
 void UFlareSimulatedSpacecraft::RemoveCapturePoint(FName CompanyIdentifier, int32 CapturePoint)
@@ -3249,6 +3253,18 @@ int32 UFlareSimulatedSpacecraft::GetCapturePointThreshold() const
 		for(UFlareSimulatedSpacecraft* Child: GetComplexChildren())
 		{
 			BaseCapturePoint += Child->GetCapturePointThreshold();
+		}
+	}
+
+	if (BaseCapturePoint == 0)
+	{
+		if (GetSize() == EFlarePartSize::L)
+		{
+			BaseCapturePoint = 100;
+		}
+		else if (GetSize() == EFlarePartSize::S)
+		{
+			BaseCapturePoint = 25;
 		}
 	}
 

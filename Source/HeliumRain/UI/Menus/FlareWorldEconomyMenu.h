@@ -47,6 +47,9 @@ public:
 	/** Exit this menu */
 	void Exit();
 
+	/** Called when main menu is opened to clear old data */
+	void MainMenuOpened();
+
 	void GenerateSectorList();
 	void GenerateSectorPopList();
 

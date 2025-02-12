@@ -571,7 +571,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 		if(ShipCandidate->IsHarpooned()) {
 			if(ShipCandidate->GetDamageSystem()->IsUncontrollable())
 			{
-				// Never target harponned uncontrollable ships
+				// Never target harpooned uncontrollable ships
 				continue;
 			}
 			StateScore *=  Preferences.IsHarpooned;

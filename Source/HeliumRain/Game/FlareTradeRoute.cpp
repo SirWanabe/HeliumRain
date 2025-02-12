@@ -74,6 +74,11 @@ void UFlareTradeRoute::Simulate()
 		return;
 	}
 
+	if (TradeRouteFleet == Game->GetPC()->GetPlayerFleet())
+	{
+		return;
+	}
+
 	UFlareSimulatedSector* TargetSector = UpdateTargetSector();
 	// Not travelling, check if the fleet is in a trade route sector
 	UFlareSimulatedSector* CurrentSector = TradeRouteFleet->GetCurrentSector();

@@ -910,7 +910,8 @@ bool AFlareMenuManager::FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* 
 				}
 				else if (OwnedSpacecraftCount > 1)
 				{
-					Info = LOCTEXT("FlyingMultipleInfo", "You can switch to nearby ships with N.");
+					FString ButtonName = GetKeyNameFromActionName("QuickSwitch");
+					Info = FText::Format(LOCTEXT("FlyingMultipleInfo", "You can switch to nearby fleeted ships with {0}."), FText::FromString(ButtonName));
 				}
 				else
 				{
@@ -1045,7 +1046,10 @@ bool AFlareMenuManager::FastForwardSingle()
 void AFlareMenuManager::OpenMainMenu()
 {
 	OnEnterMenu(true);
+
 	GetPC()->ExitShip();
+
+	WorldEconomyMenu->MainMenuOpened();
 
 	if (GetPC()->GetGame()->IsSkirmish())
 	{

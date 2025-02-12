@@ -31,7 +31,11 @@ struct DefenseSector
 {
 	UFlareSimulatedSector* Sector;
 	UFlareSimulatedSector* TempBaseSector;
-	int32 CombatPoints;
+
+	int32 OwnedCombatPoints;
+	int32 AlliedCombatPoints;
+	int32 TotalCombatPoints;
+
 	int64 ArmyAntiSCombatPoints;
 	int64 ArmyAntiLCombatPoints;
 	int32 ArmyLargeShipCombatPoints;
@@ -39,8 +43,12 @@ struct DefenseSector
 	int32 LargeShipArmyCount;
 	int32 SmallShipArmyCount;
 
-	bool CapturingStation;
-	bool CapturingShip;
+//	bool CapturingStation;
+//	bool CapturingShip;
+
+	TArray<bool> CapturingStations;
+	TArray<bool> CapturingShips;
+
 	UFlareSimulatedSpacecraft* PrisonersKeeper;
 
 	bool operator==(const DefenseSector& lhs)
@@ -164,7 +172,7 @@ public:
 	UFlareSimulatedSector* FindNearestSectorWithFS(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector, UFlareFleet* Fleet = nullptr);
 	UFlareSimulatedSector* FindNearestSectorWithUpgradePossible(AIWarContext& WarContext, UFlareSimulatedSector* OriginSector, UFlareFleet* Fleet = nullptr);
 
-	bool UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager=false);
+	bool UpgradeShip(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager = false, bool AllowEngineUpgrades = true);
 	bool UpgradeShipWeapon(UFlareSimulatedSpacecraft* Ship, EFlarePartSize::Type WeaponTargetSize, bool AllowSalvager = false);
 	bool UpgradeShipEngine(UFlareSimulatedSpacecraft* Ship, EFlareBudget::Type Budget);
 	bool UpgradeShipRCS(UFlareSimulatedSpacecraft* Ship, EFlareBudget::Type Budget);

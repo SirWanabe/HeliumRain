@@ -19,7 +19,7 @@ public:
 
 	virtual void BeginPlay() override;
 
-	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false, AFlareSpacecraft* ActualOwnerShip = nullptr) override;
+	virtual void Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerSpacecraftPawn, bool IsInMenu = false) override;
 
 //	virtual void TickComponent(float DeltaSeconds, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void TickForComponent(float DeltaSeconds) override;

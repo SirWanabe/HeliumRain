@@ -488,7 +488,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	BuildMilitaryDiversitySizeBase = 5;
 	BuildTradeDiversitySizeBase = 10;
 	
-	BuildEfficientMilitaryChance = 0.05f;
+	BuildEfficientMilitaryChance = 0.055f;
 	BuildEfficientMilitaryChanceSmall = 0.15f;
 
 	BuildEfficientTradeChance = 0.10f;
@@ -1257,19 +1257,19 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	}
 	if (CompanyDescription->AI_Behaviours.Scrap_Minimum_Ships)
 	{
-		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Minimum_Ships;
+		Scrap_Minimum_Ships = CompanyDescription->AI_Behaviours.Scrap_Minimum_Ships;
 	}
 	if (CompanyDescription->AI_Behaviours.Scrap_Min_S_Cargo)
 	{
-		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Min_S_Cargo;
+		Scrap_Min_S_Cargo = CompanyDescription->AI_Behaviours.Scrap_Min_S_Cargo;
 	}
 	if (CompanyDescription->AI_Behaviours.Scrap_Min_S_Military)
 	{
-		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.Scrap_Min_S_Military;
+		Scrap_Min_S_Military = CompanyDescription->AI_Behaviours.Scrap_Min_S_Military;
 	}
 	if (CompanyDescription->AI_Behaviours.BuildDroneCombatWorth)
 	{
-		Station_Shipyard_Maximum = CompanyDescription->AI_Behaviours.BuildDroneCombatWorth;
+		BuildDroneCombatWorth = CompanyDescription->AI_Behaviours.BuildDroneCombatWorth;
 	}
 }
 

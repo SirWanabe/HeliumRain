@@ -39,7 +39,7 @@ UFlareTurretPilot::UFlareTurretPilot(const class FObjectInitializer& PCIP)
 	Gameplay events
 ----------------------------------------------------*/
 
-void UFlareTurretPilot::Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret, AFlareSpacecraft* OwnerShip)
+void UFlareTurretPilot::Initialize(const FFlareTurretPilotSave* Data, UFlareCompany* Company, UFlareTurret* OwnerTurret)
 {
 	// Main data
 	Turret = OwnerTurret;

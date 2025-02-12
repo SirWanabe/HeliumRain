@@ -27,9 +27,9 @@ UFlareTurret::UFlareTurret(const class FObjectInitializer& PCIP)
 	Gameplay
 ----------------------------------------------------*/
 
-void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu, AFlareSpacecraft* ActualOwnerShip)
+void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany* Company, AFlareSpacecraftPawn* OwnerShip, bool IsInMenu)
 {
-	Super::Initialize(Data, Company, OwnerShip, IsInMenu, ActualOwnerShip);
+	Super::Initialize(Data, Company, OwnerShip, IsInMenu);
 	AimDirection = FVector::ZeroVector;
 	IsIgnoreManualAimCached = false;
 	BarrelsMinAngleCache.Empty();
@@ -39,7 +39,7 @@ void UFlareTurret::Initialize(FFlareSpacecraftComponentSave* Data, UFlareCompany
 	{
 		Pilot = NewObject<UFlareTurretPilot>(this, UFlareTurretPilot::StaticClass());
 	}
-	Pilot->Initialize(&(Data->Pilot), Company, this, ActualOwnerShip);
+	Pilot->Initialize(&(Data->Pilot), Company, this);
 }
 
 void UFlareTurret::SetupFiringEffects()
@@ -101,7 +101,7 @@ void UFlareTurret::SetupComponentMesh()
 			TurretComponent->AttachToComponent(this, AttachRules);
 			TurretComponent->SetStaticMesh(ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh);
 			TurretComponent->SetMaterial(0, ComponentDescription->WeaponCharacteristics.TurretCharacteristics.TurretMesh->GetMaterial(0));
-			TurretComponent->Initialize(NULL, OwnerCompany, Spacecraft, false, Spacecraft);
+			TurretComponent->Initialize(NULL, OwnerCompany, Spacecraft, false);
 			Spacecraft->AddOwnedComponent(TurretComponent);
 		}
 	}

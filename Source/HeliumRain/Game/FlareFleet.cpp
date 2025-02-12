@@ -655,7 +655,12 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 
 bool UFlareFleet::IsVisibleForOrbitalFleetList()
 {
-	if (GetShips().Num() && !IsAutoTrading() && !IsHiddenTravel())
+	if (!GetShips().Num())
+	{
+		return false;
+	}
+
+	if ((!IsAutoTrading() && !IsHiddenTravel()) || this == Game->GetPC()->GetPlayerFleet())
 	{
 		if (IsTraveling())
 		{
@@ -665,16 +670,18 @@ bool UFlareFleet::IsVisibleForOrbitalFleetList()
 			}
 		}
 
-		if (GetCurrentTradeRoute() && !GetCurrentTradeRoute()->IsPaused())
+		if (this != Game->GetPC()->GetPlayerFleet())
 		{
-			return false;
+			if (GetCurrentTradeRoute() && !GetCurrentTradeRoute()->IsPaused())
+			{
+				return false;
+			}
 		}
 
 		if (GetImmobilizedShipCount() == GetShipCount())
 		{
 			return false;
 		}
-
 		return true;
 	}
 	return false;
