@@ -2474,10 +2474,20 @@ bool UFlareSimulatedSector::IsPlayerBattleInProgress()
 	}
 }
 
-int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company) const
+void UFlareSimulatedSector::Cleartemporarycaches()
 {
-	int32 CapturePoints = 0;
+//	LastSectorBattleStates.Empty();
+	LastCompanySectorCapturePoints.Empty();
+}
 
+int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company)
+{
+	if (LastCompanySectorCapturePoints.Contains(Company))
+	{
+		return LastCompanySectorCapturePoints[Company];
+	}
+
+	int32 CapturePoints = 0;
 	for (int ShipIndex = 0; ShipIndex < SectorShips.Num(); ShipIndex++)
 	{
 		UFlareSimulatedSpacecraft* Ship = SectorShips[ShipIndex];
@@ -2507,6 +2517,16 @@ int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company) con
 			CapturePoints += 10;
 		}
 	}
+/*
+	if (LastCompanySectorCapturePoints.Contains(Company))
+	{
+		LastCompanySectorCapturePoints[Company] = CapturePoints;
+	}
+*/	
+	{
+		LastCompanySectorCapturePoints.Add(Company, CapturePoints);
+	}
+
 	return CapturePoints;
 }
 #undef LOCTEXT_NAMESPACE

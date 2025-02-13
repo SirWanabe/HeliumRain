@@ -1622,16 +1622,68 @@ Companies are the factions which control the entire environment in Helium Rain. 
 					.Text(LOCTEXT("VersionHRFM", "HRFM Version History"))
 				.TextStyle(&Theme.SubTitleFont)
 				]
-
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						[
 							SNew(STextBlock)
 								.WrapTextAt(TextWrappingBig)
 								.TextStyle(&Theme.TextFont)
-								.Text(LOCTEXT("VersionHistoryHRFM1", "Created by Wanabe\n\
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.2", "Created by Wanabe\n\
 https://github.com/SirWanabe/HeliumRain\n\n\
-1.4.1\n\n\
+1.4.2\n\n\
+(Tutorial) New game menu will no longer allow Tutorial Contract and Random Station Positions to be enabled simultaneously\n\
+(Tutorial) Tutorial now includes instructions on how to travel with the wheel menu and two different ways using the orbital menu.\n\
+(Tutorial) Travel segment of the tutorial now ensures only relevant sectors are known to the player until the appropriate time.\n\
+(Tutorial) The ability to research technology is disabled until the research tutorial begins.\n\
+(Pendulum) Upon discovering the Pendulum sector the player will be granted a free station building license\n\
+\n\
+(QoL) Wheel menu travel section will not display bodies which have no known sectors in them.\n\
+(QoL) Manual trade button when used with a station will automatically choose the source / ship if there is only one choice available in the sector.\n\
+(QoL) If the player has a ship selected in the sector screen the \"trade\" and \"dock\" buttons will tell that selected ship to either trade or dock rather than it always being the player controlled ship.\n\
+(QoL) Tutorial and help-file now includes some information about station licensing.\n\
+(QoL) Help-file has had a \"combat\" page added.\n\
+(QoL) It is now possible for the player to use the \"Fly Ship\" option on ships outside of the player fleet.\n\
+(QoL) Added \"Fly Ship\" button to fleet edit menu for player fleet.\n\
+(QoL) Added \"Filter Under Construction\" filter for the Economy Stations viewer.\n\
+(QoL) Added difficulty option selection in settings->gameplay menu for existing games.\n\
+\n\
+AI Company prioritises repairing trade ships when not at war, or warships when at war before moving to attempt to repair the other type. They will also be more conservative with repairing their ships if money is low.\n\
+AI Companies now sets itself a better minimum spending level for various tasks.\n\
+AI Companies will now more consistently upgrade their ships with capture harpoons if they are able to.\n\
+AI Companies during joint wars will have slightly more control of their own fleets and won't abandon any captures they are in progress of on the behest of one of their allies.\n\
+\n\
+(Other) Mentions of meteorites replaced with meteoroids\n\
+(Balance) Ship capture via harpoons is no longer instantaneous, it now works similar to station capturing.\n\
+\n\
+(Performance) GetCompanyCapturePoints() in UFlareSimulatedSector can cache result for a day.\n\
+\n\
+(Modding) Added CapturePointContribution to FFlareSpacecraftDescription. Tells the game how many capture points this ship generates when capturing a station / ship.\n\
+\n\
+Fixed(HRFanMod) Accepting a combat contract will update the locally active sector war state\n\
+Fixed(HRFanMod) Ending a combat contract will update the locally active sector war state\n\
+Fixed(HRFanMod) Small ships were not engaging meteoroids in out of sector battles\n\
+Fixed(HRFanMod) Ships with equipped missiles / bombs when examined in a menu could sometimes still show their attached missile / bomb on other menus\n\
+Fixed(HRFanMod) Ship Parts(including the Safe) when examined in a menu would not rotate on its yaw axis\n\
+Fixed(HRFanMod) Quest condition requirement to have a specific station built wasn't properly looking through station Complexes as was intended\n\
+Fixed(HRFanMod) Fleets set to be \"Hidden-Travel\" will also not appear in the sector travel list as an option\n\
+Fixed(HRFanMod) Economy menu stations / ships submenu would hold information about companies from a different savefile / game\n\
+Fixed(HRFanMod) Company AI would attempt to scrap a ship it normally wouldn't consider upon game load or new game start\n\
+Fixed(Vanilla) Company AI will not consider upgrading a station which is already under construction or doesn't have the available technology for.\n\
+Fixed(Vanilla) Company AI would only properly initiate station capture if there were hostile ships in the sector\n\
+Fixed(Vanilla) Company AI when attempting a military retreat will no longer try to retreat into the same sector its retreating from\n\
+Fixed(Vanilla) Docking tutorial could sometimes break if the player was too quick to dock\n\
+Fixed(Vanilla) Combat tutorial stage for going into battle will now trigger for battles in general, including contracts.\n\
+Fixed(Vanilla) The combat tutorial stage of disabling an enemy ship will no longer auto-complete\n\
+Fixed(Vanilla) The message upon flying a ship \"you can switch to a nearby ship by pressing N\" will change \"N\" to the actual bind of the button\n\
+"))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+								.WrapTextAt(TextWrappingBig)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.1", "1.4.1\n\n\
 (Feature) Fleet travel time is now effected by whichever the slowest ship contained in each fleet is.\n\
 (Feature) Out of sector battles will now include meteorites. Credit for meteorite contracts requires at least one combat capable player ship in the area.\n\
 (Feature) Added heightened meteor event\n\
@@ -1696,7 +1748,7 @@ Fixed(Vanilla) : Fixed several other issues with station complexes, including ot
 					SNew(STextBlock)
 					.WrapTextAt(TextWrappingBig)
 					.TextStyle(&Theme.TextFont)
-					.Text(LOCTEXT("VersionHistoryHRFM2", "1.4.0\n\n\
+					.Text(LOCTEXT("VersionHistoryHRFM1.4.0", "1.4.0\n\n\
 (UI) Trade Route overhaul\n\
 (UI - Trade Route) Condensed \"Load\", \"Buy\" and \"Load / Buy\" operations into \"Load\"\n\
 (UI - Trade Route) Condensed \"Unload\", \"Sell\", \"Unload / Sell\", \"Donate\", \"Unload / Donate\" operations into \"Unload\"\n\
@@ -1764,7 +1816,7 @@ Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
 							SNew(STextBlock)
 								.WrapTextAt(TextWrappingBig)
 								.TextStyle(&Theme.TextFont)
-								.Text(LOCTEXT("VersionHistoryHRFM3", "1.3.9\n\n\
+								.Text(LOCTEXT("VersionHistoryHRFM1.3.9", "1.3.9\n\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
 (Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
 (Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\

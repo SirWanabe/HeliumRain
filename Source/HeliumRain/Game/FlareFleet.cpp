@@ -181,6 +181,7 @@ FText UFlareFleet::GetStatusInfo() const
 			CurrentTravel->GetDestinationSector()->GetSectorName(),
 			UFlareGameTools::FormatDate(RemainingDuration, 1));
 	}
+
 	else if (IsTrading())
 	{
 		if (GetTradingShipCount() == GetShipCount())
@@ -192,7 +193,7 @@ FText UFlareFleet::GetStatusInfo() const
 			return FText::Format(LOCTEXT("FleetPartialTrading", "{0} of {1} ships are trading in {2}"), FText::AsNumber(GetTradingShipCount()), FText::AsNumber(GetShipCount()), GetCurrentSector()->GetSectorName());
 		}
 	}
-	else if (IsAutoTrading())
+	else if (IsAutoTrading() && this != Game->GetPC()->GetPlayerFleet())
 	{
 		if (IsTraveling())
 		{
@@ -205,7 +206,7 @@ FText UFlareFleet::GetStatusInfo() const
 	}
 	else
 	{
-		if (GetCurrentTradeRoute() && !GetCurrentTradeRoute()->IsPaused())
+		if (GetCurrentTradeRoute() && !GetCurrentTradeRoute()->IsPaused() && this != Game->GetPC()->GetPlayerFleet())
 		{
 			return FText::Format(LOCTEXT("FleetStartTrade", "Starting trade in {0}"), GetCurrentSector()->GetSectorName());
 		}

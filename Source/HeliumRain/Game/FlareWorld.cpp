@@ -493,6 +493,7 @@ void UFlareWorld::Simulate()
 	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Sectors[SectorIndex];
+		Sector->Cleartemporarycaches();
 
 		// Check if battle
 		bool HasBattle = false;
@@ -959,7 +960,7 @@ void UFlareWorld::Simulate()
 			MenuData);
 	}
 
-	// Spacrecraft capture
+	// Process captures
 	ProcessShipCapture();
 	ProcessStationCapture();
 
@@ -1428,6 +1429,12 @@ void UFlareWorld::ProcessStationCapture()
 				}
 
 				int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(Company) * NegotiationRatio;
+/*
+				FLOGV("%s is capturing in %s. with %d capture points", 
+				*Company->GetCompanyName().ToString(),
+				*Sector->GetSectorName().ToString(),
+				CompanyCapturePoint);
+*/
 				if(Spacecraft->TryCapture(Company, CompanyCapturePoint))
 				{
 					StationToCapture.Add(Spacecraft);
@@ -1676,7 +1683,6 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 	FText SingleShip = LOCTEXT("ShipSingle", "ship");
 	FText MultipleShips = LOCTEXT("ShipPlural", "ships");
 
-
 	TMap<IncomingKey, IncomingValue> IncomingMap = GetIncomingPlayerEnemy();
 
 	bool OneDayNotificationHide = true;
@@ -1754,7 +1760,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
 				{
 					GetGame()->GetPC()->Notify(LOCTEXT("PlayerAttackedSoon", "Incoming attack"),
-						FText::Format(LOCTEXT("PlayerAttackedSoonFormat", "Your current sector {0} will be attacked tomorrow by {1} with {2} (Combat value: {3}). Prepare for battle."),
+						FText::Format(LOCTEXT("PlayerAttackedSoonFormat", "Your forces in {0} will be attacked tomorrow by {1} with {2} (Combat value: {3}). Prepare for battle."),
 							Entry.Key.DestinationSector->GetSectorName(),
 							CompanyName,
 							GetShipsText(Entry.Value.LightShipCount, Entry.Value.HeavyShipCount),
@@ -1771,7 +1777,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					int32 UnknownShipCount = Entry.Value.HeavyShipCount + Entry.Value.LightShipCount;
 
 					GetGame()->GetPC()->Notify(LOCTEXT("PlayerAttackedSoon", "Incoming attack"),
-						FText::Format(LOCTEXT("PlayerAttackedSoonNoRadarFormat", "Your current sector {0} will be attacked tomorrow by {1} with {2}. Prepare for battle."),
+						FText::Format(LOCTEXT("PlayerAttackedSoonNoRadarFormat", "Your forces in {0} will be attacked tomorrow by {1} with {2}. Prepare for battle."),
 							Entry.Key.DestinationSector->GetSectorName(),
 							CompanyName,
 							GetUnknownShipText(UnknownShipCount)),
@@ -1851,7 +1857,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 
 				if(GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("advanced-radar"))
 				{
-					FText FirstPart = FText::Format(LOCTEXT("PlayerAttackedDistant1Format", "Your current sector {0} will be attacked in {1} days"),
+					FText FirstPart = FText::Format(LOCTEXT("PlayerAttackedDistant1Format", "Your forces in {0} will be attacked in {1} days"),
 							Entry.Key.DestinationSector->GetSectorName(),
 							FText::AsNumber(Entry.Key.RemainingDuration));
 
@@ -1872,7 +1878,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					int32 UnknownShipCount = Entry.Value.HeavyShipCount + Entry.Value.LightShipCount;
 
 					GetGame()->GetPC()->Notify(LOCTEXT("PlayerAttackedDistant", "Incoming attack"),
-						FText::Format(LOCTEXT("PlayerAttackedDistantNoRadarFormat", "Your current sector {0} will be attacked in {1} days by {2} with {3}. Prepare for battle."),
+						FText::Format(LOCTEXT("PlayerAttackedDistantNoRadarFormat", "Your forces in {0} will be attacked in {1} days by {2} with {3}. Prepare for battle."),
 							Entry.Key.DestinationSector->GetSectorName(),
 							FText::AsNumber(Entry.Key.RemainingDuration),
 							CompanyName,

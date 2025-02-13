@@ -13,6 +13,9 @@
 #define MAXIMUM_TURNS_METEORITES 20
 #define MAXIMUM_TURNS_SHIPBATTLE 1000
 
+//#define DEBUG_SIMULATE
+//#define DEBUG_WEAPONATTACK
+
 struct BattleTargetPreferences
 {
         float IsLarge;
@@ -101,7 +104,10 @@ void UFlareBattle::Load(UFlareSimulatedSector* BattleSector)
 
 void UFlareBattle::Simulate()
 {
+#ifdef DEBUG_SIMULATE
     FLOGV("Simulate battle in %s", *Sector->GetSectorName().ToString());
+#endif
+
 	CombatLog::AutomaticBattleStarted(Sector);
 
 	while (HasBattle())
@@ -109,18 +115,24 @@ void UFlareBattle::Simulate()
 		CurrentBattleTurn++;
 		if(!SimulateTurn())
         {
-            FLOG("Nobody can fight, end battle");
-            break;
+#ifdef DEBUG_SIMULATE
+			FLOG("Nobody can fight, end battle");
+#endif
+			break;
         }
         if (CurrentBattleTurn > MaximumTurns)
         {
+#ifdef DEBUG_SIMULATE
 			FLOGV("ERROR: Battle too long, still not ended after %d turns", MaximumTurns);
-            break;
+#endif
+			break;
         }
     }
 
 	CombatLog::AutomaticBattleEnded(Sector);
-    FLOGV("Battle in %s finish after %d turns", *Sector->GetSectorName().ToString(), CurrentBattleTurn);
+#ifdef DEBUG_SIMULATE
+	FLOGV("Battle in %s finish after %d turns", *Sector->GetSectorName().ToString(), CurrentBattleTurn);
+#endif
 }
 
 bool UFlareBattle::HasBattle()
@@ -144,17 +156,6 @@ void UFlareBattle::FindFightingCompanies()
 	for (int CompanyIndex = 0; CompanyIndex < Game->GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
 	{
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
-/*
-		if (Company == PlayerCompany)
-		{
-
-			if (Sector == GetGame()->GetPC()->GetPlayerShip()->GetCurrentSector())
-			{
-				// Local sector, don't check if the player want fight
-				continue;
-			}
-		}
-*/
 		FFlareSectorBattleState BattleState;
 		if (ShipDisabledPreviousTurn)
 		{
@@ -439,7 +440,9 @@ FFlareMeteoriteSave* UFlareBattle::GetMeteoriteTarget()
 			CurrentBattleTurn = 1;
 			MaximumTurns = MAXIMUM_TURNS_METEORITES;
 			SwitchedToFightingMeteorites = true;
+#ifdef DEBUG_SIMULATE
 			FLOG("Battle switched to meteorites only");
+#endif
 		}
 
 		for (FFlareMeteoriteSave* Meteorite : LocalMeteorites)
@@ -680,7 +683,10 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 
 		float Precision = UsageRatio * FMath::Max(0.01f, 1.f-(WeaponDescription->WeaponCharacteristics.GunCharacteristics.AmmoPrecision * TargetCoef));
 
+#ifdef DEBUG_WEAPONATTACK
 		FLOGV("%s fires %d ammo with a hit probability of %f", *Ship->GetImmatriculation().ToString(), AmmoToFire, Precision);
+#endif
+
 		for (int32 BulletIndex = 0; BulletIndex <  AmmoToFire; BulletIndex++)
 		{
 			if(FMath::FRand() < Precision)
@@ -787,7 +793,7 @@ void UFlareBattle::ApplyMeteoriteDamage(FFlareMeteoriteSave* MeteoriteTarget, fl
 	MeteoriteTarget->Damage += Energy;
 	if (!MeteoriteTarget->HasMissed && MeteoriteTarget->Damage >= MeteoriteTarget->BrokenDamage)
 	{
-		FLOG("Meteorite Destroyed");
+//		FLOG("Meteorite Destroyed");
 		MeteoriteTarget->HasMissed = true;
 		LocalMeteorites.RemoveSwap(MeteoriteTarget);
 		if (PlayerAssetsFighting)
@@ -912,6 +918,5 @@ int32 UFlareBattle::GetBestTargetComponent(UFlareSimulatedSpacecraft* TargetSpac
 	int32 ComponentIndex = FMath::RandRange(0, ComponentSelection.Num() - 1);
 	return ComponentSelection[ComponentIndex];
 }
-
 
 #undef LOCTEXT_NAMESPACE

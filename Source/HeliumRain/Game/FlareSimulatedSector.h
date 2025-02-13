@@ -531,6 +531,7 @@ protected:
 	TMap<UFlareCompany*, TArray<UFlareSimulatedSpacecraft*>>	ReservesByCompany;
 	TArray<UFlareSimulatedSpacecraft*>							SectorReserves;
 	TMap<UFlareCompany*, FFlareSectorBattleState>				LastSectorBattleStates;
+	TMap<UFlareCompany*, int32>									LastCompanySectorCapturePoints;
 
 public:
 
@@ -686,7 +687,9 @@ public:
 	/** Is a battle in progress with the player */
 	bool IsPlayerBattleInProgress();
 
-	int32 GetCompanyCapturePoints(UFlareCompany* Company) const;
+	void Cleartemporarycaches();
+
+	int32 GetCompanyCapturePoints(UFlareCompany* Company);
 
 	TArray<FFlareMeteoriteSave>& GetMeteorites()
 	{
