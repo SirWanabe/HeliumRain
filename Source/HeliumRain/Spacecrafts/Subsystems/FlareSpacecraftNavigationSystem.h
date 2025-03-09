@@ -137,6 +137,8 @@ public:
 
 	virtual void Start();
 
+	void ResetTransactionInfo();
+
 public:
 
 	/*----------------------------------------------------

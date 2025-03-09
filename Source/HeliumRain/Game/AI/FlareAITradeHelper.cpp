@@ -80,7 +80,15 @@ UFlareSimulatedSpacecraft* AITradeHelper::FindBestMasterShip(int32& UsableShipCo
 
 	for(UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
 	{
-		if(Ship->IsMilitary())
+		if (Ship->IsMilitary())
+		{
+			if (Ship->GetActiveCargoBay()->GetCapacity() == 0)
+			{
+				continue;
+			}
+		}
+
+		if (Ship->GetDescription()->IsDroneCarrier || Ship->GetDescription()->IsDroneShip)
 		{
 			continue;
 		}
@@ -226,7 +234,15 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 			continue;
 		}
 
-		if(Ship->IsMilitary())
+		if (Ship->IsMilitary())
+		{
+			if (Ship->GetActiveCargoBay()->GetCapacity() == 0)
+			{
+				continue;
+			}
+		}
+
+		if (Ship->GetDescription()->IsDroneCarrier || Ship->GetDescription()->IsDroneShip)
 		{
 			continue;
 		}
@@ -274,8 +290,8 @@ SectorDeal AITradeHelper::FindBestDealForShipFromSector(UFlareSimulatedSpacecraf
 	SCOPE_CYCLE_COUNTER(STAT_AITradeHelper_FindBestDealForShipFromSector);
 
 	UFlareCompany* Company = Ship->GetCompany();
-	AFlareGame* Game = Ship->GetGame();
-	UFlareAIBehavior* Behavior = Company->GetAI()->GetBehavior();
+//	AFlareGame* Game = Ship->GetGame();
+//	UFlareAIBehavior* Behavior = Company->GetAI()->GetBehavior();
 
 
 	SectorDeal BestDeal;

@@ -2075,7 +2075,7 @@ EVisibility SFlareTradeRouteMenu::GetVisibilityTradeSubOperation() const
 {
 	if (GetVisibilityTradeOperation() == EVisibility::Visible)
 	{
-		if (EditSelectedOperation && (EditSelectedOperation->BuySellPriority > 0.f) || EditSelectedOperation->LoadUnloadPriority > 0.f)
+		if (EditSelectedOperation && (EditSelectedOperation->BuySellPriority > 0.f || EditSelectedOperation->LoadUnloadPriority > 0.f))
 		{
 			return EVisibility::Visible;
 		}

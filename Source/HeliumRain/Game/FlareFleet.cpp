@@ -1331,7 +1331,7 @@ bool UFlareFleet::CanTradeWhiteListFrom(UFlareSimulatedSpacecraft* OtherSpacecra
 void UFlareFleet::RecalculateSlowestFleetShip()
 {
 	FleetSlowestShip = nullptr;
-	FleetLowestEngineAccelerationPower = NULL;
+	FleetLowestEngineAccelerationPower = 0.f;
 
 	UFlareSpacecraftComponentsCatalog* Catalog = GetGame()->GetShipPartsCatalog();
 	for (UFlareSimulatedSpacecraft* Ship : GetShips())

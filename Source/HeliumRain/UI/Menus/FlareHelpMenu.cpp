@@ -1656,6 +1656,8 @@ AI Companies during joint wars will have slightly more control of their own flee
 (Balance) Ship capture via harpoons is no longer instantaneous, it now works similar to station capturing.\n\
 \n\
 (Performance) GetCompanyCapturePoints() in UFlareSimulatedSector can cache result for a day.\n\
+(Performance) ResetCapture() in FlareSimulatedSpacecraft will only do certain operations if Capturepoints TMap contains something.\n\
+(Performance) StopCapture() in FlareCompany uses RemoveSwap instead of Remove.\n\
 \n\
 (Modding) Added CapturePointContribution to FFlareSpacecraftDescription. Tells the game how many capture points this ship generates when capturing a station / ship.\n\
 \n\

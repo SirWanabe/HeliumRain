@@ -79,7 +79,6 @@ FFlareWhiteListCompanyDataSave* UFlareCompanyWhiteList::AddNewCompanyDataSave(FN
 
 	WhiteListData.CompanyData.Add(NewCompanyData);
 	return &WhiteListData.CompanyData.Last();
-	return &NewCompanyData;
 }
 
 FFlareWhiteListCompanyDataSave* UFlareCompanyWhiteList::GetCompanyDataFor(UFlareCompany* CompanyLookup)

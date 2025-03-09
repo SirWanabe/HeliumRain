@@ -1137,7 +1137,7 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 			}
 			else
 			{
-				ObjectProductionBreakdown->SetText(FText::FText());
+				ObjectProductionBreakdown->SetText(FText());
 			}
 		}
 	}
@@ -1960,7 +1960,7 @@ bool SFlareShipMenu::IsWhiteListRemoveDisabled() const
 
 bool SFlareShipMenu::IsWhiteListSelectDisabled() const
 {
-	if (TargetSpacecraft && (!TargetSpacecraft->GetSelectedWhiteList() || TargetSpacecraft->GetSelectedWhiteList() && TargetSpacecraft->GetSelectedWhiteList() != CurrentlySelectedWhiteList))
+	if (TargetSpacecraft && (!TargetSpacecraft->GetSelectedWhiteList() || (TargetSpacecraft->GetSelectedWhiteList() && TargetSpacecraft->GetSelectedWhiteList() != CurrentlySelectedWhiteList)))
 	{
 		return false;
 	}

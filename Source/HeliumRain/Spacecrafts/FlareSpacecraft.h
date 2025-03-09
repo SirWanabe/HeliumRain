@@ -70,7 +70,7 @@ public:
 
 	virtual void OnRefilled();
 
-	virtual void OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation = 0, FFlareSpacecraftComponentDescription* TransactionNewPartDesc = NULL, int32 TransactionNewPartWeaponGroupIndex = NULL);
+	virtual void OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation = false, FFlareSpacecraftComponentDescription* TransactionNewPartDesc = NULL, int32 TransactionNewPartWeaponGroupIndex = -1);
 
 	virtual void OnUndocked(AFlareSpacecraft* DockStation);
 

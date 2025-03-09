@@ -959,7 +959,7 @@ void UFlareQuestTutorialNavigation::Load(UFlareQuestManager* Parent)
 	{
 #undef QUEST_STEP_TAG
 #define QUEST_STEP_TAG QUEST_TAG"OpenTravelMenuBackToFirstLight"
-		FText Description = LOCTEXT("OpenTravelMenuBackToFirstLightDescription", "There are other methods of initiating travel besides just the wheel menu. Open the menu bar with <input - action:ToggleOverlay> and click on the orbital map.");
+		FText Description = LOCTEXT("OpenTravelMenuBackToFirstLightDescription", "There are other methods of initiating travel besides just the wheel menu. Open the menu bar with <input-action:ToggleOverlay> and click on the orbital map.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "open-travel-menu", Description);
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialOpenMenu::Create(this, EFlareMenu::MENU_Orbit));
 		Steps.Add(Step);

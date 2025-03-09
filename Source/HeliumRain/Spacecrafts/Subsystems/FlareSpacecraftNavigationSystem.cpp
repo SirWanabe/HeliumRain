@@ -156,14 +156,7 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 	YEngines.Value.Empty();
 	ZEngines.Value.Empty();
 
-	TransactionNewPartDesc = NULL;
-	TransactionNewPartWeaponGroupIndex = NULL;
-	TransactionResource = NULL;
-	TransactionQuantity = NULL;
-	TransactionSourceShip = NULL;
-	TransactionDestination = NULL;
-	TransactionDestinationDock = NULL;
-	TransactionDonation = NULL;
+	ResetTransactionInfo();
 
 //	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
 	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
@@ -214,6 +207,18 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 			FLOGV("WARNING: engine #%d for %s as %d axis match", EngineIndex, *Spacecraft->GetImmatriculation().ToString(), MatchCount);
 		}
 	}
+}
+
+void UFlareSpacecraftNavigationSystem::ResetTransactionInfo()
+{
+	TransactionNewPartDesc = NULL;
+	TransactionNewPartWeaponGroupIndex = -1;
+	TransactionResource = NULL;
+	TransactionQuantity = -1;
+	TransactionSourceShip = NULL;
+	TransactionDestination = NULL;
+	TransactionDestinationDock = NULL;
+	TransactionDonation = false;
 }
 
 void UFlareSpacecraftNavigationSystem::Start()
@@ -303,12 +308,7 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetSt
 		}
 	}
 
-	TransactionResource = NULL;
-	TransactionQuantity = NULL;
-	TransactionSourceShip = NULL;
-	TransactionDestination = NULL;
-	TransactionDestinationDock = NULL;
-	TransactionDonation = NULL;
+	ResetTransactionInfo();
 	return false;
 }
 
@@ -342,9 +342,7 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndUpgrade(FFlareSpacecraftComponen
 		}
 	}
 
-	TransactionDestinationDock = NULL;
-	TransactionNewPartDesc = NULL;
-	TransactionNewPartWeaponGroupIndex = NULL;
+	ResetTransactionInfo();
 	return false;
 }
 
@@ -383,14 +381,8 @@ bool UFlareSpacecraftNavigationSystem::DockAt(AFlareSpacecraft* TargetStation)
 
 		FLOG("UFlareSpacecraftNavigationSystem::DockAt : access granted");
 		PushCommandDock(DockingInfo);
-		TransactionResource = NULL;
-		TransactionQuantity = NULL;
-		TransactionSourceShip = NULL;
-		TransactionDestination = NULL;
-		TransactionDestinationDock = NULL;
-		TransactionDonation = NULL;
-		TransactionNewPartDesc = NULL;
-		TransactionNewPartWeaponGroupIndex = NULL;
+
+		ResetTransactionInfo();
 		return true;
 	}
 
@@ -1053,14 +1045,7 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 		}
 
 		Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination, TransactionDonation, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
-		TransactionNewPartDesc = NULL;
-		TransactionNewPartWeaponGroupIndex = NULL;
-		TransactionResource = NULL;
-		TransactionQuantity = NULL;
-		TransactionSourceShip = NULL;
-		TransactionDestination = NULL;
-		TransactionDestinationDock = NULL;
-		TransactionDonation = NULL;
+		ResetTransactionInfo();
 	}
 }
 
@@ -1177,14 +1162,7 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands(bool AttemptUndock, bool
 	SetStatus(EFlareShipStatus::SS_Manual);
 	if (ClearTransactionInfo)
 	{
-		TransactionNewPartDesc = NULL;
-		TransactionNewPartWeaponGroupIndex = NULL;
-		TransactionResource = NULL;
-		TransactionQuantity = NULL;
-		TransactionSourceShip = NULL;
-		TransactionDestination = NULL;
-		TransactionDestinationDock = NULL;
-		TransactionDonation = NULL;
+		ResetTransactionInfo();
 	}
 }
 

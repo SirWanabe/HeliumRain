@@ -354,12 +354,6 @@ void SFlareCargoInfo::OnPermissionClicked()
 	{
 		PermissionButton->SetActive(false);
 	}
-
-		/*
-TargetSpacecraft->GetActiveCargoBay()->SetSlotRestriction(
-		CargoIndex,
-		PermissionButton->IsActive() ? EFlareResourceRestriction::Everybody : EFlareResourceRestriction::OwnerOnly);
-*/
 }
 
 EVisibility SFlareCargoInfo::GetPermissionVisibility() const

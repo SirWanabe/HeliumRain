@@ -113,7 +113,7 @@ namespace EFlareResourceLock
 		NoLock, // The slot is free
 		Input, // The slot accept only sell
 		Output, // The slot accept only buy
-		Trade, // The slot is lock to a resource and accept buy and sell according price thresold
+		Trade, // The slot is lock to a resource and accept buy and sell according price threshold
 		Hidden, // The slot is not available yet
 	};
 }

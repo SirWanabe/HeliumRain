@@ -143,7 +143,7 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 		{
 			if (PilotTarget.IsValid())
 			{
-				if (!Ship->GetNavigationSystem()->IsDocked() && (PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable()) || PilotTarget.BombTarget || PilotTarget.MeteoriteTarget)
+				if (!Ship->GetNavigationSystem()->IsDocked() && ((PilotTarget.SpacecraftTarget && !PilotTarget.SpacecraftTarget->GetParent()->GetDamageSystem()->IsUncontrollable()) || PilotTarget.BombTarget || PilotTarget.MeteoriteTarget))
 				{
 					Ship->SetWantUndockInternalShips(true);
 				}
@@ -1321,7 +1321,7 @@ void UFlareShipPilot::IdlePilot(float DeltaSeconds)
 			return;
 		}
 
-		if (!LeaderShip || (LeaderShip && (!LeaderShip->GetParent()->GetDamageSystem()->IsAlive()) || LeaderShip->GetParent()->GetDamageSystem()->IsUncontrollable()) || !FoundOutOfCombatLeader)
+		if (!LeaderShip || (LeaderShip && (!LeaderShip->GetParent()->GetDamageSystem()->IsAlive() || LeaderShip->GetParent()->GetDamageSystem()->IsUncontrollable() || !FoundOutOfCombatLeader)))
 		{
 			GetNewLeaderShip();
 			FoundOutOfCombatLeader = true;
@@ -2069,7 +2069,7 @@ void UFlareShipPilot::GetNearestHostileShip(bool DangerousOnly)
 		}
 		else
 		{
-			if (MinDistanceSquaredLarge == NULL || DistanceSquared < MinDistanceSquaredLarge)
+			if (DistanceSquared < MinDistanceSquaredLarge)
 			{
 				MinDistanceSquaredLarge = DistanceSquared;
 				NearestHostileShipLarge = ShipCandidate;

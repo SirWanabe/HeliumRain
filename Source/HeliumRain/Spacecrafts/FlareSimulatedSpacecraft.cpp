@@ -1851,10 +1851,9 @@ void UFlareSimulatedSpacecraft::RemoveCapturePoint(FName CompanyIdentifier, int3
 
 void UFlareSimulatedSpacecraft::ResetCapture(UFlareCompany* OtherCompany)
 {
-	int32 ResetSpeedPoint = FMath::CeilToInt(GetCapturePointThreshold() * CAPTURE_RESET_SPEED);
-
 	if (OtherCompany)
 	{
+		int32 ResetSpeedPoint = FMath::CeilToInt(GetCapturePointThreshold() * CAPTURE_RESET_SPEED);
 		FName CompanyIdentifier = OtherCompany->GetIdentifier();
 		RemoveCapturePoint(CompanyIdentifier, ResetSpeedPoint);
 
@@ -1862,17 +1861,21 @@ void UFlareSimulatedSpacecraft::ResetCapture(UFlareCompany* OtherCompany)
 	}
 	else
 	{
-		TArray<FName> CapturingCompany;
-		SpacecraftData.CapturePoints.GetKeys(CapturingCompany);
-
-		for(int CompanyIndex = 0; CompanyIndex < CapturingCompany.Num(); CompanyIndex++)
+		if (SpacecraftData.CapturePoints.Num())
 		{
-			RemoveCapturePoint(CapturingCompany[CompanyIndex], ResetSpeedPoint);
-		}
+			int32 ResetSpeedPoint = FMath::CeilToInt(GetCapturePointThreshold() * CAPTURE_RESET_SPEED);
+			TArray<FName> CapturingCompany;
+			SpacecraftData.CapturePoints.GetKeys(CapturingCompany);
 
-		for(UFlareCompany* CompanyCandidate: Game->GetGameWorld()->GetCompanies())
-		{
-			CompanyCandidate->StopCapture(this);
+			for (int CompanyIndex = 0; CompanyIndex < CapturingCompany.Num(); CompanyIndex++)
+			{
+				RemoveCapturePoint(CapturingCompany[CompanyIndex], ResetSpeedPoint);
+			}
+
+			for (UFlareCompany* CompanyCandidate : Game->GetGameWorld()->GetCompanies())
+			{
+				CompanyCandidate->StopCapture(this);
+			}
 		}
 	}
 }
@@ -2722,9 +2725,9 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 
 	else if (GetShipyardOrderQueue().Num() > 0)
 	{
+/*
 		int32 Index = 0;
 		UFlareSpacecraftCatalog* SpacecraftCatalog = GetGame()->GetSpacecraftCatalog();
-
 		for (FFlareShipyardOrderSave& Order : GetShipyardOrderQueue())
 		{
 			if (Index >= GetShipyardOrderQueue().Num())
@@ -2742,6 +2745,7 @@ bool UFlareSimulatedSpacecraft::CanOrder(const FFlareSpacecraftDescription* Ship
 
 			Index++;
 		}
+*/
 		return false;
 	}
 

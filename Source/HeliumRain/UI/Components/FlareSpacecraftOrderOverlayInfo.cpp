@@ -8,7 +8,7 @@
 #include "../../Game/FlareGame.h"
 #include "../../Game/FlareGameTools.h"
 #include "../../Data/FlareFactoryCatalogEntry.h"
-#include "../../Data/FlareSpaceCraftCatalog.h"
+#include "../../Data/FlareSpacecraftCatalog.h"
 #include "../../Data/FlareTechnologyCatalog.h"
 #include "../../Data/FlareSpacecraftComponentsCatalog.h"
 

@@ -644,6 +644,7 @@ TEnumAsByte<EFlareResourceRestriction::Type> UFlareCargoBay::RotateSlotRestricti
 		}
 	}
 	else if (CargoBay[SlotIndex].Lock == EFlareResourceLock::Trade)
+	{
 		if (CargoBay[SlotIndex].Restriction == EFlareResourceRestriction::Everybody)
 		{
 			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::OwnerOnly);
@@ -672,6 +673,7 @@ TEnumAsByte<EFlareResourceRestriction::Type> UFlareCargoBay::RotateSlotRestricti
 		{
 			SetSlotRestriction(SlotIndex, EFlareResourceRestriction::Everybody);
 		}
+	}
 	return CargoBay[SlotIndex].Restriction;
 }
 
@@ -712,7 +714,7 @@ bool UFlareCargoBay::WantSell(FFlareResourceDescription* Resource, UFlareCompany
 		{
 			continue;
 		}
-
+		
 		if (Cargo.Lock == EFlareResourceLock::NoLock ||
 				Cargo.Lock == EFlareResourceLock::Output ||
 				Cargo.Lock == EFlareResourceLock::Trade)

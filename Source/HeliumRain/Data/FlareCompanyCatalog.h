@@ -3,7 +3,7 @@
 #include "../Flare.h"
 #include "../Game/FlareCompany.h"
 #include "Engine/DataAsset.h"
-#include "FlareCompanyCataLogEntry.h"
+#include "FlareCompanyCatalogEntry.h"
 #include "FlareCompanyCatalog.generated.h"
 
 

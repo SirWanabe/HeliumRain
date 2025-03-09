@@ -1180,7 +1180,7 @@ bool SFlareFleetMenu::IsWhiteListRemoveDisabled() const
 
 bool SFlareFleetMenu::IsWhiteListSelectDisabled() const
 {
-	if (FleetToEdit && (!FleetToEdit->GetSelectedWhiteList() || FleetToEdit->GetSelectedWhiteList() && FleetToEdit->GetSelectedWhiteList() != CurrentlySelectedWhiteList))
+	if (FleetToEdit && (!FleetToEdit->GetSelectedWhiteList() || (FleetToEdit->GetSelectedWhiteList() && FleetToEdit->GetSelectedWhiteList() != CurrentlySelectedWhiteList)))
 	{
 		return false;
 	}

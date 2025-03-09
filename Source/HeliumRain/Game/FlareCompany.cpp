@@ -23,7 +23,7 @@
 #include "../Game/FlareSectorHelper.h"
 
 #define LOCTEXT_NAMESPACE "FlareCompany"
-
+//#define DEBUG_CARRIERBUYING
 
 /*----------------------------------------------------
 	Constructor
@@ -336,16 +336,34 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 		TArray<UFlareFactory*> Shipyards = Ship->GetShipyardFactories();
 
 		int32 ActiveShipyards = 0;
+
+#ifdef DEBUG_CARRIERBUYING
+		FLOGV("Carrier %s checking...", *Ship->GetImmatriculation().ToString());
+#endif
+
 		for (UFlareFactory* Shipyard : Shipyards)
 		{
 			if (Shipyard->IsProducing())
 			{
 				ActiveShipyards++;
 			}
+
 			for (int32 ResourceIndex = 0; ResourceIndex < Shipyard->GetInputResourcesCount(); ResourceIndex++)
 			{
 				FFlareResourceDescription* Resource = Shipyard->GetInputResource(ResourceIndex);
-				InputResources.AddUnique(Resource);
+				if(Ship->GetActiveCargoBay()->GetFreeSpaceForResource(Resource,Ship->GetCompany()) > 0)
+				{
+					InputResources.AddUnique(Resource);
+#ifdef DEBUG_CARRIERBUYING
+					FLOGV("%s added input %s to grab", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString());
+#endif
+				}
+#ifdef DEBUG_CARRIERBUYING
+				else
+				{
+					FLOGV("%s did not have space for %s to grab", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString());
+				}
+#endif
 			}
 		}
 
@@ -382,7 +400,7 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 			}
 		}
 
-		if (Ship->IsAllowExternalOrder() && (this == GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != GetGame()->GetPC()->GetCompany())
+		if (Ship->IsAllowExternalOrder() && ((this == GetGame()->GetPC()->GetCompany() && IsTechnologyUnlocked("auto-trade")) || this != GetGame()->GetPC()->GetCompany()))
 // auto resupply, player needs auto trade technology for it to work, AI Company main method is to "accidently" resupply the carrier, haphazardly with whatever is at hand locally.
 		{
 			UFlareFleet* Fleet = Ship->GetCurrentFleet();
@@ -401,6 +419,10 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 						FFlareResourceDescription* Resource = InputResources[CargoIndex];
 						bool FoundLocal = false;
 
+#ifdef DEBUG_CARRIERBUYING
+						FLOGV("%s looking for buying stations for %s", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString());
+#endif
+
 						for (UFlareSimulatedSpacecraft* BuyingStation : LocalSector->GetSectorStations())
 						{
 							if (BuyingStation->IsUnderConstruction() || BuyingStation->IsHostile(this))
@@ -410,6 +432,9 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 							if (!BuyingStation->CanTradeWith(Ship, Unused, Resource))
 							{
+#ifdef DEBUG_CARRIERBUYING
+								FLOGV("%s can't trade with %s", *Ship->GetImmatriculation().ToString(), *BuyingStation->GetImmatriculation().ToString());
+#endif
 								continue;
 							}
 
@@ -418,15 +443,30 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 								FoundLocal = true;
 								break;
 							}
+#ifdef DEBUG_CARRIERBUYING
+							else
+							{
+								FLOGV("%s fails wantsell for %s", *Ship->GetImmatriculation().ToString(), *BuyingStation->GetImmatriculation().ToString());
+							}
+#endif
 						}
 
 						if (FoundLocal)
 						{
+
+#ifdef DEBUG_CARRIERBUYING
+							FLOGV("%s found a local station wanting to sell %s", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString());
+#endif
+
 							int32 TakenResourceSpace = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, this);
 							if ((!LowestResource || TakenResourceSpace < LowestResourceQuantity) && TakenResourceSpace < MaximumCargoSlotCapacity)
 							{
 								LowestResource = Resource;
 								LowestResourceQuantity = TakenResourceSpace;
+#ifdef DEBUG_CARRIERBUYING
+								FLOGV("%s lowest resource set to %s at quantity of %d", *Ship->GetImmatriculation().ToString(), *Resource->Identifier.ToString(), LowestResourceQuantity);
+#endif
+
 							}
 						}
 					}
@@ -439,6 +479,10 @@ void UFlareCompany::SimulateAI(bool GlobalWar, int32 TotalReservedResources)
 
 						UFlareSimulatedSpacecraft* BestCompanyStation = NULL;
 						int32 BestStationCompanyQuantity = 0;
+
+#ifdef DEBUG_CARRIERBUYING
+						FLOGV("%s lowest resource is %s quantity of %d", *Ship->GetImmatriculation().ToString(), *LowestResource->Identifier.ToString(), LowestResourceQuantity);
+#endif
 
 						for (UFlareSimulatedSpacecraft* BuyingStation : LocalSector->GetSectorStations())
 						{
@@ -2032,8 +2076,7 @@ void UFlareCompany::StartCapture(UFlareSimulatedSpacecraft* Station)
 
 void UFlareCompany::StopCapture(UFlareSimulatedSpacecraft* Station)
 {
-
-	CompanyData.CaptureOrders.Remove(Station->GetImmatriculation());
+	CompanyData.CaptureOrders.RemoveSwap(Station->GetImmatriculation());
 }
 
 bool UFlareCompany::CanStartCapture(UFlareSimulatedSpacecraft* Station)

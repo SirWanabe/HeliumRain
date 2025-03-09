@@ -27,7 +27,7 @@ class SFlareFleetInfo : public SCompoundWidget
 		, _Fleet(NULL)
 		, _OwnerWidget(NULL)
 		, _Minimized(false)
-		, _UseSmallFont(NULL)
+		, _UseSmallFont(false)
 	{}
 
 	SLATE_ARGUMENT(AFlarePlayerController*, Player)

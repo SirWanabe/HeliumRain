@@ -1281,15 +1281,15 @@ void UFlareWorld::ProcessShipCapture()
 					break;
 				case 1: // Hard
 					ReputationDrop = -25;
-					NonPirateDrop = -6.25;
+					NonPirateDrop = -6;
 					break;
 				case 2: // Very Hard
 					ReputationDrop = -30;
-					NonPirateDrop = -7.50;
+					NonPirateDrop = -7;
 					break;
 				case 3: // Expert
 					ReputationDrop = -35;
-					NonPirateDrop = -8.75;
+					NonPirateDrop = -9;
 					break;
 				case 4: // Unfair
 					ReputationDrop = -40;
@@ -1390,7 +1390,6 @@ void UFlareWorld::ProcessStationCapture()
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorStations().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorStations()[SpacecraftIndex];
-
 			FFlareSectorBattleState StationOwnerBattleState = Sector->GetSectorBattleState(Spacecraft->GetCompany());
 
 			if (!StationOwnerBattleState.HasDanger)
