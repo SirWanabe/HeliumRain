@@ -76,9 +76,8 @@ void SFlareTechnologyMenu::Construct(const FArguments& InArgs)
 						.AutoHeight()
 						.Padding(Theme.ContentPadding)
 						[
-							SNew(SRichTextBlock)
+							SAssignNew(CompanyTechnologyInfo,SRichTextBlock)
 							.TextStyle(&Theme.TextFont)
-							.Text(this, &SFlareTechnologyMenu::GetCompanyTechnologyInfo)
 							.DecoratorStyleSet(&FFlareStyleSet::Get())
 							.WrapTextAt(0.7 * Theme.ContentWidth)
 						]
@@ -110,13 +109,12 @@ void SFlareTechnologyMenu::Construct(const FArguments& InArgs)
 						.Padding(Theme.ContentPadding)
 						.HAlign(HAlign_Left)
 						[
-							SNew(SFlareButton)
+							SAssignNew(UnlockTechnologyButton,SFlareButton)
 							.Width(6)
 							.Icon(FFlareStyleSet::GetIcon("ResearchValue"))
-							.Text(this, &SFlareTechnologyMenu::GetTechnologyUnlockText)
-							.HelpText(this, &SFlareTechnologyMenu::GetTechnologyUnlockHintText)
+							.Text(LOCTEXT("UnlockTechOK", "Research technology"))
+							.HelpText(LOCTEXT("UnlockTechInfo", "Research this technology by spending some of your available research budget"))
 							.OnClicked(this, &SFlareTechnologyMenu::OnTechnologyUnlocked)
-							.IsDisabled(this, &SFlareTechnologyMenu::IsUnlockDisabled)
 						]
 					]
 				]
@@ -215,6 +213,11 @@ void SFlareTechnologyMenu::Setup()
 	SetVisibility(EVisibility::Collapsed);
 }
 
+void SFlareTechnologyMenu::ResetDefaults()
+{
+	TutorialQuestComplete = false;
+}
+
 void SFlareTechnologyMenu::Enter()
 {
 	FLOG("SFlareTechnologyMenu::Enter");
@@ -262,7 +265,7 @@ void SFlareTechnologyMenu::Enter()
 	// List all technologies
 	SelectedTechnology = NULL;
 	TArray<const FFlareTechnologyDescription*> Technologies;
-//	for (auto& Entry : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
+
 	for (UFlareTechnologyCatalogEntry* Technology : MenuManager->GetGame()->GetTechnologyCatalog()->TechnologyCatalog)
 	{
 		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
@@ -286,6 +289,8 @@ void SFlareTechnologyMenu::Enter()
 
 	// Add technologies to the tree
 	int CurrentLevel = -1;
+	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+
 	TSharedPtr<SHorizontalBox> CurrentLevelRow;
 	for (const FFlareTechnologyDescription* Technology : Technologies)
 	{
@@ -296,36 +301,54 @@ void SFlareTechnologyMenu::Enter()
 
 			// Row
 			TechnologyTree->AddSlot()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				[
-					SAssignNew(CurrentLevelRow, SHorizontalBox)
-				];
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
+			[
+				SAssignNew(CurrentLevelRow, SHorizontalBox)
+			];
 
-			// Row title
+			// Technology level
 			CurrentLevelRow->AddSlot()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Center)
-				.Padding(FMargin(0, 0, 0, 10))
-				[
-					SNew(STextBlock)
-					.TextStyle(&Theme.TitleFont)
-					.Text(FText::Format(LOCTEXT("CurrentLevelFormat", "{0}"), FText::AsNumber(CurrentLevel)))
-					.ColorAndOpacity(this, &SFlareTechnologyMenu::GetTitleTextColor, CurrentLevel)
-				];
-		}
-
-		// Add entry to the row
-		CurrentLevelRow->AddSlot()
 			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Center)
-			.Padding(Theme.ContentPadding)
+			.Padding(FMargin(0, 0, 0, 10))
+			.MaxWidth(64.f)
+			[
+				SNew(STextBlock)
+				.TextStyle(&Theme.TitleFont)
+				.Text(FText::Format(LOCTEXT("CurrentLevelFormat", "{0}"), FText::AsNumber(CurrentLevel)))
+				.ColorAndOpacity(this, &SFlareTechnologyMenu::GetTitleTextColor, CurrentLevel)
+			];
+			
+			// Technology level cost
+			CurrentLevelRow->AddSlot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
+			.Padding(FMargin(0, 0, 0, 10))
+			[
+				SNew(STextBlock)
+				.TextStyle(&Theme.SmallFont)
+				.Text(this, &SFlareTechnologyMenu::GetTechnologyLevelCost, CurrentLevel)
+				.ColorAndOpacity(this, &SFlareTechnologyMenu::GetTechnologyLevelCostTextColor, CurrentLevel)
+			];
+		}
+
+		CurrentLevelRow->AddSlot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(Theme.ContentPadding * 0.75)
+		[
+			SNew(SBox)
+			.WidthOverride(Theme.ContentWidth)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Fill)
 			[
 				SNew(SFlareTechnologyInfo)
 				.MenuManager(MenuManager)
 				.Technology(Technology)
 				.OnClicked(FFlareButtonClicked::CreateSP(this, &SFlareTechnologyMenu::OnTechnologySelected, Technology))
-			];
+			]
+		];
 	}
 
 	// List artifacts
@@ -379,6 +402,20 @@ void SFlareTechnologyMenu::Enter()
 	}	
 
 	SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
+
+	if (!TutorialQuestComplete)
+	{
+		UFlareQuest* TutorialQuest = MenuManager->GetGame()->GetQuestManager()->FindQuest("tutorial-technology");
+		if (TutorialQuest)
+		{
+			if (MenuManager->GetGame()->GetQuestManager()->IsQuestOngoing(TutorialQuest) || MenuManager->GetGame()->GetQuestManager()->IsQuestSuccessfull(TutorialQuest))
+			{
+				TutorialQuestComplete = true;
+			}
+		}
+	}
+
+	UpdateAllInfos();
 }
 
 void SFlareTechnologyMenu::Exit()
@@ -398,30 +435,82 @@ void SFlareTechnologyMenu::Exit()
 	Callbacks
 ----------------------------------------------------*/
 
-bool SFlareTechnologyMenu::IsUnlockDisabled() const
+void SFlareTechnologyMenu::UpdateAllInfos()
 {
-	if (SelectedTechnology)
-	{
-		UFlareQuest* Target = MenuManager->GetGame()->GetQuestManager()->FindQuest("tutorial-contracts");
-		if (Target && MenuManager->GetGame()->GetQuestManager()->IsQuestSuccessfull(Target))
-		{
-			FText Unused;
-			return !MenuManager->GetPC()->GetCompany()->IsTechnologyAvailable(SelectedTechnology->Identifier, Unused);
-		}
-	}
-	return true;
+	UpdateCompanyTechnologyInfo();
+	UpdateTechnologyButtonInfo();
 }
 
-FText SFlareTechnologyMenu::GetCompanyTechnologyInfo() const
+void SFlareTechnologyMenu::UpdateTechnologyButtonInfo()
+{
+	if (!TutorialQuestComplete)
+	{
+		UnlockTechnologyButton->SetText(LOCTEXT("UnlockTechImpossible", "Can't research"));
+		UnlockTechnologyButton->SetHelpText(LOCTEXT("UnlockTechTutorialRequiredInfo", "Technology research is disabled until the research tutorial"));
+		UnlockTechnologyButton->SetDisabled(true);
+		return;
+	}
+
+	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+	FText Reason;
+	if (SelectedTechnology)
+	{
+		if (!Company->IsTechnologyAvailable(SelectedTechnology->Identifier, Reason))
+		{
+			if (Company->GetTechnologyLevel() < SelectedTechnology->Level)
+			{
+				int32 LevelDifference = SelectedTechnology->Level - Company->GetTechnologyLevel();
+				int32 TechnologyUpgradeCost = Company->GetTechnologyLevelUpgradeCost(LevelDifference);
+
+				UnlockTechnologyButton->SetText(LOCTEXT("UnlockTechUpgradeTech", "Upgrade Tech Level"));
+				UnlockTechnologyButton->SetHelpText(FText::Format(LOCTEXT("UnlockTechUpgradeTechHint", "Upgrade to Tech Level {0} by spending {1} research points"),
+				FText::AsNumber(Company->GetTechnologyLevel() + LevelDifference),
+				FText::AsNumber(TechnologyUpgradeCost)));
+				if (Company->GetResearchAmount() >= TechnologyUpgradeCost)
+				{
+					UnlockTechnologyButton->SetDisabled(false);
+					return;
+				}
+			}
+			else
+			{
+				UnlockTechnologyButton->SetText(LOCTEXT("UnlockTechImpossible", "Can't research"));
+				UnlockTechnologyButton->SetHelpText(Reason);
+			}
+		}
+		else
+		{
+			UnlockTechnologyButton->SetText(LOCTEXT("UnlockTechOK", "Research technology"));
+			UnlockTechnologyButton->SetHelpText(FText::Format(LOCTEXT("UnlockTechInfoCosts", "Research {0} by spending {1} research points"),
+			SelectedTechnology->Name,
+			FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetTechnologyCost(SelectedTechnology))));
+			UnlockTechnologyButton->SetDisabled(false);
+			return;
+		}
+	}
+	else
+	{
+		UnlockTechnologyButton->SetText(LOCTEXT("UnlockTechOK", "Research technology"));
+		UnlockTechnologyButton->SetHelpText(LOCTEXT("UnlockTechInfo", "Research this technology by spending some of your available research budget"));
+	}
+	UnlockTechnologyButton->SetDisabled(true);
+}
+
+void SFlareTechnologyMenu::UpdateCompanyTechnologyInfo()
 {
 	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+	if (!TutorialQuestComplete)
+	{
+		CompanyTechnologyInfo->SetText(FText::Format(LOCTEXT("TechnologyCompanyTutorialRequiredFormat", "\u2022 <WarningText>Technology research is disabled until the research tutorial.</>\n\u2022 You have <HighlightText>{0} research points</>."),
+			FText::AsNumber(Company->GetResearchAmount()),
+			FText::AsNumber(Company->GetResearchSpent())));
+		return;
+	}
 
-	CompanyValue CompanyValue = Company->GetCompanyValue(NULL, false);
-
-	return FText::Format(LOCTEXT("TechnologyCompanyFormat", "\u2022 You can currently research technology up to <HighlightText>level {0}</>.\n\u2022 You have <HighlightText>{1} research</> left to spend in technology.\n\u2022 You have already spent {2} research."),
+	CompanyTechnologyInfo->SetText(FText::Format(LOCTEXT("TechnologyCompanyFormat", "\u2022 You can currently research technology up to <HighlightText>level {0}</>.\n\u2022 You have <HighlightText>{1} research points</>.\n\u2022 You have already spent {2} research points."),
 		FText::AsNumber(Company->GetTechnologyLevel()),
 		FText::AsNumber(Company->GetResearchAmount()),
-		FText::AsNumber(Company->GetResearchSpent()));
+		FText::AsNumber(Company->GetResearchSpent())));
 }
 
 FText SFlareTechnologyMenu::GetTechnologyName() const
@@ -463,46 +552,59 @@ FSlateColor SFlareTechnologyMenu::GetTitleTextColor(int32 RowLevel) const
 	}
 }
 
-FText SFlareTechnologyMenu::GetTechnologyUnlockText() const
+FSlateColor SFlareTechnologyMenu::GetTechnologyLevelCostTextColor(int32 RowLevel) const
 {
-	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
-	FText Unused;
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
-	if (SelectedTechnology && !Company->IsTechnologyAvailable(SelectedTechnology->Identifier, Unused))
+	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+
+	if (!TutorialQuestComplete || RowLevel > Company->GetTechnologyLevel())
 	{
-		return LOCTEXT("UnlockTechImpossible", "Can't research");
+		int32 LevelDifference = RowLevel - Company->GetTechnologyLevel();
+		int32 TechUpgradeCost = Company->GetTechnologyLevelUpgradeCost(LevelDifference);
+		if (Company->GetResearchAmount() >= TechUpgradeCost)
+		{
+			return Theme.NeutralColor;
+		}
+
+		return Theme.UnknownColor;
 	}
-	else
-	{
-		return LOCTEXT("UnlockTechOK", "Research technology");
-	}
+
+	return Theme.NeutralColor;
 }
 
-FText SFlareTechnologyMenu::GetTechnologyUnlockHintText() const
+FSlateColor SFlareTechnologyMenu::GetTechnologyUpgradeTextColor(int32 RowLevel) const
 {
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
-	FText Reason;
 
-	if (SelectedTechnology && !Company->IsTechnologyAvailable(SelectedTechnology->Identifier, Reason))
+	if (!TutorialQuestComplete || RowLevel > Company->GetTechnologyLevel())
 	{
-		return Reason;
+		return Theme.UnknownColor;
 	}
-	else
-	{
-		return LOCTEXT("UnlockTechInfo", "Research this technology by spending some of your available research budget");
-	}
+	return Theme.NeutralColor;
 }
 
 void SFlareTechnologyMenu::OnTechnologySelected(const FFlareTechnologyDescription* Technology)
 {
 	SelectedTechnology = Technology;
+	UpdateTechnologyButtonInfo();
 }
 
 void SFlareTechnologyMenu::OnTechnologyUnlocked()
 {
 	if (SelectedTechnology)
 	{
-		MenuManager->GetPC()->GetCompany()->UnlockTechnology(SelectedTechnology->Identifier);
+		UFlareCompany* Company = MenuManager->GetPC()->GetCompany();
+		if(!Company->UnlockTechnology(SelectedTechnology->Identifier))
+		{
+			if (Company->GetTechnologyLevel() < SelectedTechnology->Level)
+			{
+				int32 LevelDifference = SelectedTechnology->Level - Company->GetTechnologyLevel();
+				Company->UpgradeTechnologyLevel(LevelDifference);
+			}
+		}
+		UpdateAllInfos();
 	}
 }
 
@@ -513,5 +615,15 @@ FText SFlareTechnologyMenu::GetUnlockedScannableCount() const
 		FText::AsNumber(MenuManager->GetGame()->GetScannableCatalog()->ScannableCatalog.Num()));
 }
 
+FText SFlareTechnologyMenu::GetTechnologyLevelCost(int32 Level) const
+{
+	int32 CompanyLevel = MenuManager->GetPC()->GetCompany()->GetTechnologyLevel();
+	if (CompanyLevel < Level)
+	{
+		int32 LevelDifference = Level - CompanyLevel;
+		return FText::AsNumber(MenuManager->GetPC()->GetCompany()->GetTechnologyLevelUpgradeCost(LevelDifference));
+	}
+	return FText();
+}
 
 #undef LOCTEXT_NAMESPACE

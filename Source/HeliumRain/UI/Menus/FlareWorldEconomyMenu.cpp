@@ -576,33 +576,49 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 
 				// Include shipyards
 				+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					.HAlign(HAlign_Left)
-					[
-						SAssignNew(ShipyardsFilterButton, SFlareButton)
-						.Text(LOCTEXT("IncludeShipyards", "Filter Shipyards"))
-						.HelpText(LOCTEXT("IncludeShipyardsHelp", "Filter Shipyards"))
-						.Toggle(true)
-						.Width(6)
-						.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
-						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
-					]
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				.HAlign(HAlign_Left)
+				[
+					SAssignNew(ShipyardsFilterButton, SFlareButton)
+					.Text(LOCTEXT("IncludeShipyards", "Filter Shipyards"))
+					.HelpText(LOCTEXT("IncludeShipyardsHelp", "Filter Shipyards"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
+				]
 
-					// Include under construction
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(Theme.ContentPadding)
-					.HAlign(HAlign_Left)
-					[
-						SAssignNew(UnderConstructionFilterButton, SFlareButton)
-						.Text(LOCTEXT("IncludeUnderConstruction", "Filter Under Construction"))
-						.HelpText(LOCTEXT("IncludeUnderConstructionHelp", "Filter Under Construction"))
-						.Toggle(true)
-						.Width(6)
-						.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
-						.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
-					]		
+				// Include under construction
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				.HAlign(HAlign_Left)
+				[
+					SAssignNew(UnderConstructionFilterButton, SFlareButton)
+					.Text(LOCTEXT("IncludeUnderConstruction", "Filter Under Construction"))
+					.HelpText(LOCTEXT("IncludeUnderConstructionHelp", "Filter Under Construction"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
+				]		
+
+				// Include complexes
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(Theme.ContentPadding)
+				.HAlign(HAlign_Left)
+				[
+					SAssignNew(ComplexFilterButton, SFlareButton)
+					.Text(LOCTEXT("IncludeComplexes", "Filter Complexes"))
+					.HelpText(LOCTEXT("IncludeComplexesHelp", "Filter Complexes"))
+					.Toggle(true)
+					.Width(6)
+					.OnClicked(this, &SFlareWorldEconomyMenu::OnToggleShowFlags)
+					.Visibility(this, &SFlareWorldEconomyMenu::GetStationFiltersStationModeVisibility)
+				]
+
 
 				// Include Travellers
 				+ SVerticalBox::Slot()
@@ -1070,6 +1086,12 @@ bool SFlareWorldEconomyMenu::PassesFilterList(UFlareSimulatedSpacecraft* Station
 		{
 			return false;
 			// Filter out stations that aren't under construction
+		}
+
+		if (ComplexFilterButton->IsActive() && !StationCandidate->IsComplex())
+		{
+			return false;
+			// Filter out stations that aren't a station complex
 		}
 	}
 

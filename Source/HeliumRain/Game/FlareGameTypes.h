@@ -7,7 +7,8 @@
 #include "../Spacecrafts/FlareSpacecraftTypes.h"
 #include "FlareGameTypes.generated.h"
 
-#define AI_MAX_STATION_PER_SECTOR 30
+#define AI_MAX_STATION_PER_SECTOR 40
+#define AI_MAX_COMPLEX_PER_SECTOR 3
 
 class AFlareSpacecraft;
 
@@ -125,6 +126,16 @@ namespace EFlareTechnologyCategory
 	};
 }
 
+/** AI Company prioritzes upgrading low or high leveled stations*/
+UENUM()
+namespace EFlareAICompanyUpgradePriority
+{
+	enum Type
+	{
+		UpgradeLowest,
+		UpgradeHighest
+	};
+}
 
 /*----------------------------------------------------
 	General gameplay data
@@ -141,6 +152,19 @@ struct FFlareCompanySectorKnowledge
 
 	UPROPERTY(EditAnywhere, Category = Save)
 	TEnumAsByte<EFlareSectorKnowledge::Type> Knowledge;
+};
+
+USTRUCT()
+struct FFlareRequiredTechnologies
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Technology Identifier. Set this to the identifier of a technology*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	FName Identifier;
+
+	/** If enabled, instead of requiring all technologies in the array it will require any at all*/
+	UPROPERTY(EditAnywhere, Category = Content) bool UnlockedIfAnyFound;
 };
 
 /** Technology description */
@@ -167,13 +191,17 @@ struct FFlareTechnologyDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	TEnumAsByte<EFlareTechnologyCategory::Type> Category;
 
-	UPROPERTY(EditAnywhere, Category = Content)
-	bool PlayerOnly;
+	UPROPERTY(EditAnywhere, Category = Content) bool PlayerOnly;
 
 	UPROPERTY(EditAnywhere, Category = Content) bool AIOnly;
 
 	/** Used to disable vanilla research, RequiredTechnologies array will still be read. Disabled technology can be used to disable ships/components too*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
+
+	/** Used as a rudimentary runtime optimization. Enable this value if this technology is also added to any factory RequiredTechnologies or TechnologiesEffects arrays*/
+	UPROPERTY(EditAnywhere, Category = Content) bool UnlocksFactory;
+
+	UPROPERTY(EditAnywhere, Category = Content) int32 TradeRouteSteps;
 
 	UPROPERTY(EditAnywhere, Category = Content) float RepairBonus;
 	UPROPERTY(EditAnywhere, Category = Content) float DiplomaticPenaltyBonus;
@@ -182,7 +210,7 @@ struct FFlareTechnologyDescription
 	UPROPERTY(EditAnywhere, Category = Content) float ShipyardFabBonus;
 
 	/** All required unlocked technologies to unlock this technology*/
-	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FFlareRequiredTechnologies> RequiredTechnologies;
 
 	/** Companies that can unlock this research. Company ShortName, or PLAYER*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> ResearchableCompany;
@@ -256,9 +284,8 @@ struct FFlareCompanyAISave
 
 	FName ResearchProject;
 	FName DesiredStationLicense;
+	int64 DateCalculatedDefaultBudget;
 	int64 DateBoughtLicense;
-
-	bool CalculatedDefaultBudget;
 };
 
 /** Transaction type*/
@@ -446,6 +473,10 @@ struct FFlareCompanySave
 	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FName> UnlockedTechnologies;
 
+	/** Current technology level */
+	UPROPERTY(EditAnywhere, Category = Save)
+	int32 TechnologyLevel;
+
 	/** Science amount */
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 ResearchAmount;
@@ -488,6 +519,11 @@ struct FFlareCompanyStartingShips
 
 	UPROPERTY(EditAnywhere, Category = Company)
 	bool IsStation = false;
+
+	/** If this is a station should it look for complexes in the local sector to attach itself to? */
+	UPROPERTY(EditAnywhere, Category = Company)
+	bool StationTryAttachComplex = false;
+
 	/** If this is a station what level is it? */
 	UPROPERTY(EditAnywhere, Category = Company)
 	uint32 Level = 1;
@@ -510,6 +546,10 @@ struct FFlareCompanyAIDescription
 {
 	GENERATED_USTRUCT_BODY()
 
+	/* Faction station upgrade priority*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	TEnumAsByte<EFlareAICompanyUpgradePriority::Type> AIStationUpgradePriority;
+
 	/** How strongly the faction wants to build stations that produce this resource */
 	UPROPERTY(EditAnywhere, Category = Company)
 	TMap<FName, float> ResourceAffilities;
@@ -524,6 +564,10 @@ struct FFlareCompanyAIDescription
 	/** Default: 1*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	float TradingSell;
+
+	/** Default: 1*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float ComplexAffility;
 
 	/** Default: 1*/
 	UPROPERTY(EditAnywhere, Category = Company)
@@ -728,6 +772,10 @@ struct FFlareCompanyAIDescription
 	UPROPERTY(EditAnywhere, Category = Company)
 	bool IsMercenaryCompany;
 
+	/** How likely it is the AI faction will chose a research topic it has the tech level unlocked for Default: 0.50*/
+	UPROPERTY(EditAnywhere, Category = Company)
+	float ResearchTechEligableBias;
+
 	/** Preset research order. If unable to research anything in array will choose random available research. Default: science,instruments*/
 	UPROPERTY(EditAnywhere, Category = Company)
 	TArray<FName> ResearchOrder;
@@ -788,6 +836,9 @@ struct FFlareCompanyDescription
 
 	UPROPERTY(EditAnywhere, Category = Company)
 	int64 StartingMoney;
+
+	UPROPERTY(EditAnywhere, Category = Company)
+	int32 StartingTechnologyLevel;
 
 	UPROPERTY(EditAnywhere, Category = Company)
 	TArray<FName> StartingSectorKnowledge;

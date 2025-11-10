@@ -18,7 +18,7 @@
 #define LOCTEXT_NAMESPACE "FlareTradeRouteMenu"
 #define MAX_WAIT_LIMIT 29
 #define MINIBAR_WIDTH_MULTI 0.35
-
+#define DEFAULT_MAX_SECTORS 5
 #define CONDITIONS_HEIGHT_BOOST 16
 
 
@@ -33,7 +33,6 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 	AFlarePlayerController* PC = MenuManager->GetPC();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	TArray<UFlareResourceCatalogEntry*> ResourceList = PC->GetGame()->GetResourceCatalog()->Resources;
-	MaxSectorsInRoute = 5;
 
 	OperationList.Add(EFlareTradeRouteOperation::Load);
 	OperationNameList.Add(MakeShareable(new FText(LOCTEXT("OpLoad", "Load"))));
@@ -840,105 +839,122 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 				.VAlign(VAlign_Top)
 				.HAlign(HAlign_Fill)
 				[
-					SNew(SScrollBox)
-					.Style(&Theme.ScrollBoxStyle)
-					.ScrollBarStyle(&Theme.ScrollBarStyle)
-
-					+ SScrollBox::Slot()
+					SNew(SBox)
 					.HAlign(HAlign_Fill)
-					.Padding(Theme.ContentPadding)
+					.VAlign(VAlign_Fill)
+					.WidthOverride(1024)
+					.HeightOverride(1024)
 					[
-						SNew(SVerticalBox)
-				
-						// Title
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.TitlePadding)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("TradeRouteSectorsTitle", "Add a sector"))
-							.TextStyle(&Theme.SubTitleFont)
-						]
-				
-						// Hint
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.TitlePadding)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("TradeRouteSectorsDetails", "Deals will be suggested after you've added a first trade step."))
-							.TextStyle(&Theme.TextFont)
-						]
+						SNew(SScrollBox)
+						.Style(&Theme.ScrollBoxStyle)
+						.ScrollBarStyle(&Theme.ScrollBarStyle)
+						.Orientation(Orient_Horizontal)
 
-						// Sector selection
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.ContentPadding)
+						+ SScrollBox::Slot()
 						.HAlign(HAlign_Fill)
+						.Padding(Theme.ContentPadding)
 						[
-							SNew(SBox)
-							.WidthOverride(Theme.ContentWidth)
-							[
-								SNew(SHorizontalBox)
+							SNew(SScrollBox)
+							.Style(&Theme.ScrollBoxStyle)
+							.ScrollBarStyle(&Theme.ScrollBarStyle)
 
-								// List
-								+ SHorizontalBox::Slot()
-								.Padding(Theme.SmallContentPadding)
-								.AutoWidth()
+							+ SScrollBox::Slot()
+							.VAlign(VAlign_Fill)
+							.Padding(Theme.ContentPadding)
+							[
+								SNew(SVerticalBox)
+				
+								// Title
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.TitlePadding)
 								[
-									SAssignNew(SectorSelector, SFlareDropList<UFlareSimulatedSector*>)
-									.OptionsSource(&SectorList)
-									.OnGenerateWidget(this, &SFlareTradeRouteMenu::OnGenerateSectorComboLine)
-									.OnSelectionChanged(this, &SFlareTradeRouteMenu::OnSectorComboLineSelectionChanged)
-									.HeaderWidth(15)
-									.HeaderHeight(2.5)
-									.ItemWidth(15)
-									.ItemHeight(2.5)
-									.MaximumHeight(500)
+									SNew(STextBlock)
+									.Text(LOCTEXT("TradeRouteSectorsTitle", "Add a sector"))
+									.TextStyle(&Theme.SubTitleFont)
+								]
+				
+								// Hint
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.TitlePadding)
+								[
+									SNew(STextBlock)
+									.Text(LOCTEXT("TradeRouteSectorsDetails", "Deals will be suggested after you've added a first trade step."))
+									.TextStyle(&Theme.TextFont)
+								]
+
+								// Sector selection
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.ContentPadding)
+								.HAlign(HAlign_Fill)
+								[
+									SNew(SBox)
+									.WidthOverride(Theme.ContentWidth * 2)
 									[
-										SNew(SBox)
-										.Padding(Theme.ListContentPadding)
+										SNew(SHorizontalBox)
+
+										// List
+										+ SHorizontalBox::Slot()
+										.Padding(Theme.SmallContentPadding)
+										.AutoWidth()
 										[
-											SNew(STextBlock)
-											.Text(this, &SFlareTradeRouteMenu::OnGetCurrentSectorComboLine)
-											.TextStyle(&Theme.TextFont)
+											SAssignNew(SectorSelector, SFlareDropList<UFlareSimulatedSector*>)
+											.OptionsSource(&SectorList)
+											.OnGenerateWidget(this, &SFlareTradeRouteMenu::OnGenerateSectorComboLine)
+											.OnSelectionChanged(this, &SFlareTradeRouteMenu::OnSectorComboLineSelectionChanged)
+											.HeaderWidth(15)
+											.HeaderHeight(2.5)
+											.ItemWidth(15)
+											.ItemHeight(2.5)
+											.MaximumHeight(500)
+											[
+												SNew(SBox)
+												.Padding(Theme.ListContentPadding)
+												[
+													SNew(STextBlock)
+													.Text(this, &SFlareTradeRouteMenu::OnGetCurrentSectorComboLine)
+													.TextStyle(&Theme.TextFont)
+												]
+											]
+										]
+
+										// Button
+										+ SHorizontalBox::Slot()
+										.AutoWidth()
+										.Padding(Theme.SmallContentPadding)
+										.VAlign(VAlign_Top)
+										[
+											SNew(SFlareButton)
+											.Width(3)
+											.Text(this, &SFlareTradeRouteMenu::GetAddSectorText)
+											.HelpText(LOCTEXT("AddSectorInfo", "Add this sector to the trade route"))
+											.OnClicked(this, &SFlareTradeRouteMenu::OnAddSectorClicked)
+											.IsDisabled(this, &SFlareTradeRouteMenu::IsAddSectorDisabled)
 										]
 									]
 								]
-
-								// Button
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.Padding(Theme.SmallContentPadding)
-								.VAlign(VAlign_Top)
+				
+								// Title
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.TitlePadding)
 								[
-									SNew(SFlareButton)
-									.Width(3)
-									.Text(this, &SFlareTradeRouteMenu::GetAddSectorText)
-									.HelpText(LOCTEXT("AddSectorInfo", "Add this sector to the trade route"))
-									.OnClicked(this, &SFlareTradeRouteMenu::OnAddSectorClicked)
-									.IsDisabled(this, &SFlareTradeRouteMenu::IsAddSectorDisabled)
+									SNew(STextBlock)
+									.Text(LOCTEXT("TradeRouteMapTitle", "Flight plan"))
+									.TextStyle(&Theme.SubTitleFont)
+								]
+
+								// Map
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(Theme.ContentPadding)
+								.HAlign(HAlign_Left)
+								[
+									SAssignNew(TradeSectorList, SHorizontalBox)
 								]
 							]
-						]
-				
-						// Title
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.TitlePadding)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("TradeRouteMapTitle", "Flight plan"))
-							.TextStyle(&Theme.SubTitleFont)
-						]
-
-						// Map
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(Theme.ContentPadding)
-						.HAlign(HAlign_Left)
-						[
-							SAssignNew(TradeSectorList, SHorizontalBox)
 						]
 					]
 				]
@@ -973,6 +989,9 @@ void SFlareTradeRouteMenu::Enter(UFlareTradeRoute* TradeRoute)
 
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
+
+	int32 Technology_Bonus = MenuManager->GetGame()->GetPC()->GetCompany()->GetTechnologyBonus_Int("traderoute-sectors");
+	MaxSectorsInRoute = DEFAULT_MAX_SECTORS + Technology_Bonus;
 
 	TargetTradeRoute = TradeRoute;
 	EditSelectedOperation = NULL;

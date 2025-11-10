@@ -111,61 +111,80 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 							SAssignNew(UnlicencedIcon, SImage)
 							.Image(FFlareStyleSet::GetIcon("Delete"))
 							.Visibility(EVisibility::Collapsed)
-
 						]
 
-						// Ship name
 						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.SmallContentPadding)
-						.VAlign(VAlign_Center)
-						[
-							SAssignNew(SpacecraftName, STextBlock)
-							.Text(this, &SFlareSpacecraftInfo::GetName)
-							.TextStyle(&Theme.NameFont)
-							.ColorAndOpacity(this, &SFlareSpacecraftInfo::GetTextColor)
-						]
-
-						// Ship class
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(Theme.SmallContentPadding)
-						.VAlign(VAlign_Center)
-						[
-							SNew(STextBlock)
-							.Text(this, &SFlareSpacecraftInfo::GetDescription)
-							.TextStyle(&Theme.TextFont)
-						]
-
-						// Combat value icon
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
 						.HAlign(HAlign_Left)
-						.VAlign(VAlign_Center)
-						.Padding(FMargin(5, 0, 0, 0))
 						[
-							SNew(SImage)
-							.Image(FFlareStyleSet::GetIcon("CombatValue"))
-							.Visibility(this, &SFlareSpacecraftInfo::GetCombatValueVisibility)
-						]
+							SNew(SBox)
+							.WidthOverride(225)
+							[
+								SNew(SHorizontalBox)
+								// Ship name
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.Padding(Theme.SmallContentPadding)
+								.VAlign(VAlign_Center)
+								[
+									SAssignNew(SpacecraftName, STextBlock)
+									.Text(this, &SFlareSpacecraftInfo::GetName)
+									.TextStyle(&Theme.NameFont)
+									.ColorAndOpacity(this, &SFlareSpacecraftInfo::GetTextColor)
+								]
 
-						// Combat value
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Left)
-						.VAlign(VAlign_Center)
-						[
-							SNew(STextBlock)
-							.Text(this, &SFlareSpacecraftInfo::GetCombatValue)
-							.TextStyle(&Theme.TextFont)
-							.Visibility(this, &SFlareSpacecraftInfo::GetCombatValueVisibility)
+								// Ship class
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.Padding(Theme.SmallContentPadding)
+								.VAlign(VAlign_Center)
+								[
+									SNew(STextBlock)
+									.Text(this, &SFlareSpacecraftInfo::GetDescription)
+									.TextStyle(&Theme.TextFont)
+								]
+								// Combat value icon
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								.Padding(FMargin(5, 0, 0, 0))
+								[
+									SNew(SImage)
+									.Image(FFlareStyleSet::GetIcon("CombatValue"))
+									.Visibility(this, &SFlareSpacecraftInfo::GetCombatValueVisibility)
+								]
+
+								// Combat value
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								.VAlign(VAlign_Center)
+								[
+									SNew(STextBlock)
+									.Text(this, &SFlareSpacecraftInfo::GetCombatValue)
+									.TextStyle(&Theme.TextFont)
+									.Visibility(this, &SFlareSpacecraftInfo::GetCombatValueVisibility)
+								]
+							]
 						]
 
 						// Status
 						+ SHorizontalBox::Slot()
 						.HAlign(HAlign_Right)
 						[
-							SAssignNew(ShipStatus, SFlareShipStatus)
+							SNew(SBox)
+							.WidthOverride(225)
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.VAlign(VAlign_Center)
+//								.HAlign(HAlign_Right)
+								.HAlign(HAlign_Left)
+								.AutoWidth()
+								[
+									SAssignNew(ShipStatus, SFlareShipStatus)
+								]
+							]
 						]
 					]
 
@@ -211,21 +230,21 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 
 					//company line two, for displaying in sector trading/status
 					+ SVerticalBox::Slot()
-						.AutoHeight()
+					.AutoHeight()
+					.Padding(Theme.SmallContentPadding)
+					[
+						SNew(SHorizontalBox)
+						// Spacecraft info
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
 						.Padding(Theme.SmallContentPadding)
 						[
-							SNew(SHorizontalBox)
-							// Spacecraft info
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.Padding(Theme.SmallContentPadding)
-							[
-								SNew(STextBlock)
-								.Text(this, &SFlareSpacecraftInfo::GetSpacecraftLocalInfo)
-								.TextStyle(&Theme.TextFont)
-								.Visibility(this, &SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility)
-							]
+							SNew(STextBlock)
+							.Text(this, &SFlareSpacecraftInfo::GetSpacecraftLocalInfo)
+							.TextStyle(&Theme.TextFont)
+							.Visibility(this, &SFlareSpacecraftInfo::GetSpacecraftLocalInfoVisibility)
 						]
+					]
 					
 					// Message box
 					+ SVerticalBox::Slot()
@@ -262,6 +281,7 @@ void SFlareSpacecraftInfo::Construct(const FArguments& InArgs)
 					SNew(SImage).Image(this, &SFlareSpacecraftInfo::GetIcon)
 					.Visibility(InArgs._NoInspect ? EVisibility::Hidden : EVisibility::Visible)
 				]
+
 			]
 
 			// Buttons 
@@ -432,7 +452,7 @@ void SFlareSpacecraftInfo::SetSpacecraft(UFlareSimulatedSpacecraft* Target)
 			SortedCargoBay.Sort(UFlareCargoBay::SortBySlotType);
 			for (int32 CargoIndex = 0; CargoIndex < SortedCargoBay.Num(); CargoIndex++)
 			{
-				TSharedPtr<SHorizontalBox> Bay = (CargoIndex < 8) ? CargoBay1 : CargoBay2;
+				TSharedPtr<SHorizontalBox> Bay = (CargoIndex < 9) ? CargoBay1 : CargoBay2;
 				Bay->AddSlot()
 				[
 					SNew(SFlareCargoInfo)
@@ -721,7 +741,14 @@ void SFlareSpacecraftInfo::Show()
 		{
 			if (TargetSpacecraft->IsStation())
 			{
-				ScrapButton->SetHelpText(LOCTEXT("CantScrapStationInfo", "Scrap all complex child stations before scrapping this station"));
+				if (TargetSpacecraft->GetDescription()->IsSubstation)
+				{
+					ScrapButton->SetHelpText(LOCTEXT("CantScrapStationInfoSubStation", "This station cannot be scrapped"));
+				}
+				else
+				{
+					ScrapButton->SetHelpText(LOCTEXT("CantScrapStationInfoComplex", "Scrap all complex child stations before scrapping this station"));
+				}
 			}
 			else
 			{
@@ -869,14 +896,16 @@ void SFlareSpacecraftInfo::UpdateCapabilitiesInfo()
 				}
 				else if (!TargetSpacecraft->GetCompany()->IsTechnologyUnlockedStation(TargetSpacecraft->GetDescription()))
 				{
-//					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "This station is without technological knowledge");
 					EfficiencyMessage = LOCTEXT("StationEfficiencyMessage_Unresearched", "Station operating without required technology");
 				}
 
-				AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "{0} and operates {1}x slower"), EfficiencyMessage,FText::AsNumber(DurationMalus)),
-				FFlareStyleSet::GetIcon("Damage"),
-				NULL,
-				0);
+				if (!EfficiencyMessage.IsEmpty())
+				{
+					AddMessage(FText::Format(LOCTEXT("StationEfficiencyFormat", "{0} and operates {1}x slower"), EfficiencyMessage, FText::AsNumber(DurationMalus)),
+					FFlareStyleSet::GetIcon("Damage"),
+					NULL,
+					0);
+				}
 			}
 		}
 
@@ -968,14 +997,13 @@ bool SFlareSpacecraftInfo::UpdateCaptureList()
 		// Player can capture
 		if (PC->GetCompany()->CanStartCapture(TargetSpacecraft) && !PC->GetCompany()->WantCapture(TargetSpacecraft))
 		{
-//			int32 OwnedStationCount = TargetSpacecraft->GetCurrentSector()->GetSectorCompanyStationCount(PC->GetCompany(), true);
 			int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSpacecraft->GetCurrentSector(), true);
-			int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ?
-			TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() :
-			TargetSpacecraft->GetCurrentSector()->GetMaxStationsPerCompany() / 2;
+			int32 CapturingStationSlots = TargetSpacecraft->GetStationSectorSlots();
+			int32 MaxStationCount = PC->GetCompany()->GetCompanyMaxStationsForSector(TargetSpacecraft->GetCurrentSector());
 
-			FText CaptureText = FText::Format(LOCTEXT("CaptureFormat", "Start capturing this station ({0} / {1})"),
+			FText CaptureText = FText::Format(LOCTEXT("CaptureFormat", "Start capturing this station ({0} + {1} / {2})"),
 				FText::AsNumber(OwnedStationCount),
+				FText::AsNumber(CapturingStationSlots),
 				MaxStationCount);
 
 			// Show button
@@ -1441,9 +1469,17 @@ FText SFlareSpacecraftInfo::GetDescription() const
 	{
 		if(TargetSpacecraft && TargetSpacecraft->IsStation())
 		{
-			return FText::Format(LOCTEXT("DescriptionStationSectorFormat", "(Lv {0}, {1})"),
+			if (PC->GetMenuManager()->GetCurrentMenu() == EFlareMenu::MENU_WorldEconomy && PC->GetMenuManager()->IsUIOpen())
+			{
+				return FText::Format(LOCTEXT("DescriptionStationSectorFormat", "(Lvl {0}, {1})"),
 				FText::AsNumber(TargetSpacecraft->GetLevel()),
 				TargetSpacecraft->GetCurrentSector()->GetSectorName());
+			}
+			else
+			{
+				return FText::Format(LOCTEXT("DescriptionStationFormat", "(Lvl {0})"),
+				FText::AsNumber(TargetSpacecraft->GetLevel()));
+			}
 		}
 		else
 		{
@@ -1740,14 +1776,16 @@ FText SFlareSpacecraftInfo::GetSpacecraftInfo() const
 				{
 					for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
 					{
-						FText NewLineText = (FactoryIndex > 0) ? FText::FromString("\n") : FText();
 						UFlareFactory* Factory = Factories[FactoryIndex];
-
-						ProductionStatusText = FText::Format(LOCTEXT("ProductionStatusFormat", "{0}{1}{2} : {3}"),
+						if (Factory->OwnerCompanyHasRequiredTechnologies())
+						{
+							FText NewLineText = (FactoryIndex > 0) ? FText::FromString("\n") : FText();
+							ProductionStatusText = FText::Format(LOCTEXT("ProductionStatusFormat", "{0}{1}{2} : {3}"),
 							ProductionStatusText,
 							NewLineText,
 							Factory->GetDescription()->Name,
 							Factory->GetFactoryStatus());
+						}
 					}
 
 					return FText::Format(LOCTEXT("StationInfoFormat", "{0}{1}{2}"),

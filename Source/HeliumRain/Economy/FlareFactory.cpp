@@ -19,9 +19,12 @@
 
 
 #define LOCTEXT_NAMESPACE "FlareFactoryInfo"
-
 #define MAX_DAMAGE_MALUS 10
-
+#define FACTORY_EFFICIENCY_CHANGE_DURATIONCHANGE 0.00025f
+#define FACTORY_EFFICIENCY_CHANGE_DOPRODUCTION 0.001f
+#define FACTORY_EFFICIENCY_MIN 0.90f
+#define FACTORY_EFFICIENCY_MAX 1.10f
+//#define DEBUG_FACTORY
 
 /*----------------------------------------------------
 	Constructor
@@ -48,9 +51,93 @@ void UFlareFactory::Load(UFlareSimulatedSpacecraft* ParentSpacecraft, const FFla
 	}
 }
 
+void UFlareFactory::SetIsStationConstructionFactory(bool NewValue)
+{
+	IsStationConstructionFactory = NewValue;
+}
+
 FFlareFactorySave* UFlareFactory::Save()
 {
 	return &FactoryData;
+}
+
+
+bool UFlareFactory::OwnerCompanyHasRequiredTechnologies()
+{
+	UpdateHasrequiredtechnologies();
+	return Hasrequiredtechnologies;
+}
+
+void UFlareFactory::SetHascheckedforrequiredtechnologies(bool NewValue)
+{
+	Hascheckedforrequiredtechnologies = NewValue;
+	UpdateHasrequiredtechnologies();
+}
+
+void UFlareFactory::UpdateHasrequiredtechnologies()
+{
+	if (Hascheckedforrequiredtechnologies)
+	{
+		return;
+	}
+
+	bool PreviousHasrequiredtechnologies = Hasrequiredtechnologies;
+
+	Hascheckedforrequiredtechnologies = true;
+	Hasrequiredtechnologies = true;
+
+	if (GetDescription()->RequiredTechnologies.Num() > 0)
+	{
+//		FLOGV("UFlareFactory::UpdateHasrequiredtechnologies Checking required technologies %s", *Parent->GetImmatriculation().ToString());
+		for (int32 i = 0; i < GetDescription()->RequiredTechnologies.Num(); i++)
+		{
+			FName CurrentTechnology = GetDescription()->RequiredTechnologies[i];
+//			FLOGV("UFlareFactory::UpdateHasrequiredtechnologies Found %s in required technologies", *CurrentTechnology.ToString());
+			if (!Parent->GetCompany()->IsTechnologyUnlocked(CurrentTechnology))
+			{
+				FFlareTechnologyDescription* RequiredTechnology = GetGame()->GetTechnologyCatalog()->Get(CurrentTechnology);
+				if (!RequiredTechnology)
+				{
+					continue;
+				}
+
+//				FLOGV("UFlareFactory::UpdateHasrequiredtechnologies %s not unlocked", *CurrentTechnology.ToString());
+				Hasrequiredtechnologies = false;
+				break;
+			}
+		}
+
+		if (!PreviousHasrequiredtechnologies && Hasrequiredtechnologies)
+		{
+			Parent->LockResources();
+		}
+	}
+
+	Factory_Efficiency_ProductionChange = FACTORY_EFFICIENCY_CHANGE_DURATIONCHANGE;
+	Factory_Efficiency_DoProduction = FACTORY_EFFICIENCY_CHANGE_DOPRODUCTION;
+	Factory_Efficiency_Minimum = FACTORY_EFFICIENCY_MIN;
+	Factory_Efficiency_Maximum = FACTORY_EFFICIENCY_MAX;
+/*
+	if (Parent->GetCompany()->IsTechnologyUnlockedStation(Parent->GetDescription()))
+	{
+		Factory_Efficiency_Minimum -= 0.10f;
+		Factory_Efficiency_Maximum -= 0.20f;
+	}
+*/
+	for (int TechnologyEffectsIndex = 0; TechnologyEffectsIndex < GetDescription()->TechnologiesEffects.Num(); TechnologyEffectsIndex++)
+	{
+		FFlareFactoryTechnologyEffects CurrentTechnologyEffect = GetDescription()->TechnologiesEffects[TechnologyEffectsIndex];
+		if (!Parent->GetCompany()->IsTechnologyUnlocked(CurrentTechnologyEffect.Identifier))
+		{
+			continue;
+		}
+
+		Factory_Efficiency_ProductionChange += CurrentTechnologyEffect.Efficiency_ProductionOngoing;
+		Factory_Efficiency_DoProduction += CurrentTechnologyEffect.Efficiency_ProductionFinished;
+
+		Factory_Efficiency_Minimum += CurrentTechnologyEffect.Efficiency_Minimum;
+		Factory_Efficiency_Maximum += CurrentTechnologyEffect.Efficiency_Maximum;
+	}
 }
 
 void UFlareFactory::Simulate()
@@ -58,67 +145,103 @@ void UFlareFactory::Simulate()
 	FCHECK(Parent);
 	FCHECK(Parent->GetCurrentSector());
 	FCHECK(Parent->GetCurrentSector()->GetPeople());
+	bool IncreasedEfficiency = false;
 
-	if (!FactoryData.Active)
+#ifdef DEBUG_FACTORY
+	if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
 	{
-		goto post_prod;
+		FLOGV("Factory Simulate running before initial check %s in %s", *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 	}
-	
+#endif
+
 	// Check if production is running
-	if (!IsNeedProduction())
+	if (!OwnerCompanyHasRequiredTechnologies() || !FactoryData.Active || !IsNeedProduction())
 	{
 		// Don't produce if not needed
-		goto post_prod;
+		PostProduction(IncreasedEfficiency);
+		return;
 	}
+
+	int64 ProductionTime = GetProductionTime(GetCycleData());
+
+#ifdef DEBUG_FACTORY
+	if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
+	{
+		FLOGV("Factory Simulate running after initial check %s in %s", *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+	}
+#endif
 
 	if (HasCostReserved())
 	{
 
-		if (FactoryData.ProductedDuration < GetProductionTime(GetCycleData()))
+#ifdef DEBUG_FACTORY
+		if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
+		{
+			FLOGV("Factory Simulate %d production time Has Cost reserves to %s in %s", ProductionTime,  *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+		}
+#endif
+
+		if (FactoryData.ProductedDuration < ProductionTime)
 		{
 			FactoryData.ProductedDuration += 1;
+			FactoryData.FactoryEfficiency = FMath::Clamp(FactoryData.FactoryEfficiency + Factory_Efficiency_ProductionChange, Factory_Efficiency_Minimum, Factory_Efficiency_Maximum);
+			IncreasedEfficiency = true;
+
+#ifdef DEBUG_FACTORY
+			if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
+			{
+				FLOGV("Factory Simulate Days increased to %s in %s", *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+			}
+#endif
 		}
 
-		if (FactoryData.ProductedDuration < GetProductionTime(GetCycleData()))
+		if (FactoryData.ProductedDuration < ProductionTime
+			|| !HasOutputFreeSpace()
+			|| (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling()))
 		{
+			// Still In production, or has no free space, or is a ship in a fleet that is travelling
+			PostProduction(IncreasedEfficiency);
 
-			// Still In production
-			goto post_prod;
+#ifdef DEBUG_FACTORY
+			if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
+			{
+				FLOGV("Factory Simulate Days increased but post production to %s in %s",  *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+			}
+#endif
+			return;
 		}
 
-		if (!HasOutputFreeSpace())
+#ifdef DEBUG_FACTORY
+		if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
 		{
-			// TODO display warning to user
-			// No free space wait.
-			goto post_prod;
+			FLOGV("Factory Simulate do production %s in %s",  *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 		}
-
-		if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
-		{
-			goto post_prod;
-		}
-
+#endif
 		DoProduction();
 	}
 
 	TryBeginProduction();
-	if (GetProductionTime(GetCycleData()) == 0  && HasCostReserved())
+
+	if (ProductionTime == 0  && HasCostReserved())
 	{
 		if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
 		{
-			goto post_prod;
+			//Wait for travel to finish before finalizing the production
 		}
-
-		DoProduction();
+		else
+		{
+			DoProduction();
+		}
 	}
 
+	PostProduction(IncreasedEfficiency);
 
-post_prod:
-
-	if (FactoryDescription->VisibleStates)
+#ifdef DEBUG_FACTORY
+	if (Parent->GetCompany() == Parent->GetGame()->GetPC()->GetCompany())
 	{
-		UpdateDynamicState();
+		FLOGV("Factory Simulate end %s in %s", *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 	}
+#endif
 }
 
 void UFlareFactory::TryBeginProduction()
@@ -234,7 +357,7 @@ float UFlareFactory::GetResourceInputMultiplier()
 	float TotalResourceMargin = 1;
 	if (IsShipyard())
 	{
-		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetParent()->GetCompany()->GetTechnologyBonus("shipyard-fabrication-bonus");
+		float ShipyardfabricationBonus = ShipyardfabricationBonus = GetParent()->GetCompany()->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
 		if (ShipyardfabricationBonus)
 		{
 			TotalResourceMargin = FMath::Max(0.10f, TotalResourceMargin - ShipyardfabricationBonus);
@@ -298,7 +421,7 @@ bool UFlareFactory::HasInputResources()
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
 		int32 AdjustedQuantity = Resource->Quantity * TotalResourceMargin;
-		if (!Parent->GetActiveCargoBay()->HasResources(&Resource->Resource->Data, AdjustedQuantity, Parent->GetCompany(),0,true))
+		if (!Parent->GetActiveCargoBayFromFactory(this)->HasResources(&Resource->Resource->Data, AdjustedQuantity, Parent->GetCompany(),0,true))
 		{
 			return false;
 		}
@@ -315,7 +438,7 @@ FString UFlareFactory::GetInputResourcesRequiredString()
 	{
 		const FFlareFactoryResource* Resource = &GetCycleData().InputResources[ResourceIndex];
 		int32 AdjustedQuantity = Resource->Quantity * TotalResourceMargin;
-		int32 CurrentResourceCount = Parent->GetActiveCargoBay()->GetResourceQuantitySimple(&Resource->Resource->Data);
+		int32 CurrentResourceCount = Parent->GetActiveCargoBayFromFactory(this)->GetResourceQuantitySimple(&Resource->Resource->Data);
 		if (CurrentResourceCount < AdjustedQuantity)
 		{
 			if (ReturnValue.Len())
@@ -332,21 +455,25 @@ FString UFlareFactory::GetInputResourcesRequiredString()
 
 bool UFlareFactory::HasOutputFreeSpace()
 {
-	UFlareCargoBay* CargoBay = Parent->GetActiveCargoBay();
-
+	UFlareCargoBay* CargoBay = Parent->GetActiveCargoBayFromFactory(this);
 	TArray<FFlareFactoryResource> OutputResources = GetLimitedOutputResources();
-
+/*
+	if (Parent->IsComplexElement())
+	{
+		FLOGV("%d output size after GetLimitedOutputResources to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+	}
+*/
 	// First, fill already existing locked slots
 	for (int32 CargoIndex = 0 ; CargoIndex < CargoBay->GetSlotCount() ; CargoIndex++)
 	{
 		if(!CargoBay->CheckRestriction(CargoBay->GetSlot(CargoIndex), Parent->GetCompany(),0,true))
 		{
-			continue;
+//			continue;
 		}
 
 		if(CargoBay->GetSlot(CargoIndex)->Lock == EFlareResourceLock::NoLock)
 		{
-			continue;
+//			continue;
 		}
 
 		for (int32 ResourceIndex = OutputResources.Num() -1 ; ResourceIndex >= 0; ResourceIndex--)
@@ -354,14 +481,21 @@ bool UFlareFactory::HasOutputFreeSpace()
 			if (&OutputResources[ResourceIndex].Resource->Data == CargoBay->GetSlot(CargoIndex)->Resource)
 			{
 				// Same resource
+					
 				int32 AvailableCapacity = CargoBay->GetSlotCapacity() - CargoBay->GetSlot(CargoIndex)->Quantity;
+
 				if (AvailableCapacity > 0)
 				{
-					OutputResources[ResourceIndex].Quantity -= FMath::Min(AvailableCapacity, OutputResources[ResourceIndex].Quantity);
+					int32 QuantityAfterEfficiency = OutputResources[ResourceIndex].Quantity * FactoryData.FactoryEfficiency;
+					QuantityAfterEfficiency -= FMath::Min(AvailableCapacity, QuantityAfterEfficiency);
 
-					if (OutputResources[ResourceIndex].Quantity == 0)
+					if (QuantityAfterEfficiency <= 0)
 					{
 						OutputResources.RemoveAt(ResourceIndex);
+					}
+					else
+					{
+						OutputResources[ResourceIndex].Quantity = QuantityAfterEfficiency;
 					}
 
 					// Never 2 output with the same resource, so, break
@@ -385,18 +519,28 @@ bool UFlareFactory::HasOutputFreeSpace()
 			continue;
 		}
 
-		if (CargoBay->GetSlot(CargoIndex)->Quantity == 0)
+		if (CargoBay->GetSlot(CargoIndex)->Quantity == 0 && CargoBay->GetSlot(CargoIndex)->Resource == NULL)
 		{
 			// Empty slot, fill it
-			OutputResources[0].Quantity -= FMath::Min(CargoBay->GetSlotCapacity(), OutputResources[0].Quantity);
+			int32 QuantityAfterEfficiency = OutputResources[0].Quantity * FactoryData.FactoryEfficiency;
+			QuantityAfterEfficiency -= FMath::Min(CargoBay->GetSlotCapacity(), QuantityAfterEfficiency);
 
-			if (OutputResources[0].Quantity == 0)
+			if (QuantityAfterEfficiency <= 0)
 			{
 				OutputResources.RemoveAt(0);
 			}
+			else
+			{
+				OutputResources[0].Quantity = QuantityAfterEfficiency;
+			}
 		}
 	}
-
+/*
+	if (Parent->IsComplexElement())
+	{
+		FLOGV("%d output size after Attempting to find existing or free crago to %s in %s", OutputResources.Num(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+	}
+*/
 	return OutputResources.Num() == 0;
 }
 
@@ -440,7 +584,7 @@ void UFlareFactory::BeginProduction()
 		}
 
 		// < Resource->Quantity
-		if (!Parent->GetActiveCargoBay()->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
+		if (!Parent->GetActiveCargoBayFromFactory(this)->TakeResources(&Resource->Resource->Data, ResourceToTake, Parent->GetCompany(), 0, true))
 		{
 			FLOGV("Fail to take %d resource '%s' to %s in %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 		}
@@ -471,7 +615,7 @@ void UFlareFactory::CancelProduction()
 	{
 		FFlareResourceDescription*Resource = Game->GetResourceCatalog()->Get(FactoryData.ResourceReserved[ReservedResourceIndex].ResourceIdentifier);
 
-		int32 GivenQuantity = Parent->GetActiveCargoBay()->GiveResources(Resource, FactoryData.ResourceReserved[ReservedResourceIndex].Quantity, Parent->GetCompany(),0,true);
+		int32 GivenQuantity = Parent->GetActiveCargoBayFromFactory(this)->GiveResources(Resource, FactoryData.ResourceReserved[ReservedResourceIndex].Quantity, Parent->GetCompany(),0,true);
 
 		if (GivenQuantity >= FactoryData.ResourceReserved[ReservedResourceIndex].Quantity)
 		{
@@ -497,6 +641,11 @@ void UFlareFactory::CancelProduction()
 
 void UFlareFactory::DoProduction()
 {
+	if (Parent->GetOwnerHasStationLicense())
+	{
+		FactoryData.FactoryEfficiency = FMath::Clamp(FactoryData.FactoryEfficiency + Factory_Efficiency_DoProduction, Factory_Efficiency_Minimum, Factory_Efficiency_Maximum);
+	}
+
 	// Pay cost
 	uint32 PaidCost = FMath::Min(GetProductionCost(), FactoryData.CostReserved);
 	FactoryData.CostReserved -= PaidCost;
@@ -529,9 +678,10 @@ void UFlareFactory::DoProduction()
 	for (int32 ResourceIndex = 0 ; ResourceIndex < OutputResources.Num() ; ResourceIndex++)
 	{
 		const FFlareFactoryResource* Resource = &OutputResources[ResourceIndex];
-		if (!Parent->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Resource->Quantity, Parent->GetCompany(),0,true))
+		int32 QuantityAfterEfficiency = Resource->Quantity * FactoryData.FactoryEfficiency;
+		if (!Parent->GetActiveCargoBayFromFactory(this)->GiveResources(&Resource->Resource->Data, QuantityAfterEfficiency, Parent->GetCompany(),0,true))
 		{
-			FLOGV("Fail to give %d resource '%s' to %s in %s", Resource->Quantity, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
+			FLOGV("Fail to give %d resource '%s' to %s in %s", QuantityAfterEfficiency, *Resource->Resource->Data.Name.ToString(), *Parent->GetImmatriculation().ToString(), *Parent->GetCurrentSector()->GetName());
 		}
 	}
 
@@ -566,6 +716,19 @@ void UFlareFactory::DoProduction()
 	if (!HasInfiniteCycle())
 	{
 		FactoryData.CycleCount--;
+	}
+}
+
+void UFlareFactory::PostProduction(bool IncreasedEfficiency)
+{
+	if (!IncreasedEfficiency)
+	{
+		FactoryData.FactoryEfficiency = FMath::Clamp(FactoryData.FactoryEfficiency - Factory_Efficiency_DoProduction, Factory_Efficiency_Minimum, Factory_Efficiency_Maximum);
+	}
+	
+	if (FactoryDescription->VisibleStates)
+	{
+		UpdateDynamicState();
 	}
 }
 
@@ -623,7 +786,7 @@ void UFlareFactory::PerformCreateShipAction(const FFlareFactoryAction* Action)
 					FText::Format(LOCTEXT("ShipBuiltFormat", "Your ship {0} is ready to use !"), UFlareGameTools::DisplaySpacecraftName(Spacecraft)),
 					FName("ship-production-complete"),
 					EFlareNotification::NT_Economy,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Ship,
 					Data);
 
@@ -719,7 +882,7 @@ void UFlareFactory::NotifyNoMoreSector()
 		LOCTEXT("NoMoreDiscoveryFormat", "Your astronomers have mapped the entire sky, and reached the limits of their telescopes. All sectors have been discovered."),
 		"no-more-discovery",
 		EFlareNotification::NT_Info,
-		false,
+		NOTIFY_DEFAULT_TIMER,
 		EFlareMenu::MENU_Sector,
 		Data);
 	}
@@ -779,7 +942,7 @@ void UFlareFactory::PerformGainResearchAction(const FFlareFactoryAction* Action)
 {
 	UFlareCompany* Company = Parent->GetCompany();
 
-	Company->GiveResearch(Action->Quantity * Parent->GetLevel());
+	Company->GiveResearch((Action->Quantity * Parent->GetLevel()) * FactoryData.FactoryEfficiency);
 	AFlarePlayerController* PC = Parent->GetGame()->GetPC();
 
 	// Notify PC
@@ -814,7 +977,7 @@ void UFlareFactory::PerformBuildStationAction(const FFlareFactoryAction* Action)
 			FText::Format(LOCTEXT("StationBuiltFormat", "Your station {0} is ready to use !"), UFlareGameTools::DisplaySpacecraftName(Data.Spacecraft)),
 			FName("station-production-complete"),
 			EFlareNotification::NT_Economy,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Station,
 			Data);
 
@@ -825,10 +988,7 @@ void UFlareFactory::PerformBuildStationAction(const FFlareFactoryAction* Action)
 
 		PC->SetAchievementProgression("ACHIEVEMENT_STATION", 1);
 	}
-
 }
-
-
 
 /*----------------------------------------------------
 	Getters
@@ -846,14 +1006,18 @@ const FFlareProductionData& UFlareFactory::GetCycleData()
 	}
 	else
 	{
-
 		CycleCostCacheLevel = Parent->IsUnderConstruction() ? 1 : Parent->GetLevel();
 		CycleCostCache.ProductionTime = FactoryDescription->CycleCost.ProductionTime;
 		CycleCostCache.ProductionCost = FactoryDescription->CycleCost.ProductionCost * CycleCostCacheLevel;
 		CycleCostCache.InputResources = FactoryDescription->CycleCost.InputResources;
+/*
+GetModifiedResources()
+*/
 		for (int32 ResourceIndex = 0 ; ResourceIndex < CycleCostCache.InputResources.Num() ; ResourceIndex++)
 		{
 			FFlareFactoryResource* Resource = &CycleCostCache.InputResources[ResourceIndex];
+			Resource->Resource->Data.Identifier;
+
 			Resource->Quantity *= CycleCostCacheLevel;
 		}
 
@@ -912,7 +1076,7 @@ int64 UFlareFactory::GetRemainingProductionDuration()
 
 TArray<FFlareFactoryResource> UFlareFactory::GetLimitedOutputResources()
 {
-	UFlareCargoBay* CargoBay = Parent->GetActiveCargoBay();
+	UFlareCargoBay* CargoBay = Parent->GetActiveCargoBayFromFactory(this);
 	TArray<FFlareFactoryResource> OutputResources = GetCycleData().OutputResources;
 	for (int32 CargoLimitIndex = 0 ; CargoLimitIndex < FactoryData.OutputCargoLimit.Num() ; CargoLimitIndex++)
 	{
@@ -934,12 +1098,19 @@ TArray<FFlareFactoryResource> UFlareFactory::GetLimitedOutputResources()
 		{
 			if (&OutputResources[ResourceIndex].Resource->Data == Resource)
 			{
-				OutputResources[ResourceIndex].Quantity = FMath::Min(MaxAddition, OutputResources[ResourceIndex].Quantity);
+				int32 QuantityAfterEfficiency = OutputResources[ResourceIndex].Quantity * FactoryData.FactoryEfficiency;
 
-				if (OutputResources[ResourceIndex].Quantity == 0)
+				QuantityAfterEfficiency = FMath::Min(MaxAddition, QuantityAfterEfficiency);
+
+				if (QuantityAfterEfficiency <= 0)
 				{
 					OutputResources.RemoveAt(ResourceIndex);
 				}
+				else
+				{
+					OutputResources[ResourceIndex].Quantity = QuantityAfterEfficiency;
+				}
+
 				break;
 			}
 		}
@@ -999,7 +1170,7 @@ uint32 UFlareFactory::GetInputResourceQuantity(int32 Index)
 
 uint32 UFlareFactory::GetOutputResourceQuantity(int32 Index)
 {
-	return GetCycleData().OutputResources[Index].Quantity;
+	return GetCycleData().OutputResources[Index].Quantity * FactoryData.FactoryEfficiency;
 }
 
 bool UFlareFactory::HasOutputResource(FFlareResourceDescription* Resource)
@@ -1051,7 +1222,10 @@ uint32 UFlareFactory::GetInputResourceQuantityCycles(FFlareResourceDescription* 
 		FFlareResourceDescription* ResourceCandidate = &GetCycleData().InputResources[ResourceIndex].Resource->Data;
 		if (ResourceCandidate == Resource)
 		{
-			return GetCycleData().InputResources[ResourceIndex].Quantity / GetCycleData().ProductionTime;
+			if (GetCycleData().ProductionTime > 0)
+			{
+				return GetCycleData().InputResources[ResourceIndex].Quantity / GetCycleData().ProductionTime;
+			}
 		}
 	}
 	return -1;
@@ -1083,6 +1257,21 @@ int64 UFlareFactory::GetInputResourceDailyProductionInCredits()
 	}
 
 	return ReturnValue;
+}
+
+float UFlareFactory::GetFactoryEfficiency()
+{
+	return FactoryData.FactoryEfficiency;
+}
+
+float UFlareFactory::GetFactoryEfficiency_Minimum()
+{
+	return Factory_Efficiency_Minimum;
+}
+
+float UFlareFactory::GetFactoryEfficiency_Maximum()
+{
+	return Factory_Efficiency_Maximum;
 }
 
 FText UFlareFactory::GetFactoryCycleCost(const FFlareProductionData* Data)
@@ -1127,6 +1316,9 @@ FText UFlareFactory::GetFactoryCycleInfo()
 
 	FText ProductionCostText = GetFactoryCycleCost(&GetCycleData());
 
+	FNumberFormattingOptions NumeralDisplayOptions;
+	NumeralDisplayOptions.MaximumFractionalDigits = 0;
+
 	// Cycle output in factory actions
 	for (int ActionIndex = 0; ActionIndex < GetDescription()->OutputActions.Num(); ActionIndex++)
 	{
@@ -1152,7 +1344,7 @@ FText UFlareFactory::GetFactoryCycleInfo()
 			// Research gain
 			case EFlareFactoryAction::GainResearch:
 				ProductionOutputText = FText::Format(LOCTEXT("GainResearchActionFormat", "{0}{1}{2} research"),
-					ProductionOutputText, CommaText, FText::AsNumber(FactoryAction->Quantity * Parent->GetLevel()));
+					ProductionOutputText, CommaText, FText::AsNumber((FactoryAction->Quantity * Parent->GetLevel()) * FactoryData.FactoryEfficiency, &NumeralDisplayOptions));
 				break;
 
 			// Build station
@@ -1173,7 +1365,7 @@ FText UFlareFactory::GetFactoryCycleInfo()
 		FCHECK(FactoryResource);
 
 		ProductionOutputText = FText::Format(LOCTEXT("ProductionOutputFormat", "{0}{1} {2} {3}"),
-			ProductionOutputText, CommaText, FText::AsNumber(FactoryResource->Quantity), FactoryResource->Resource->Data.Acronym);
+		ProductionOutputText, CommaText, FText::AsNumber(FactoryResource->Quantity * FactoryData.FactoryEfficiency, &NumeralDisplayOptions), FactoryResource->Resource->Data.Acronym);
 	}
 
 	return FText::Format(LOCTEXT("FactoryCycleInfoFormat", "Production cycle : {0} \u2192 {1} in {2}"),
@@ -1185,7 +1377,6 @@ FText UFlareFactory::GetFactoryStatus()
 {
 	FText ProductionStatusText;
 	UFlareWorld* GameWorld = Game->GetGameWorld();
-
 
 	if (IsActive())
 	{
@@ -1254,10 +1445,7 @@ FText UFlareFactory::GetFactoryStatus()
 				{
 					ProductionStatusText = LOCTEXT("ProductionNotEnoughResources", "Waiting for resources");
 				}
-
 			}
-
-
 		}
 	}
 	else if (IsPaused())
@@ -1271,6 +1459,33 @@ FText UFlareFactory::GetFactoryStatus()
 	}
 
 	return ProductionStatusText;
+}
+bool UFlareFactory::ShouldShowFactoryEfficiencyPercentage()
+{
+	for (int ActionIndex = 0; ActionIndex < GetDescription()->OutputActions.Num(); ActionIndex++)
+	{
+		const FFlareFactoryAction* FactoryAction = &GetDescription()->OutputActions[ActionIndex];
+		FCHECK(FactoryAction);
+
+		switch (FactoryAction->Action)
+		{
+			// Ship production
+		case EFlareFactoryAction::CreateShip:
+			return false;
+			break;
+
+			// Sector discovery
+		case EFlareFactoryAction::DiscoverSector:
+			return false;
+			break;
+
+			// Build station
+		case EFlareFactoryAction::BuildStation:
+			return false;
+			break;
+		}
+	}
+	return true;
 }
 
 bool UFlareFactory::IsProducing()

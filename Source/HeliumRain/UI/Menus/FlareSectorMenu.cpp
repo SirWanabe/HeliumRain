@@ -647,9 +647,8 @@ FText SFlareSectorMenu::GetBuildStationText() const
 		{
 			if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 			{
-				//int32 OwnedStationCount = TargetSector->GetSectorCompanyStationCount(PC->GetCompany(), true);
 				int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
-				int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+				int32 MaxStationCount = PC->GetCompany()->GetCompanyMaxStationsForSector(TargetSector);
 
 				return FText::Format(LOCTEXT("BuildStationFormat", "Build station ({0} / {1})"),
 					FText::AsNumber(OwnedStationCount),
@@ -692,7 +691,7 @@ FText SFlareSectorMenu::GetBuildStationHelpText() const
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
 		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
-		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+		int32 MaxStationCount = PC->GetCompany()->GetCompanyMaxStationsForSector(TargetSector);
 
 		if (!PC->GetCompany()->HasStationTechnologyUnlocked())
 		{
@@ -741,7 +740,7 @@ bool SFlareSectorMenu::IsBuildStationDisabled() const
 	if (PC->GetCompany()->IsSectorStationLicenseUnlocked(TargetSector->GetDescription()->Identifier))
 	{
 		int32 OwnedStationCount = PC->GetCompany()->GetCompanySectorStationsCount(TargetSector);
-		int32 MaxStationCount = PC->GetCompany()->IsTechnologyUnlocked("dense-sectors") ? TargetSector->GetMaxStationsPerCompany() : TargetSector->GetMaxStationsPerCompany() / 2;
+		int32 MaxStationCount = PC->GetCompany()->GetCompanyMaxStationsForSector(TargetSector);
 
 		if (!PC->GetCompany()->HasStationTechnologyUnlocked())
 		{
@@ -1636,7 +1635,7 @@ void SFlareSectorMenu::OnBuildStationSelected(FFlareSpacecraftDescription* NewSt
 				LOCTEXT("StationBuiltInfo", "The construction of your new station started."),
 				"station-built",
 				EFlareNotification::NT_Economy,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Station,
 				NotificationParameters);
 		}

@@ -43,7 +43,9 @@ void SFlareNotification::Construct(const FArguments& InArgs)
 	TargetMenu = InArgs._TargetMenu;
 	TargetInfo = InArgs._TargetInfo;
 	Tag = InArgs._Tag;
-	NotificationTimeout = InArgs._Pinned ? 0 : 10.0f;
+//	NotificationTimeout = InArgs._Pinned ? 0 : InArgs._TimeoutDelay;//10.0f;
+	NotificationTimeout = InArgs._NotificationTimeout;
+	
 	FLOGV("SFlareNotification::Construct : notifying '%s'", *InArgs._Text.ToString());
 
 	// Create the layout

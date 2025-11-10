@@ -11,7 +11,7 @@
 #include "FlareGame.generated.h"
 
 #define DEBUG_AI_TRADING_STATS 0
-
+#define NOTIFY_DEFAULT_TIMER 10.f
 
 class UFlareSpacecraftCatalog;
 class UFlareSpacecraftComponentsCatalog;
@@ -84,6 +84,7 @@ public:
 	virtual UFlareSimulatedSector* DeactivateSector();
 
 	virtual void Recovery();
+	UFlareSimulatedSector* GetRecoverySector();
 
 	virtual void SetWorldPause(bool Pause);
 

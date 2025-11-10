@@ -29,6 +29,10 @@ public:
 	   Gameplay
 	----------------------------------------------------*/
 
+	void SetHascheckedforrequiredtechnologies(bool NewValue);
+	void UpdateHasrequiredtechnologies();
+	bool OwnerCompanyHasRequiredTechnologies();
+
 	void Simulate();
 
 	void TryBeginProduction();
@@ -70,6 +74,7 @@ public:
 	void CancelProduction();
 
 	void DoProduction();
+	void PostProduction(bool IncreasedEfficiency = false);
 
 	FFlareWorldEvent *GenerateEvent();
 
@@ -92,17 +97,27 @@ protected:
 	----------------------------------------------------*/
 
 	// Gameplay data
-	FFlareFactorySave                        FactoryData;
+	FFlareFactorySave                       FactoryData;
 
-	AFlareGame*                              Game;
+	AFlareGame*                             Game;
 
-	const FFlareFactoryDescription*          FactoryDescription;
+	const FFlareFactoryDescription*         FactoryDescription;
 
-	UFlareSimulatedSpacecraft*				 Parent;
-	FFlareWorldEvent                         NextEvent;
-	uint32                                   ScaledProductionCost;
-	FFlareProductionData CycleCostCache;
-	int32 CycleCostCacheLevel;
+	UFlareSimulatedSpacecraft*				Parent;
+	FFlareWorldEvent                        NextEvent;
+	uint32                                  ScaledProductionCost;
+	FFlareProductionData					CycleCostCache;
+	int32									CycleCostCacheLevel;
+	bool									IsStationConstructionFactory;
+
+	bool									Hascheckedforrequiredtechnologies;
+	bool									Hasrequiredtechnologies;
+
+	float									Factory_Efficiency_ProductionChange;
+	float									Factory_Efficiency_DoProduction;
+	float									Factory_Efficiency_Minimum;
+	float									Factory_Efficiency_Maximum;
+
 
 public:
 
@@ -112,6 +127,8 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	void SetIsStationConstructionFactory(bool NewValue);
 
 	inline AFlareGame* GetGame() const
 	{
@@ -140,6 +157,11 @@ public:
 
 	/** Is it a heavy ship production line */
 	bool IsLargeShipyard() const;
+
+	inline FFlareFactorySave GetFactoryData() const
+	{
+		return FactoryData;
+	}
 
 	FName GetTargetShipClass() const
 	{
@@ -177,7 +199,13 @@ public:
 		return !FactoryData.Active && FactoryData.ProductedDuration > 0;
 	}
 
+	bool ShouldShowFactoryEfficiencyPercentage();
 	bool IsProducing();
+
+	inline bool GetIsStationConstructionFactory()
+	{
+		return IsStationConstructionFactory;
+	}
 
 	inline bool HasInfiniteCycle()
 	{
@@ -222,6 +250,9 @@ public:
 
 	bool HasInputResource(FFlareResourceDescription* Resource);
 
+	float GetFactoryEfficiency();
+	float GetFactoryEfficiency_Minimum();
+	float GetFactoryEfficiency_Maximum();
 	/** Get this factory's cycle costs */
 	FText GetFactoryCycleCost(const FFlareProductionData* Data);
 

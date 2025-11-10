@@ -111,7 +111,7 @@ public:
 	void ClearHistory();
 
 	/** Show a notification to the user */
-	bool Notify(FText Text, FText Info, FName Tag, EFlareNotification::Type Type, bool Pinned = false, EFlareMenu::Type TargetMenu = EFlareMenu::MENU_None, FFlareMenuParameterData TargetInfo = FFlareMenuParameterData());
+	bool Notify(FText Text, FText Info, FName Tag, EFlareNotification::Type Type, float NotificationTimeout = 10, EFlareMenu::Type TargetMenu = EFlareMenu::MENU_None, FFlareMenuParameterData TargetInfo = FFlareMenuParameterData());
 
 	/** Remove all notifications with the given tag */
 	void ClearNotifications(FName Tag);
@@ -146,11 +146,15 @@ public:
 	/** Fly this ship */
 	bool FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* Ship = nullptr);
 
+	/** Ensures certain variables are reset to defaults upon entering the main menu load/create game screen*/
+	void SetMenusToDefaults();
+
 protected:
 
 	/*----------------------------------------------------
 		Internal management
 	----------------------------------------------------*/
+
 
 	/** Hide the menu */
 	void ResetMenu();

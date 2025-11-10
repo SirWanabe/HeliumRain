@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../Economy/FlareFactory.h"
+#include "../Spacecrafts/FlareSpacecraftTypes.h"
 #include "FlareResourceCatalog.generated.h"
 
+class AFlareGame;
 
 UCLASS()
 class HELIUMRAIN_API UFlareResourceCatalog : public UObject
@@ -14,6 +16,9 @@ public:
 	/*----------------------------------------------------
 		Public data
 	----------------------------------------------------*/
+
+	UPROPERTY(EditAnywhere, Category = Content)
+	TArray<FName> ModifiedResources;
 
 	/** Resources data */
 	UPROPERTY(EditAnywhere, Category = Content)
@@ -33,8 +38,20 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
+	TArray<FName>& GetModifiedResources()
+	{
+		return ModifiedResources;
+	}
+
+	/** Get a resource from identifier */
+
+	void InitialSetup(AFlareGame* GameMode);
+
+	void ReplaceOldEntrySettings(UFlareResourceCatalogEntry* OldResourceEntry, UFlareResourceCatalogEntry* NewResource);
+
 	/** Get a resource from identifier */
 	FFlareResourceDescription* Get(FName Identifier) const;
+	FFlareResourceDescription GetDirect(FName Identifier);
 
 	/** Get a resource from identifier */
 	UFlareResourceCatalogEntry* GetEntry(FFlareResourceDescription*) const;

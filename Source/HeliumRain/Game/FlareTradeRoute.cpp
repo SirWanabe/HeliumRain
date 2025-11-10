@@ -145,7 +145,7 @@ void UFlareTradeRoute::Simulate()
 						TargetSector->GetSectorName()),
 					FName("trade-route-danger"),
 					EFlareNotification::NT_Military,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Sector,
 					Data);
 

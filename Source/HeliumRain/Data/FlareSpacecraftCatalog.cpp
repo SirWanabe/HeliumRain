@@ -230,6 +230,7 @@ void UFlareSpacecraftCatalog::ReplaceOldEntrySettings(FFlareSpacecraftDescriptio
 	OldEntryDesc->CombatPoints = Spacecraft->Data.CombatPoints;
 	OldEntryDesc->MaxLevel = Spacecraft->Data.MaxLevel;
 	OldEntryDesc->CapturePointThreshold = Spacecraft->Data.CapturePointThreshold;
+	OldEntryDesc->CapturePointContribution = Spacecraft->Data.CapturePointContribution;
 
 	OldEntryDesc->CycleCost.ProductionTime = Spacecraft->Data.CycleCost.ProductionTime;
 	OldEntryDesc->CycleCost.ProductionCost = Spacecraft->Data.CycleCost.ProductionCost;
@@ -287,12 +288,27 @@ void UFlareSpacecraftCatalog::ReplaceOldEntrySettings(FFlareSpacecraftDescriptio
 	Data getters
 ----------------------------------------------------*/
 
-const void UFlareSpacecraftCatalog::GetSpacecraftList(TArray<FFlareSpacecraftDescription*>& OutData)
+const void UFlareSpacecraftCatalog::GetShipList(TArray<FFlareSpacecraftDescription*>& OutData)
 {
 	for (UFlareSpacecraftCatalogEntry* ShipSub : ShipCatalog)
 	{
-		FFlareSpacecraftDescription Candidate = ShipSub->Data;
-		OutData.Add(&Candidate);
+		FFlareSpacecraftDescription* Candidate = &ShipSub->Data;
+
+		FLOGV("UFlareSpacecraftCatalog::GetShipList : Checking %s", *Candidate->Identifier.ToString());
+
+		OutData.Add(Candidate);
+	}
+}
+
+const void UFlareSpacecraftCatalog::GetStationList(TArray<FFlareSpacecraftDescription*>& OutData)
+{
+	for (UFlareSpacecraftCatalogEntry* ShipSub : StationCatalog)
+	{
+		FFlareSpacecraftDescription* Candidate = &ShipSub->Data;
+
+		FLOGV("UFlareSpacecraftCatalog::GetStationList : Checking %s", *Candidate->Identifier.ToString());
+
+		OutData.Add(Candidate);
 	}
 }
 

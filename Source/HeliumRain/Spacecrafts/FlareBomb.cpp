@@ -612,21 +612,23 @@ void AFlareBomb::OnSpacecraftHit(AFlareSpacecraft* HitSpacecraft, UFlareSpacecra
 	 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && HitSpacecraft->GetDescription()->Size == EFlarePartSize::L)))
 	{
 		FLOGV("AFlareBomb::OnSpacecraftHit : salvaging %s for %s", *HitSpacecraft->GetImmatriculation().ToString(), *OwnerCompany->GetCompanyName().ToString());
-		HitSpacecraft->GetParent()->SetHarpooned(OwnerCompany);
 
-		if (OwnerCompany == PC->GetCompany())
+//		HitSpacecraft->GetParent()->SetHarpooned(OwnerCompany);
+		if (OwnerCompany->StartCapture(HitSpacecraft->GetParent(), false))
 		{
-
-			FFlareMenuParameterData Data;
-			Data.Spacecraft = HitSpacecraft->GetParent();
-			PC->Notify(LOCTEXT("HeavyShipHarpooned", "Ship harpooned !"),
-				FText::Format(LOCTEXT("HeavyShipHarpoonedFormat", "If it is uncontrollable, you will retrieve {0} on the next day, if you are still in this sector."),
-					UFlareGameTools::DisplaySpacecraftName(HitSpacecraft->GetParent())),
+			if (OwnerCompany == PC->GetCompany())
+			{
+				FFlareMenuParameterData Data;
+				Data.Spacecraft = HitSpacecraft->GetParent();
+				PC->Notify(LOCTEXT("HeavyShipHarpooned", "Ship harpooned !"),
+				FText::Format(LOCTEXT("HeavyShipHarpoonedFormat", "If it is uncontrollable, you will retrieve {0} within days, if you are still in this sector."),
+				UFlareGameTools::DisplaySpacecraftName(HitSpacecraft->GetParent())),
 				FName("ship-harpooned"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Ship,
 				Data);
+			}
 		}
 	}
 }

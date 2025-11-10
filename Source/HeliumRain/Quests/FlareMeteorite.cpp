@@ -129,8 +129,7 @@ void AFlareMeteorite::TickMeteorite(float DeltaSeconds)
 				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteMiss", "Meteoroid miss"),
 										FText::Format(LOCTEXT("MeteoriteMissFormat", "A meteoroid missed {0}. It's not dangerous anymore."), UFlareGameTools::DisplaySpacecraftName(Target->GetParent())),
 										FName("meteorite-miss"),
-										EFlareNotification::NT_Military,
-										false);
+										EFlareNotification::NT_Military);
 				
 				Parent->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("meteorite-miss-station").PutName("sector", Parent->GetSimulatedSector()->GetIdentifier()));
 			}
@@ -175,8 +174,7 @@ void AFlareMeteorite::OnCollision(class AActor* Other, FVector HitLocation)
 			Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteoroid crashed"),
 									FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteoroid crashed on {0}."), UFlareGameTools::DisplaySpacecraftName(Spacecraft->GetParent())),
 									FName("meteorite-crash"),
-									EFlareNotification::NT_Military,
-									false);
+									EFlareNotification::NT_Military);
 			
 			// Apply damage
 			if (Spacecraft->IsStation())
@@ -286,8 +284,7 @@ void AFlareMeteorite::ApplyDamage(float Energy, float Radius, FVector Location, 
 				Parent->GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDestroyed", "Meteoroid destroyed"),
 										LOCTEXT("MeteoriteDestroyedFormat", "A meteoroid has been destroyed."),
 										FName("meteorite-destroyed"),
-										EFlareNotification::NT_Military,
-										false);
+										EFlareNotification::NT_Military);
 			}
 
 			if (DamageSource == PC->GetShipPawn()->GetParent())

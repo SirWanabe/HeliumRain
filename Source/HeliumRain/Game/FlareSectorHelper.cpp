@@ -651,7 +651,7 @@ void SectorHelper::GetRepairFleetSupplyNeeds(UFlareSimulatedSector* Sector,  TAr
 				}
 			}
 
-			float TechnologyBonusSecondary = Spacecraft->GetCompany()->GetTechnologyBonus("repair-bonus");
+			float TechnologyBonusSecondary = Spacecraft->GetCompany()->GetTechnologyBonus_Float("repair-bonus");
 			TechnologyBonus += TechnologyBonusSecondary;
 
 			float ComponentMaxRepairRatio = GetComponentMaxRepairRatio(ComponentDescription) * (Spacecraft->GetSize() == EFlarePartSize::L ? 0.2f : 1.f) * TechnologyBonus;
@@ -1110,7 +1110,7 @@ TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> SectorHelper::
 	TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> WorldStats;
 	WorldStats.Reserve(Sector->GetGame()->GetResourceCatalog()->Resources.Num());
 
-	// Init
+// Init
 	for(int32 ResourceIndex = 0; ResourceIndex < Sector->GetGame()->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
 	{
 		FFlareResourceDescription* Resource = &Sector->GetGame()->GetResourceCatalog()->Resources[ResourceIndex]->Data;
@@ -1162,6 +1162,10 @@ TMap<FFlareResourceDescription*, WorldHelper::FlareResourceStats> SectorHelper::
 		for (int32 FactoryIndex = 0; FactoryIndex < Spacecraft->GetFactories().Num(); FactoryIndex++)
 		{
 			UFlareFactory* Factory = Spacecraft->GetFactories()[FactoryIndex];
+			if (!Factory->OwnerCompanyHasRequiredTechnologies())
+			{
+				continue;
+			}
 
 			if(Factory->IsShipyard() && !Factory->IsActive())
 			{

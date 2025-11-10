@@ -1176,20 +1176,28 @@ void UFlareQuestTutorialTechnology::Load(UFlareQuestManager* Parent)
 	{
 		#undef QUEST_STEP_TAG
 		#define QUEST_STEP_TAG QUEST_TAG"ResearchTechnology"
-		FText Description = LOCTEXT("ResearchTechnologyDescription","You can manage research in the technology menu. Select a technology and research it !\nChoose wisely, for the price of all technology is increased after each research. You may consider researching the 'Science' technology to build a research station quickly.");
+		FText Description = LOCTEXT("ResearchTechnologyDescription","You can manage research in the technology menu. Select a technology available with in research tier 1 and research it !\nChoose wisely, for the price of all technology is increased after each research. You may consider researching the 'Science' technology to unlock the ability to construct a research station.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "research-technology", Description);
-
 		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialResearchTechnology::Create(this, 1));
 		Steps.Add(Step);
 	}
 
 	{
 		#undef QUEST_STEP_TAG
-		#define QUEST_STEP_TAG QUEST_TAG"ReachLevelTechnology3"
-		FText Description = LOCTEXT("ReachLevelTechnology3Description","High level technology requires an increased technology level. Your technology level is incremented every new technology.\nResearch more technologies to unlock level 3 technologies.");
+		#define QUEST_STEP_TAG QUEST_TAG"ResearchTechnology2"
+		FText Description = LOCTEXT("ResearchTechnology2Description", "Research another technology\nAs more technology is unlocked the research inflation will increase. This results in higher resource point costs for technologies. Higher tier research is subject to higher research inflation.");
+		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "research-technology2", Description);
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialResearchTechnology::Create(this, 1));
+		Steps.Add(Step);
+	}
+
+	{
+		#undef QUEST_STEP_TAG
+		#define QUEST_STEP_TAG QUEST_TAG"ReachLevelTechnology2"
+		FText Description = LOCTEXT("ReachLevelTechnology2Description", "Unlock technology level 2\nUnlocking higher level technologies requires an investment in your companies technology level. Spend research points to increase technology levels.\nGain the required research points and then select a technology that is in an unobtained research tier.\nThe cost of unlocking technology levels decreases as more technology is researched in the previous technology level.\nUnlocking a higher technology level can also immediately reduce research inflation, but gives a slight permanent increase to research inflation increases from then onwards.");
 		UFlareQuestStep* Step = UFlareQuestStep::Create(this, "track-quest", Description);
 
-		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialTechnologyLevel::Create(this, 3));
+		Cast<UFlareQuestConditionGroup>(Step->GetEndCondition())->AddChildCondition(UFlareQuestConditionTutorialTechnologyLevel::Create(this, 2));
 		Steps.Add(Step);
 	}
 }
@@ -1200,7 +1208,7 @@ void UFlareQuestTutorialTechnology::Load(UFlareQuestManager* Parent)
 ----------------------------------------------------*/
 #undef QUEST_TAG
 #define QUEST_TAG "TutorialBuildShip"
-UFlareQuestTutorialBuildShip::UFlareQuestTutorialBuildShip(const FObjectInitializer& ObjectInitializer)
+UFlareQuestTutorialBuildShip::UFlareQuestTutorialBuildShip(const FObjectInitializer & ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 }
@@ -3343,18 +3351,29 @@ UFlareQuestConditionTutorialResearchValue::UFlareQuestConditionTutorialResearchV
 {
 }
 
-UFlareQuestConditionTutorialResearchValue* UFlareQuestConditionTutorialResearchValue::Create(UFlareQuest* ParentQuest, int32 Count)
+UFlareQuestConditionTutorialResearchValue* UFlareQuestConditionTutorialResearchValue::Create(UFlareQuest* ParentQuest, int32 Count, bool CountTotalResearch, FName TechnologyIdentifier)
 {
 	UFlareQuestConditionTutorialResearchValue* Condition = NewObject<UFlareQuestConditionTutorialResearchValue>(ParentQuest, UFlareQuestConditionTutorialResearchValue::StaticClass());
-	Condition->Load(ParentQuest, Count);
+	Condition->Load(ParentQuest, Count, CountTotalResearch, TechnologyIdentifier);
 	return Condition;
 }
 
-void UFlareQuestConditionTutorialResearchValue::Load(UFlareQuest* ParentQuest, int32 Count)
+void UFlareQuestConditionTutorialResearchValue::Load(UFlareQuest* ParentQuest, int32 Count, bool CountTotalResearch, FName TechnologyIdentifier)
 {
 	LoadInternal(ParentQuest);
 	Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
-	TargetResearchPoints = Count;
+
+	if (TechnologyIdentifier != NAME_None)
+	{
+		TargetResearchPoints = GetGame()->GetPC()->GetCompany()->GetTechnologyCostFromID(TechnologyIdentifier);
+	}
+
+	if (!TargetResearchPoints)
+	{
+		TargetResearchPoints = Count;
+	}
+
+	CountsTotalResearch = CountTotalResearch;
 
 	FText InitialLabelText = LOCTEXT("PlayerResearchPoints", "Gain {0} research points");
 	InitialLabel = FText::Format(InitialLabelText, FText::AsNumber(TargetResearchPoints));
@@ -3363,7 +3382,7 @@ void UFlareQuestConditionTutorialResearchValue::Load(UFlareQuest* ParentQuest, i
 bool UFlareQuestConditionTutorialResearchValue::IsCompleted()
 {
 	UFlareCompany* PlayerCompany = GetGame()->GetPC()->GetCompany();
-	return PlayerCompany->GetResearchValue() >= TargetResearchPoints;
+	return PlayerCompany->GetResearchValue(CountsTotalResearch) >= TargetResearchPoints;
 }
 
 void UFlareQuestConditionTutorialResearchValue::AddConditionObjectives(FFlarePlayerObjectiveData* ObjectiveData)
@@ -3375,9 +3394,8 @@ void UFlareQuestConditionTutorialResearchValue::AddConditionObjectives(FFlarePla
 	ObjectiveCondition.TerminalLabel = FText();
 	ObjectiveCondition.Progress = 0;
 	ObjectiveCondition.MaxProgress = 0;
-	ObjectiveCondition.Counter = PlayerCompany->GetResearchValue();
+	ObjectiveCondition.Counter = PlayerCompany->GetResearchValue(CountsTotalResearch);
 	ObjectiveCondition.MaxCounter = TargetResearchPoints;
-
 	ObjectiveData->ConditionList.Add(ObjectiveCondition);
 }
 
@@ -3402,7 +3420,7 @@ void UFlareQuestConditionTutorialTechnologyLevel::Load(UFlareQuest* ParentQuest,
 	Callbacks.AddUnique(EFlareQuestCallback::QUEST_EVENT);
 	TargetLevel = Level;
 
-	FText InitialLabelText = LOCTEXT("PlayerTechnologyLevel", "Reach technology level {0}");
+	FText InitialLabelText = LOCTEXT("PlayerTechnologyLevel", "Unlock technology level {0}");
 	InitialLabel = FText::Format(InitialLabelText, FText::AsNumber(TargetLevel));
 }
 
@@ -3686,7 +3704,6 @@ void UFlareQuestConditionTutorialUnlockStation::Load(UFlareQuest* ParentQuest)
 bool UFlareQuestConditionTutorialUnlockStation::IsCompleted()
 {
 	UFlareCompany* PlayerCompany = GetGame()->GetPC()->GetCompany();
-
 	return PlayerCompany->HasStationTechnologyUnlocked();
 }
 

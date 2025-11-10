@@ -82,6 +82,7 @@ public:
 	float TradingBuy;
 	float TradingSell;
 	float TradingBoth;
+	float ComplexAffility;
 	float ShipyardAffility;
 	float ConsumerAffility;
 	float MaintenanceAffility;
@@ -169,7 +170,11 @@ public:
 	bool FinishedResearch = false;
 	bool FinishedBuyingSectorStationLicenses = false;
 	bool IsMercenaryCompany = false;
+
+	float ResearchTechEligableBias;
+
 	TArray<FName> ResearchOrder;
+	TEnumAsByte<EFlareAICompanyUpgradePriority::Type> AIStationUpgradePriority;
 
 	/*----------------------------------------------------
 		Getters

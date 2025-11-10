@@ -142,7 +142,6 @@ void SFlareGameOverMenu::Setup()
 void SFlareGameOverMenu::Enter()
 {
 	FLOG("SFlareGameOverMenu::Enter");
-	
 	SetEnabled(true);
 	SetVisibility(EVisibility::Visible);
 }
@@ -194,4 +193,3 @@ void SFlareGameOverMenu::OnQuit()
 }
 
 #undef LOCTEXT_NAMESPACE
-

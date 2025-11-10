@@ -174,7 +174,7 @@ void SFlareMainMenu::Construct(const FArguments& InArgs)
 							.Padding(Theme.ContentPadding)
 							[
 								SNew(STextBlock)
-								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.4.2 / {0} / \u00A9 DEIMOS GAMES 2018"),
+								.Text(FText::Format(LOCTEXT("Dont-Translate-Version", "HELIUM RAIN / 1.4.3 / {0} / \u00A9 DEIMOS GAMES 2018"),
 									MenuManager->GetGame()->GetBuildDate())) // FString neded here
 								.TextStyle(&Theme.TextFont)
 							]
@@ -315,6 +315,7 @@ void SFlareMainMenu::Enter()
 	Game->ReadAllSaveSlots();
 	
 	MenuManager->GetPC()->GetSoundManager()->RequestMusicTrack(EFlareMusicTrack::Menu);
+	MenuManager->SetMenusToDefaults();
 	MenuManager->ClearHistory();
 	
 	SetEnabled(true);

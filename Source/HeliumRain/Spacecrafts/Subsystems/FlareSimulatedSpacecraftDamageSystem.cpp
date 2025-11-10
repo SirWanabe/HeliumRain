@@ -113,7 +113,6 @@ bool UFlareSimulatedSpacecraftDamageSystem::IsStranded() const
 	}
 	return (GetSubsystemHealth(EFlareSubsystem::SYS_Propulsion) < 0.3f || IsUncontrollable());
 }
-
 bool UFlareSimulatedSpacecraftDamageSystem::IsUncontrollable() const
 {
 	if (Spacecraft->IsStation())

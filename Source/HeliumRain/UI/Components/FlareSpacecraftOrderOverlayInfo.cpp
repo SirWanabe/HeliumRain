@@ -318,12 +318,17 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfoVerboseRight() const
 
 void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 {
-	//	FText BasicInfo = GetSpacecraftShipInfo();
-
 	FText Engines;
 	FText EnginesRight;
 	FText Mass;
 	FText MassRight;
+
+	FText CapturePointsOffense;
+	FText CapturePointsOffenseRight;
+
+	FText CapturePointDefense;
+	FText CapturePointsDefenseRight;
+
 	FText HeatCapacity;
 	FText HeatCapacityRight;
 	FText RCSCount;
@@ -686,11 +691,18 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		TotalAmmoCapacityTextRight,
 		ComponentCargoTextRight);
 
-	if (Desc->Mass > 0)
+	if (Desc->CapturePointContribution > 0)
 	{
-		Mass = LOCTEXT("Mass", "Mass:\n");
-		MassRight = FText::Format(LOCTEXT("MassValue", "{0}-Tons\n"),
-			FText::AsNumber(Desc->Mass / 1000));
+		CapturePointsOffense = LOCTEXT("CapturePointsOffensive", "Capture Points:\n");
+		CapturePointsOffenseRight = FText::Format(LOCTEXT("CapturePointsOffensiveValue", "{0}\n"),
+			FText::AsNumber(Desc->CapturePointContribution));
+	}
+
+	if (Desc->CapturePointThreshold > 0)
+	{
+		CapturePointDefense = LOCTEXT("CapturePointsDefensive", "Capture Threshold:\n");
+		CapturePointsDefenseRight = FText::Format(LOCTEXT("CapturePointsDefensiveValue", "{0}\n"),
+		FText::AsNumber(Desc->CapturePointThreshold));
 	}
 
 	if (Desc->HeatCapacity > 0)
@@ -737,6 +749,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 
 	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}"),
 		Mass,
+		CapturePointsOffense,
+		CapturePointDefense,
 		HeatCapacity,
 		Engines,
 		RCSCount,
@@ -749,6 +763,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 
 	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}"),
 		MassRight,
+		CapturePointsOffenseRight,
+		CapturePointsDefenseRight,
 		HeatCapacityRight,
 		EnginesRight,
 		RCSCountRight,
@@ -767,8 +783,9 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 		// Station
 		if (Desc->IsStation())
 		{
-			return FText::Format(LOCTEXT("FactoryStationFormat", "(Station, {0} factories)"),
-				FText::AsNumber(Desc->Factories.Num()));
+			return FText::Format(LOCTEXT("FactoryStationFormat", "(Station, size {0} , {1} factories)"),
+			FText::AsNumber(Desc->GetStationSectorSlots()),
+			FText::AsNumber(Desc->Factories.Num()));
 		}
 		return GetSpacecraftShipInfo();
 	}
@@ -804,6 +821,54 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 
 					FactoryString += FString::Printf(TEXT("%s"), *FactoryDescription->Name.ToString());
 					bool DoneResource = false;
+
+					if (FactoryDescription->RequiredTechnologies.Num() > 0)
+					{
+						FactoryString += "\nTechnologies Required: ";
+						for (int32 i = 0; i < FactoryDescription->RequiredTechnologies.Num(); i++)
+						{
+							FFlareTechnologyDescription* RequiredTechnology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(FactoryDescription->RequiredTechnologies[i]);
+							if (RequiredTechnology)
+							{
+								if (i > 0)
+								{
+									FactoryString += ", ";
+								}
+								FactoryString += FString::Printf(TEXT("%s"), *RequiredTechnology->Name.ToString());
+							}
+						}
+					}
+
+					if (FactoryDescription->TechnologiesEffects.Num() > 0)
+					{
+						FactoryString += "\nModifying technologies: ";
+						for (int TechnologyEffectsIndex = 0; TechnologyEffectsIndex < FactoryDescription->TechnologiesEffects.Num(); TechnologyEffectsIndex++)
+						{
+							FFlareFactoryTechnologyEffects CurrentTechnologyEffect = FactoryDescription->TechnologiesEffects[TechnologyEffectsIndex];
+							FFlareTechnologyDescription* RequiredTechnology = MenuManager->GetGame()->GetTechnologyCatalog()->Get(CurrentTechnologyEffect.Identifier);
+							if (TechnologyEffectsIndex > 0)
+							{
+								FactoryString += ", ";
+							}
+							FactoryString += FString::Printf(TEXT("%s"), *RequiredTechnology->Name.ToString());
+						}
+					}
+
+/*
+	for (int TechnologyEffectsIndex = 0; TechnologyEffectsIndex < GetDescription()->TechnologiesEffects.Num(); TechnologyEffectsIndex++)
+	{
+		FFlareFactoryTechnologyEffects CurrentTechnologyEffect = GetDescription()->TechnologiesEffects[TechnologyEffectsIndex];
+		if (!Parent->GetCompany()->IsTechnologyUnlocked(CurrentTechnologyEffect.Identifier))
+		{
+			continue;
+		}
+
+		Factory_Efficiency_Minimum += CurrentTechnologyEffect.Efficiency_Minimum;
+		Factory_Efficiency_Maximum += CurrentTechnologyEffect.Efficiency_Maximum;
+	}
+*/
+
+
 
 					FactoryString += "\nProduction Cost: ";
 
@@ -907,28 +972,31 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 
 				if (Desc->IsStation())
 				{
-					return FText::Format(LOCTEXT("StationInfoFormatVerbose", "(Station, {0} factories)\n{1}\n{2}"),
-						FText::AsNumber(Desc->Factories.Num()),
-						BasicInfo,
-						FText::FromString(FactoryString));
+					return FText::Format(LOCTEXT("StationInfoFormatVerbose", "(Station, size {0}, {1} factories)\n{2}\n{3}"),
+					FText::AsNumber(Desc->GetStationSectorSlots()),
+					FText::AsNumber(Desc->Factories.Num()),
+					BasicInfo,
+					FText::FromString(FactoryString));
 				}
 				else
 				{
 					return FText::Format(LOCTEXT("ShipStationInfoFormatVerbose", "({0} factories)\n{1}\n{2}"),
-						FText::AsNumber(Desc->Factories.Num()),
-						BasicInfo,
-						FText::FromString(FactoryString));
+					FText::AsNumber(Desc->Factories.Num()),
+					BasicInfo,
+					FText::FromString(FactoryString));
 				}
 			}
 			else if (Desc->IsStation())
 			{
 				FText VerboseBasicInfo = GetSpacecraftInfoVerboseLeft();
 				FText LeftBasicInfo = GetSpacecraftShipInfo();
-				FText BasicInfo = FText::Format(LOCTEXT("StationInfoVerbose", "(Station, 0 factories)\n{0}\n{1}"),
+				FText BasicInfo = FText::Format(LOCTEXT("StationInfoVerbose", "(Station, size {0}, no factories)\n{1}\n{2}"),
+					FText::AsNumber(Desc->GetStationSectorSlots()),
 					LeftBasicInfo,
 					VerboseBasicInfo);
 				return BasicInfo;
 			}
+
 			else
 			{
 				FText VerboseBasicInfo = GetSpacecraftInfoVerboseLeft();
@@ -941,7 +1009,9 @@ FText SFlareSpaceCraftOverlayInfo::GetSpacecraftInfo() const
 		}
 		else
 		{
-			return FText::Format(LOCTEXT("StationInfoFormat", "(Station, {0} factories)"), FText::AsNumber(Desc->Factories.Num()));
+			return FText::Format(LOCTEXT("StationInfoFormat", "(Station, size {0} , {1} factories)"),
+			FText::AsNumber(Desc->GetStationSectorSlots()),
+			FText::AsNumber(Desc->Factories.Num()));
 		}
 	}
 }

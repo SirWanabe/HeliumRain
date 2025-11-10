@@ -165,6 +165,7 @@ void UFlareSector::Tick(float DeltaSeconds)
 		{
 			break;
 		}
+
 		AFlareSpacecraft* Spacecraft = SectorSpacecrafts[i];
 
 		if (IsValid(Spacecraft))

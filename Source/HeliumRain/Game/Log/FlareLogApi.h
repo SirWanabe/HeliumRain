@@ -71,6 +71,16 @@ public:
 	 */
 	static void UnlockResearch(UFlareCompany* Company, FFlareTechnologyDescription* Research);
 
+	/**
+	 * A company increases their tech level
+	 *
+	 * Event: COMPANY_UNLOCK_RESEARCH
+	 * Params:
+	 *   - string : company
+	 *   - string : technology level
+	 */
+	static void UnlockTechnologyLevel(UFlareCompany* Company, int32 TechnologyLevel);
+
 };
 
 class CombatLog

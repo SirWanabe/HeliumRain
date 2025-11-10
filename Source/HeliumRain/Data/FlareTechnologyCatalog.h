@@ -15,10 +15,13 @@ public:
 		Public data
 	----------------------------------------------------*/
 	
-	/** Tehcnologies */
+	/** Technologies */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<UFlareTechnologyCatalogEntry*> TechnologyCatalog;
-	int MaximumTechnologyLevel;
+	int									  MaximumTechnologyLevel;
+
+	//First is what tech level
+	TMap<int32, TArray<FFlareTechnologyDescription*>> TechnologiesByLevel;
 
 public:
 

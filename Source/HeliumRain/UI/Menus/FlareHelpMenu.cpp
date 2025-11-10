@@ -807,19 +807,22 @@ There are several ways to find worthwhile deals or trade routes.\n\n\
 										.AutoHeight()
 										[
 											SNew(STextBlock)
-											.TextStyle(&Theme.TextFont)
-											.WrapTextAt(TextWrappingBig)
-											.Text(LOCTEXT("TechnologiesUnlockMain", "\
-Technologies can be unlocked permanently in the technology menu. To unlock a technology, you need to pay the displayed cost. You can only unlock technology with a level inferior or equal to your current technology level.\n\n\
-The cost of a technology depends on its level and your technology inflation ratio.\n\n\
+												.TextStyle(&Theme.TextFont)
+												.WrapTextAt(TextWrappingBig)
+												.Text(LOCTEXT("TechnologiesUnlockMain", "\
+Technologies can be unlocked permanently in the technology menu. To unlock a technology, you need to pay the displayed cost. You can only unlock technology with a level inferior or equal to your current technology level.\n\
+The cost of each technology depends on its level and your technology inflation ratio.\n\n\
 Cost = BaseCost * Level * InflationRatio\n\n\
-The base cost is 20 research points.\n\n\
-The inflation ratio is 1 and is multiplied by 1.3 each time your technology level increase (or 1.22 if you have the instruments technology)\n\n\
+The base cost in the following examples will be assumed to be 20 research points.\n\n\
+InflationRatio = 1 and is then multiplied by 1.25 (or 1.20 if you have the instruments technology)\n\
+InflationRatio + (0.001 * Company current overall unlocked technology level)\n\
+InflationRatio + (0.004 * Technology level of the tech being unlocked)\n\
+InflationRatio then scales up based on the technologies not yet unlocked in lower tech levels to the unlocked technology. At a rate of 0.002 (instruments unlocked) or 0.001. Instruments being slightly less efficient but still hugely beneficial when skipping over technologies to rush higher tier technologies.\n\n\
 Example:\n\n\
-    \u2022Mining is a technology level 1. At the start of the game its cost is 20 ( 20 * 1 * 1). Unlock it multiply the inflation ratio by 1.3 to 1.3\n\
-	\u2022Quick repair is a technology level 2. After buying a technology, its cost is 52 (20 * 2 * 1.3).The inflation ratio is increase to 1.69 (1.3 * 1.3)\n\
-	\u2022I now unlock Metallurgy(level 2).Its cost is 67 (20 * 2 * 1.69).The inflation ratio is increase to 2.197\n\
-	\u2022To purchase the level 4 technology Bombing, I need 175 research points(20 * 4 * 2.197)"))
+\u2022Mining is a technology level 1. At the start of the game its cost is 20 ( 20 * 1 * 1). Unlock it multiply the inflation ratio by 1.25 + 0.001 (company tech level) + 0.004 (mining tech level) = inflation ratio of 1.255\n\
+\u2022Quick repair is a technology level 2. After buying a technology, its cost is 50 (20 * 2 * 1.255). Without accounting for the missed technologies in tier 1 the new InflationRatio increase would be 1.259. The companies new inflation ratio is increased to 1.58 (1.255 * 1.259)\n\
+\u2022I now unlock Metallurgy (level 2). Its cost is 63 (20 * 2 * 1.58). Using the previous math (1.58 * 1.259) the inflation ratio is increased to 1.989\n\
+\u2022To purchase the level 4 technology Bombing, I need 159 research points(20 * 4 * 1.989)"))
 										]
 										+ SVerticalBox::Slot()
 										.AutoHeight()
@@ -834,7 +837,7 @@ Example:\n\n\
 											SNew(STextBlock)
 											.TextStyle(&Theme.TextFont)
 											.WrapTextAt(1.50 * Theme.ContentWidth)
-											.Text(LOCTEXT("TechnologiesLevelMain", "Your technology level increase by one each time you buy a technology.When your technology level increases, your Inflation Ratio is also increased. "))
+											.Text(LOCTEXT("TechnologiesLevelMain", "Technology levels are unlocked by spending research points. The cost of unlocking a technology level increases with higher levels but also scales down in price based on how many technologies in the previous level have been researched already. Unlocking a higher technology level will reduce the companies current InflationRatio by 5%."))
 										]
 										+ SVerticalBox::Slot()
 										.AutoHeight()
@@ -879,7 +882,7 @@ The research points needed to unlock technology can be gained in multiple ways:\
 											.Text(LOCTEXT("TechnologiesGeneralMain", "\
 	\n\
 		\u2022Instruments\n\
-			\u2022Effect: 0.08 lower research multiplier\n\
+			\u2022Effect: 0.05 lower research multiplier\n\
 		\u2022Quick Repair\n\
 			\u2022Effect: 50% faster repairs\n\
 		\u2022Diplomacy\n\
@@ -910,7 +913,7 @@ The research points needed to unlock technology can be gained in multiple ways:\
 		\u2022Mining\n\
 			\u2022Unlock: Ice Mine, Iron Mine, Silica Mine\n\
 		\u2022Chemicals\n\
-			\u2022Unlock: Plasic Production Plant, Carbon Refinery, Farm\n\
+			\u2022Unlock: Plastic Production Plant, Carbon Refinery, Farm\n\
 		\u2022Metallurgy\n\
 			\u2022Unlock: Arsenal, Steelworks, Tool Factory\n\
 		\u2022Shipyard\n\
@@ -1628,9 +1631,61 @@ Companies are the factions which control the entire environment in Helium Rain. 
 							SNew(STextBlock)
 								.WrapTextAt(TextWrappingBig)
 								.TextStyle(&Theme.TextFont)
-								.Text(LOCTEXT("VersionHistoryHRFM1.4.2", "Created by Wanabe\n\
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.3", "Created by Wanabe\n\
 https://github.com/SirWanabe/HeliumRain\n\n\
-1.4.2\n\n\
+1.4.3\n\n\
+(Feature) Research tiers are now unlocked from directly spending Research Points (RP) as opposed to being granted the levels automatically.\n\
+There is an increasing RP discount for unlocking the next research tier as the previous research tier gets completed.\n\
+Unlocking a new research tier will give an immediate reduction to the current research inflation, however research inflation will increase slightly from there on for each tech level unlocked.\n\
+Higher tier research projects will cause a higher research inflation than lower tier technologies. Any un-researched technologies in lower tiers from the unlocked technology will also further increase the research inflation.\n\
+(Feature) Added factory efficiency mechanic. Efficiency increases during production and decreases while production is stopped. Factory efficiency changes the output amounts of the factory.\n\
+\n\
+(Tutorial) Research menu now has visual indicators it is disabled during the tutorials.\n\
+(Tutorial) Research tutorial goes into slightly more detail of the research system.\n\
+\n\
+(Balance) Sub-stations no longer count towards the station limit in a local sector.\n\
+(Balance) It is no longer possible to scrap a Sub-station(the stations that are built into the preset station complexes)\n\
+(Balance) Stations that are upgrading to a higher level can continue running their normal factory cycles during the upgrade process\n\
+(Balance) Improved what happens when player ship death occurs. The game will now attempt to reassign the player to a random owned ship as long as it is not destroyed. If there are no player ships left a Solen will be created for the player in a known sector.\n\
+(Balance) Station and Ship capturing is now a sequential process rather than simultaneous. The company doing the capturing will generate a certain amount of capture points per day in the sector and this will get get used until it reaches a minimum value of 1 while attempting to capture stations/ships.\n\
+\n\
+AI Companies now recalculate their spending budgets once a year to address any budget drifts\n\
+AI Companies can now build and maintain their own station complexes\n\
+AI Companies will not initiate an upgrade on a station being captured\n\
+AI Trader logic can now alter the priority of which resources are most important to trade more dynamically than previously.AI Traders are also significantly better at fulfulling the needs for high priority stations sooner.\n\
+\n\
+(UI) Economy Stations menu has a filter for station complexes\n\
+\n\
+(Modding) Added StartingTechnologyLevel variable to FFlareCompanyDescription and UFlareStartingScenarioCatalogEntry\n\
+(Modding) Added StationSectorSlots variable to FFlareSpacecraftDescription.Allows defining how many \"station slots\" a station consumes within the sector\n\
+(Modding) Added RequiredTechnologies TArray to FFlareFactoryDescription\n\
+(Modding) Added TechnologiesEffects TArray to FFlareFactoryDescription\n\
+(Modding) Added UnlocksFactory to FFlareTechnologyDescription\n\
+(Modding) FFlareTechnologyDescription RequiredTechnologies variable is no longer an fname tarray, there is now a supporting struct called FFlareRequiredTechnologies used\n\
+(Modding) Added IsDisabled to FFlareResourceDescription\n\
+(Modding) Added TradeRouteSteps to FFlareTechnologyDescription which enables technology to increase the amount of sectors a trade route may contain\n\
+(Modding) Added StationTryAttachComplex to FFlareCompanyStartingShips\n\
+(Modding) Other undocumented changes to aid in modding\n\
+\n\
+(Performance) Optimised performance of some logic\n\
+(Other) Added Apollo, Ares, Athena, Demeter, Hera, Hermes and Hestia to Capital Ship name list.\n\
+(Other) Added Ceres, Charon and Vulcan to Station name list. Thanks to my friend Fenix for contributing.\n\
+\n\
+Fixed(HRFanMod) Rare crash\n\
+Fixed(HRFanMod/Vanilla) If the player ship was fully destroyed, after closing the game over screen the game would crash and additionally upon reload would crash again\n\
+Fixed(Vanilla) Factories producing output wares could consider empty cargo-slots as viable overflow slots when they were already allocated to a different resource type and were invalid cargo-slots for output. In other words this bug could cause stations to produce wares when there is no room to store them, and would consume inputs but give no outputs.\n\
+Fixed(Vanilla) Stations that were upgrading their level would not save the status of all their normal factories to save-file\n\
+Fixed(Vanilla) Sometimes the ship status alignment in menus would shift position to the side\n\
+Fixed(Vanilla) The Ship Menu would fail to update properly in the event the ship/station viewed was captured or destroyed\n\
+"))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(STextBlock)
+								.WrapTextAt(TextWrappingBig)
+								.TextStyle(&Theme.TextFont)
+								.Text(LOCTEXT("VersionHistoryHRFM1.4.2", "1.4.2\n\n\
 (Tutorial) New game menu will no longer allow Tutorial Contract and Random Station Positions to be enabled simultaneously\n\
 (Tutorial) Tutorial now includes instructions on how to travel with the wheel menu and two different ways using the orbital menu.\n\
 (Tutorial) Travel segment of the tutorial now ensures only relevant sectors are known to the player until the appropriate time.\n\
@@ -1822,7 +1877,7 @@ Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
 (Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
 (Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\
-(Active Simulation) Re - Enabled Flak detonation(I had disabled it sometime ago.Probably due to their heavy FPS cost)\n\
+(Active Simulation) Re-Enabled Flak detonation(I had disabled it sometime ago.Probably due to their heavy FPS cost)\n\
 (Active Simulation) Improved in sector explosion effect\n\
 (Active Simulation) Small debris can sometimes break off ship components when components are destroyed\n\
 \n\

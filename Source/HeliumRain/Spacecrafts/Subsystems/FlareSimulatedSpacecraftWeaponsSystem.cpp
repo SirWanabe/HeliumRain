@@ -50,6 +50,7 @@ void UFlareSimulatedSpacecraftWeaponsSystem::Initialize(UFlareSimulatedSpacecraf
 		delete WeaponGroupList[GroupIndex];
 	}
 	WeaponGroupList.Empty();
+	AvailableWeaponDamageTypes.Empty();
 
 	UFlareSpacecraftComponentsCatalog* Catalog = Spacecraft->GetGame()->GetShipPartsCatalog();
 
@@ -66,8 +67,28 @@ void UFlareSimulatedSpacecraftWeaponsSystem::Initialize(UFlareSimulatedSpacecraf
 
 		WeaponList.Add(ComponentData);
 		WeaponDescriptionList.Add(ComponentDescription);
-
 		int32 GroupIndex = GetGroupByWeaponIdentifer(ComponentDescription->Identifier);
+		
+		AvailableWeaponDamageTypes.AddUnique(ComponentDescription->WeaponCharacteristics.DamageType);
+
+			/*
+				TArray<TEnumAsByte<EFlareShellDamageType::Type>> AvailableWeaponDamageTypes;
+	UENUM()
+		namespace EFlareShellDamageType
+	{
+		enum Type
+		{
+			HighExplosive, // Explosion send shell pieces around at hight velocity.
+			ArmorPiercing, // Not explosive shell, The damage are done by kinetic energy. Classique bullets.
+			HEAT,          // Heat Explosive Anti Tank. The explosion is focalized in a hot beam of metal melting armor.
+			LightSalvage,  // No actual damage, enable retrieval of light ships
+			HeavySalvage,  // No actual damage, enable retrieval of heavy ships
+		};
+	}
+	TArray<TEnumAsByte<EFlareShellDamageType::Type>> AvailableWeaponDamageTypes;
+
+			*/
+
 		if (GroupIndex < 0)
 		{
 			// No existing group yet
@@ -181,7 +202,6 @@ void UFlareSimulatedSpacecraftWeaponsSystem::GetTargetPreference(float* IsSmall,
 	float NotUncontrollablePool = 0;
 	float HarpoonedPool = 0;
 
-
 	for (int32 GroupIndex = 0; GroupIndex < WeaponGroupList.Num(); GroupIndex++)
 	{
 		EFlareShellDamageType::Type DamageType = WeaponGroupList[GroupIndex]->Description->WeaponCharacteristics.DamageType;
@@ -196,6 +216,7 @@ void UFlareSimulatedSpacecraftWeaponsSystem::GetTargetPreference(float* IsSmall,
 			UncontrollableCivilPool += 1.0;
 			UncontrollableSmallMilitaryPool += 1.0;
 		}
+
 		else if (DamageType == EFlareShellDamageType::HeavySalvage)
 		{
 			UncontrollableCivilPool += 1.0;
@@ -283,7 +304,9 @@ int32 UFlareSimulatedSpacecraftWeaponsSystem::FindBestWeaponGroup(UFlareSimulate
 			if (DamageType == EFlareShellDamageType::LightSalvage || DamageType == EFlareShellDamageType::HeavySalvage)
 			{
 				Score *= (UncontrollableTarget ? 1.f : 0.f);
-				Score *= (ShipTarget->IsHarpooned() ? 0.f : 1.f);
+//				Score *= (ShipTarget->IsHarpooned() ? 0.f : 1.f);
+				Score *= (ShipTarget->GetCapturePointsMap().Num() > 0 ? 0.f : 1.f);
+				
 			}
 			else if (ShipTarget->IsMilitary())
 			{
@@ -362,6 +385,11 @@ int32 UFlareSimulatedSpacecraftWeaponsSystem::GetGroupIndexFromSlotIdentifier(co
 int32 UFlareSimulatedSpacecraftWeaponsSystem::GetWeaponGroupCount() const
 {
 	return WeaponGroupList.Num();
+}
+
+bool UFlareSimulatedSpacecraftWeaponsSystem::IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::Type TypeCheck)
+{
+	return AvailableWeaponDamageTypes.Contains(TypeCheck);
 }
 
 EFlareWeaponGroupType::Type UFlareSimulatedSpacecraftWeaponsSystem::GetActiveWeaponType() const

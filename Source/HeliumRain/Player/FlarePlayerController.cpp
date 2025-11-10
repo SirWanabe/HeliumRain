@@ -815,14 +815,7 @@ void AFlarePlayerController::UnlockScannable(FName Identifier)
 			}
 		}
 	}
-/*
-	Notify(LOCTEXT("ScannableUnlocked", "Artifact found"),
-		LOCTEXT("ScannableUnlockedInfo", "Artifact analyzis revealed valuable data for technology research."),
-		FName("scannable-unlocked"),
-		EFlareNotification::NT_Info,
-		false,
-		EFlareMenu::MENU_Technology);
-*/
+
 	FText Formatted = FText::Format(LOCTEXT("ScannableUnlockedInfo", "Artifact analysis revealed valuable data for technology research. \n +{0} research."),
 	FText::AsNumber(ResearchGain));
 
@@ -830,7 +823,7 @@ void AFlarePlayerController::UnlockScannable(FName Identifier)
 		Formatted,
 		FName("scannable-unlocked"),
 		EFlareNotification::NT_Info,
-		false,
+		NOTIFY_DEFAULT_TIMER,
 		EFlareMenu::MENU_Technology);
 }
 
@@ -964,12 +957,12 @@ void AFlarePlayerController::SetupGamepad()
 	Menus
 ----------------------------------------------------*/
 
-void AFlarePlayerController::Notify(FText Title, FText Info, FName Tag, EFlareNotification::Type Type, bool Pinned, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
+void AFlarePlayerController::Notify(FText Title, FText Info, FName Tag, EFlareNotification::Type Type, float NotificationTimeout, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
 {
 	FLOGV("AFlarePlayerController::Notify : '%s'", *Title.ToString());
 
 	// Notify
-	if (MenuManager->Notify(Title, Info, Tag, Type, Pinned, TargetMenu, TargetInfo))
+	if (MenuManager->Notify(Title, Info, Tag, Type, NotificationTimeout, TargetMenu, TargetInfo))
 	{
 		// Play sound
 		USoundCue* NotifSound = NULL;
@@ -1336,7 +1329,7 @@ void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sect
 			BattleStateText,
 			NotificationId,
 			EFlareNotification::NT_Military,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Sector,
 			Data);
 	}
@@ -1357,7 +1350,7 @@ void AFlarePlayerController::CheckSectorStateChanges(UFlareSimulatedSector* Sect
 				Sector->GetSectorName()),
 			NotificationId,
 			EFlareNotification::NT_Military,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Sector,
 			Data);
 	}
@@ -1422,7 +1415,7 @@ void AFlarePlayerController::DiscoverSector(UFlareSimulatedSector* Sector, bool 
 				Sector->GetSectorName()),
 			"discover-sector",
 			EFlareNotification::NT_Info,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Sector,
 			Data);
 	}
@@ -1588,8 +1581,7 @@ void AFlarePlayerController::NotifyDockingResult(bool Success, AFlareSpacecraft*
 				LOCTEXT("DockingGrantedInfoFormat", "Your ship is now automatically docking at {0}. Using manual controls will abort docking."),
 				UFlareGameTools::DisplaySpacecraftName(Target)),
 			"docking-granted",
-			EFlareNotification::NT_Info,
-			false);
+			EFlareNotification::NT_Info);
 
 			GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("start-docking").PutName("target", Target->GetImmatriculation()));
 		}
@@ -1602,8 +1594,7 @@ void AFlarePlayerController::NotifyDockingResult(bool Success, AFlareSpacecraft*
 				UFlareGameTools::DisplaySpacecraftName(DockingShip->GetParent()),
 				UFlareGameTools::DisplaySpacecraftName(Target)),
 			"docking-granted",
-			EFlareNotification::NT_Info,
-			false);
+			EFlareNotification::NT_Info);
 		}
 	}
 	else
@@ -1612,8 +1603,7 @@ void AFlarePlayerController::NotifyDockingResult(bool Success, AFlareSpacecraft*
 			LOCTEXT("DockingDenied", "Docking denied"),
 			FText::Format(LOCTEXT("DockingDeniedInfoFormat", "{0} denied your docking request"), UFlareGameTools::DisplaySpacecraftName(Target)),
 			"docking-denied",
-			EFlareNotification::NT_Info,
-			false);
+			EFlareNotification::NT_Info);
 	}
 }
 
@@ -2046,6 +2036,7 @@ void AFlarePlayerController::SetBusy(bool Busy)
 	IsBusy = Busy;
 }
 
+//Simulate from the keybind
 void AFlarePlayerController::Simulate()
 {
 	if (!GetGame()->IsSkirmish()
@@ -2058,12 +2049,11 @@ void AFlarePlayerController::Simulate()
 		if (CanGoAhead)
 		{
 			SimulateConfirmed();
-
 			LastSimulateTime = GetWorld()->TimeSeconds;
 		}
 	}
 }
-
+//Simulate from the keybind
 void AFlarePlayerController::SimulateConfirmed()
 {
 	if (SimulatedConfirmed)
@@ -2080,16 +2070,21 @@ void AFlarePlayerController::SimulateConfirmed()
 		// Do the FF and reload
 		GetGame()->DeactivateSector();
 		MenuManager->GetGame()->GetGameWorld()->Simulate();
-		MenuManager->Reload();
-		GetGame()->ActivateCurrentSector();
+
+		EFlareMenu::Type CurrentMenu = MenuManager->GetCurrentMenu();
+		if (CurrentMenu != EFlareMenu::MENU_GameOver)
+		{
+			MenuManager->Reload();
+			GetGame()->ActivateCurrentSector();
+		}
 
 		// Notify date
-		MenuManager->GetPC()->Notify(LOCTEXT("NewDate", "A day passed by..."),
-			UFlareGameTools::GetDisplayDate(MenuManager->GetGame()->GetGameWorld()->GetDate()),
-			FName("new-date-ff"));
+		Notify(LOCTEXT("NewDate", "A day passed by..."),
+		UFlareGameTools::GetDisplayDate(MenuManager->GetGame()->GetGameWorld()->GetDate()),
+		FName("new-date-ff"));
 	}
 
-	// Asynchronous mode when flying
+	// Asynchronous mode when flying (the fade to black helps hide the transition)
 	else
 	{
 		FLOG("AFlarePlayerController::SimulateConfirmed : asynchronous");
@@ -2392,8 +2387,7 @@ void AFlarePlayerController::EnablePilot()
 				LOCTEXT("AutopilotEngaged", "Autopilot engaged"),
 				LOCTEXT("AutopilotEngagedInfo", "Your ship is now flying on its own. Use any manual input to regain control."),
 				"autopilot-engaged",
-				EFlareNotification::NT_Info,
-				false);
+				EFlareNotification::NT_Info);
 		}
 	}
 }

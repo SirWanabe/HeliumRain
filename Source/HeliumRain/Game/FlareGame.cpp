@@ -110,18 +110,23 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 
 	// Create dynamic objects
 	SaveGameSystem = NewObject<UFlareSaveGameSystem>(this, UFlareSaveGameSystem::StaticClass(), TEXT("SaveGameSystem"));
+
 	SpacecraftCatalog = NewObject<UFlareSpacecraftCatalog>(this, UFlareSpacecraftCatalog::StaticClass(), TEXT("FlareSpacecraftCatalog"));
 	SpacecraftCatalog->InitialSetup(this);
 	ShipPartsCatalog = NewObject<UFlareSpacecraftComponentsCatalog>(this, UFlareSpacecraftComponentsCatalog::StaticClass(), TEXT("FlareSpacecraftComponentsCatalog"));
 	ShipPartsCatalog->InitialSetup(this);
 	QuestCatalog = NewObject<UFlareQuestCatalog>(this, UFlareQuestCatalog::StaticClass(), TEXT("FlareQuestCatalog"));
 	ResourceCatalog = NewObject<UFlareResourceCatalog>(this, UFlareResourceCatalog::StaticClass(), TEXT("FlareResourceCatalog"));
+	ResourceCatalog->InitialSetup(this);
 	TechnologyCatalog = NewObject<UFlareTechnologyCatalog>(this, UFlareTechnologyCatalog::StaticClass(), TEXT("FlareTechnologyCatalog"));
 	ScannableCatalog = NewObject<UFlareScannableCatalog>(this, UFlareScannableCatalog::StaticClass(), TEXT("FlareScannableCatalog"));
 	GlobalSettings = NewObject<UFlareGlobalSettings>(this, UFlareGlobalSettings::StaticClass(), TEXT("FlareGlobalSettings"));
 	StartingScenarioCatalog = NewObject<UFlareStartingScenarioCatalog>(this, UFlareStartingScenarioCatalog::StaticClass(), TEXT("FlareStartingScenarioCatalog"));
 
 	TArray<UFlareTechnologyCatalogEntry*> DisableTechnologies;
+
+	TechnologyCatalog->TechnologiesByLevel.Empty();
+
 	for (UFlareTechnologyCatalogEntry* Technology : TechnologyCatalog->TechnologyCatalog)
 	{
 		FFlareTechnologyDescription* TechnologyData = &Technology->Data;
@@ -130,9 +135,26 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 		{
 			DisableTechnologies.Add(Technology);
 		}
-		else if (TechnologyData->Level > TechnologyCatalog->MaximumTechnologyLevel)	
+		else
 		{
-			TechnologyCatalog->MaximumTechnologyLevel = TechnologyData->Level;
+
+			if (TechnologyCatalog->TechnologiesByLevel.Contains(TechnologyData->Level))
+			{
+				TArray<FFlareTechnologyDescription*> ExistingArray = TechnologyCatalog->TechnologiesByLevel[TechnologyData->Level];
+				ExistingArray.Add(TechnologyData);
+				TechnologyCatalog->TechnologiesByLevel[TechnologyData->Level] = ExistingArray;
+			}
+			else
+			{
+				TArray<FFlareTechnologyDescription*> NewArray;
+				NewArray.Emplace(TechnologyData);
+				TechnologyCatalog->TechnologiesByLevel.Add(TechnologyData->Level, NewArray);
+			}
+
+			if (TechnologyData->Level > TechnologyCatalog->MaximumTechnologyLevel)
+			{
+				TechnologyCatalog->MaximumTechnologyLevel = TechnologyData->Level;
+			}
 		}
 
 		if (TechnologyData->UnlockItems.Num())
@@ -157,9 +179,10 @@ AFlareGame::AFlareGame(const class FObjectInitializer& PCIP)
 	{
 		TechnologyCatalog->TechnologyCatalog.Remove(TechnologyEntry);
 	}
+
 /*
-//	TArray<FFlareSpacecraftDescription*> SpacecraftDebug;C
-//	SpacecraftCatalog->GetSpacecraftList(SpacecraftDebug);
+//	TArray<FFlareSpacecraftDescription*> SpacecraftDebug;
+//	SpacecraftCatalog->GetShipList(SpacecraftDebug);
 //	for (FFlareSpacecraftDescription* ShipSub : SpacecraftDebug)
 //	{
 //		ShipSub->Name = FText::FromName(ShipSub->Identifier);
@@ -421,40 +444,193 @@ UFlareSimulatedSector* AFlareGame::DeactivateSector()
 
 void AFlareGame::Recovery()
 {
-	// Repair player ship
-	FLOGV("AFlareGame::Recovery : player ship=%s", *GetPC()->GetPlayerShip()->GetImmatriculation().ToString());
+	float RecoveryFeeMultiplier = 0.01f;
+	bool ForcePeace = true;
 
-	GetPC()->GetPlayerShip()->RecoveryRepair();
+	// Notification title
+	FText Title;
+	// Notification body
+	FText Info;
+	FText InfoRecoveryFee;
+	FText InfoForcedPeace;
+
+	if (GetPC()->GetPlayerShip()->IsDestroyed())
+	{
+		UFlareSimulatedSpacecraft* OldDestroyedShip = GetPC()->GetPlayerShip();
+
+		TArray<UFlareSimulatedSpacecraft*> ViableShips;
+
+		FLOG("AFlareGame::Recovery Player Ship Destroyed");
+
+		if (GetPC()->GetPlayerShip()->GetCurrentSector())
+		{
+			FLOG("AFlareGame::Recovery Player Ship Has sector, looking for local fleets");
+
+			for (int32 FleetIndex = 0; FleetIndex < GetPC()->GetPlayerShip()->GetCurrentSector()->GetSectorFleets().Num(); FleetIndex++)
+			{
+				UFlareFleet* Fleet = GetPC()->GetPlayerShip()->GetCurrentSector()->GetSectorFleets()[FleetIndex];
+				if (Fleet->GetFleetCompany() == GetPC()->GetCompany())
+				{
+					for (UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
+					{
+						if (Ship->IsDestroyed())
+						{
+							continue;
+						}
+						ViableShips.Add(Ship);
+					}
+
+				}
+			}
+		}
+
+		if (!ViableShips.Num())
+		{
+			FLOG("AFlareGame::Recovery Could not find fleets in local sector, looking for all in company");
+			for (int32 FleetIndex = 0; FleetIndex < GetPC()->GetCompany()->GetCompanyFleets().Num(); FleetIndex++)
+			{
+				UFlareFleet* Fleet = GetPC()->GetCompany()->GetCompanyFleets()[FleetIndex];
+				for (UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
+				{
+					if (Ship->IsDestroyed())
+					{
+						continue;
+					}
+					ViableShips.Add(Ship);
+				}
+			}
+		}
+
+		UFlareSimulatedSpacecraft* Ship;
+		if (ViableShips.Num() > 0)
+		{
+			FLOG("AFlareGame::Recovery Could find new ship to switch player to");
+
+			int32 ShipIndex = FMath::RandRange(0, ViableShips.Num() - 1);
+			Ship = ViableShips[ShipIndex];
+			GetPC()->SetPlayerShip(Ship);
+			Info = FText::Format(LOCTEXT("RecoveryRescuedByInfoFormat", "Your previous ship {0} was completely destroyed. After drifting for some time you have been rescued by {1}."), UFlareGameTools::DisplaySpacecraftName(OldDestroyedShip), UFlareGameTools::DisplaySpacecraftName(Ship));
+
+		}
+		else
+		{
+			UFlareSimulatedSector* SelectedSector = GetRecoverySector();
+			FLOG("AFlareGame::Recovery Could not find any fleets in company, creating emergency Solen");
+			FFlareSpacecraftDescription* NewShipDesc = GetSpacecraftCatalog()->Get("ship-solen");
+			Ship = SelectedSector->CreateSpacecraft(NewShipDesc, GetPC()->GetCompany(), FVector::ZeroVector);
+			GetPC()->SetPlayerShip(Ship);
+			Info = FText::Format(LOCTEXT("RecoveryRescuedByInfoFormat", "Your previous ship {0} was completely destroyed. After drifting for some time you have been rescued by {1} in {2}."), UFlareGameTools::DisplaySpacecraftName(OldDestroyedShip), UFlareGameTools::DisplaySpacecraftName(Ship), SelectedSector->GetSectorName());
+
+		}
+
+		Title = FText::Format(LOCTEXT("RecoveryRescuedByFormat", "Rescued by {0}"), UFlareGameTools::DisplaySpacecraftName(Ship));
+	}
+	else
+	{
+		FLOG("AFlareGame::Recovery Old ship not destroyed");
+		Title = FText::Format(LOCTEXT("ShipRecoveredFormat", "Ship recovered {0}"), UFlareGameTools::DisplaySpacecraftName(GetPC()->GetPlayerShip()));
+		Info = FText::Format(LOCTEXT("ShipRecoveredInfoFormat", "Your ship {0} has been severely damaged"), UFlareGameTools::DisplaySpacecraftName(GetPC()->GetPlayerShip()));
+	}
+
+	// Repair player ship
+	if (GetPC()->GetPlayerShip()->GetDamageSystem()->IsUncontrollable() ||
+		GetPC()->GetPlayerShip()->GetDamageSystem()->IsStranded() ||
+		GetPC()->GetPlayerShip()->GetDamageSystem()->GetGlobalDamageRatio() <= 0.60f)
+	{
+		RecoveryFeeMultiplier = 0.05f;
+		GetPC()->GetPlayerShip()->RecoveryRepair();
+	}
+
 	GetPC()->GetPlayerShip()->ForceUndock();
 	GetPC()->GetPlayerShip()->SetSpawnMode(EFlareSpawnMode::Travel);
 
-	// Take a 5% of the player money
-	UFlareCompany* PlayerCompany = GetPC()->GetCompany();
-	int64 RecoveryFees = PlayerCompany->GetMoney() * 0.05;
-	FLOGV("AFlareGame::Recovery : fees ship=%lld", RecoveryFees);
-	GetPC()->GetCompany()->TakeMoney(RecoveryFees, false, FFlareTransactionLogEntry::LogRecoveryFees());
-	ScenarioTools->BlueHeart->GetPeople()->Pay(RecoveryFees);
-
-	// Force peace
-	for (int32 CompanyIndex = 0; CompanyIndex < GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+	if (!GetPC()->GetPlayerShip()->GetCurrentSector())
 	{
-		UFlareCompany* OtherCompany = GetGameWorld()->GetCompanies()[CompanyIndex];
+		// fix sector location
+		FLOG("AFlareGame::Recovery No current sector for recovering ship, fixing");
+		UFlareSimulatedSector* SelectedSector = GetRecoverySector();
 
-		if (OtherCompany == PlayerCompany)
+		if (!GetPC()->GetPlayerShip()->GetCurrentFleet())
 		{
-			continue;
+			UFlareFleet* NewFleet = GetPC()->GetCompany()->CreateAutomaticFleet(GetPC()->GetPlayerShip());
 		}
-
-		// Make peace
-		if(OtherCompany->GetWarState(PlayerCompany) == EFlareHostility::Hostile)
+		else// if(!GetPC()->GetPlayerShip()->GetCurrentFleet()->IsTraveling())
 		{
-			OtherCompany->SetHostilityTo(PlayerCompany, false);
-			PlayerCompany->SetHostilityTo(OtherCompany, false);
-
-			OtherCompany->GetAI()->GetData()->Pacifism = FMath::Max(50.f, OtherCompany->GetAI()->GetData()->Pacifism);
+			GetPC()->GetPlayerShip()->GetCurrentFleet()->SetCurrentSector(SelectedSector);
+			SelectedSector->AddFleet(GetPC()->GetPlayerShip()->GetCurrentFleet());
 		}
 	}
+
+	FLOGV("AFlareGame::Recovery : player ship = %s", *GetPC()->GetPlayerShip()->GetImmatriculation().ToString());
+
+	UFlareCompany* PlayerCompany = GetPC()->GetCompany();
+
+	// Take a variable amount of the player money
+	if (RecoveryFeeMultiplier > 0)
+	{
+		int64 RecoveryFees = PlayerCompany->GetMoney() * RecoveryFeeMultiplier;
+		FLOGV("AFlareGame::Recovery : fees ship=%lld", RecoveryFees);
+		GetPC()->GetCompany()->TakeMoney(RecoveryFees, false, FFlareTransactionLogEntry::LogRecoveryFees());
+		ScenarioTools->BlueHeart->GetPeople()->Pay(RecoveryFees);
+		InfoRecoveryFee = FText::Format(LOCTEXT("RecoveryFeesInfo", "\nRecovery efforts cost {0} credits."), FText::AsNumber(UFlareGameTools::DisplayMoney(RecoveryFees)));
+	}
+
+	if (ForcePeace)
+	{
+		InfoForcedPeace = LOCTEXT("RecoveryForcedPeaceInfo", "\nAll wars against your company have ended.");
+
+		// Force peace
+		for (int32 CompanyIndex = 0; CompanyIndex < GetGameWorld()->GetCompanies().Num(); CompanyIndex++)
+		{
+			UFlareCompany* OtherCompany = GetGameWorld()->GetCompanies()[CompanyIndex];
+
+			if (OtherCompany == PlayerCompany)
+			{
+				continue;
+			}
+
+			// Make peace
+			if (OtherCompany->GetWarState(PlayerCompany) == EFlareHostility::Hostile)
+			{
+				OtherCompany->SetHostilityTo(PlayerCompany, false, true);
+				PlayerCompany->SetHostilityTo(OtherCompany, false, true);
+
+				OtherCompany->GetAI()->GetData()->Pacifism = FMath::Max(50.f, OtherCompany->GetAI()->GetData()->Pacifism);
+			}
+		}
+	}
+
+	Info = FText::Format(LOCTEXT("ShipRecoveredInfoFinishedFormat", "{0}{1}{2}"), Info, InfoRecoveryFee, InfoForcedPeace);
+	FFlareMenuParameterData Data;
+	Data.Spacecraft = GetPC()->GetPlayerShip();
+	GetPC()->Notify(Title, Info, "flying-info", EFlareNotification::NT_Info, 30.f, EFlareMenu::MENU_Ship, Data);
 }
+
+UFlareSimulatedSector* AFlareGame::GetRecoverySector()
+{
+	TArray<UFlareSimulatedSector*> ViableSectors;
+	UFlareSimulatedSector* SelectedSector;
+
+	for (int32 SectorIndex = 0; SectorIndex < GetPC()->GetPlayerShip()->GetCompany()->GetKnownSectors().Num(); SectorIndex++)
+	{
+		UFlareSimulatedSector* Sector = GetPC()->GetPlayerShip()->GetCompany()->GetKnownSectors()[SectorIndex];
+		ViableSectors.Add(Sector);
+	}
+
+	if (ViableSectors.Num() > 0)
+	{
+		int32 SectorIndex = FMath::RandRange(0, ViableSectors.Num() - 1);
+		SelectedSector = ViableSectors[SectorIndex];
+		FLOG("AFlareGame::GetRecoverySector Selected sector from known sectors");
+	}
+	else
+	{
+		SelectedSector = GetGameWorld()->FindSector("first-light");
+		FLOG("AFlareGame::GetRecoverySector Selected sector as first light");
+	}
+	return SelectedSector;
+}
+
 
 void AFlareGame::SetWorldPause(bool Pause)
 {
@@ -1068,6 +1244,7 @@ UFlareCompany* AFlareGame::CreateCompany(int32 CatalogIdentifier)
 	CompanyData.PlayerLastPeaceDate = 0;
 	CompanyData.PlayerLastTributeDate = 0;
 	CompanyData.PlayerLastWarDate = 0;
+	CompanyData.TechnologyLevel = 0;
 	CompanyData.ResearchRatio = 1.0;
 	CompanyData.ResearchAmount = 0;
 	CompanyData.ResearchSpent = 0;
@@ -1598,7 +1775,7 @@ FText AFlareGame::PickSpacecraftName(UFlareCompany* OwnerCompany, bool IsStation
 void AFlareGame::InitSpacecraftNameDatabase()
 {
 	StationNameList.Empty();
-	StationNameList.Reserve(144);
+	StationNameList.Reserve(147);
 	StationNameList.Add(FText::FromString("Adrastea"));
 	StationNameList.Add(FText::FromString("Aegaeon"));
 	StationNameList.Add(FText::FromString("Aegir"));
@@ -1615,14 +1792,15 @@ void AFlareGame::InitSpacecraftNameDatabase()
 	StationNameList.Add(FText::FromString("Bianca"));
 	StationNameList.Add(FText::FromString("Bergelmir"));
 	StationNameList.Add(FText::FromString("Bestla"));
-	StationNameList.Add(FText::FromString("Bestla"));
 	StationNameList.Add(FText::FromString("Caliban"));
 	StationNameList.Add(FText::FromString("Callirrhoe"));
 	StationNameList.Add(FText::FromString("Callisto"));
 	StationNameList.Add(FText::FromString("Calypso"));
 	StationNameList.Add(FText::FromString("Carme"));
 	StationNameList.Add(FText::FromString("Carpo"));
+	StationNameList.Add(FText::FromString("Ceres"));
 	StationNameList.Add(FText::FromString("Chaldene"));
+	StationNameList.Add(FText::FromString("Charon"));
 	StationNameList.Add(FText::FromString("Cordelia"));
 	StationNameList.Add(FText::FromString("Cressida"));
 	StationNameList.Add(FText::FromString("Cupid"));
@@ -1740,26 +1918,35 @@ void AFlareGame::InitSpacecraftNameDatabase()
 	StationNameList.Add(FText::FromString("Titania"));
 	StationNameList.Add(FText::FromString("Umbriel"));
 	StationNameList.Add(FText::FromString("Valeska"));
+	StationNameList.Add(FText::FromString("Vulcan"));
 	StationNameList.Add(FText::FromString("Wanda"));
 	StationNameList.Add(FText::FromString("Xerxes"));
 	StationNameList.Add(FText::FromString("Ymir"));
 	StationNameList.Add(FText::FromString("Zeus"));
 	
 	CapitalShipNameList.Empty();
-	CapitalShipNameList.Reserve(34);
+	CapitalShipNameList.Reserve(42);
+	CapitalShipNameList.Add(FText::FromString("Apollo"));
+	CapitalShipNameList.Add(FText::FromString("Ares"));
 	CapitalShipNameList.Add(FText::FromString("Arrow"));
+//	CapitalShipNameList.Add(FText::FromString("Artemis"));
+	CapitalShipNameList.Add(FText::FromString("Athena"));
 	CapitalShipNameList.Add(FText::FromString("Atom"));
 	CapitalShipNameList.Add(FText::FromString("Binary_Star"));
 	CapitalShipNameList.Add(FText::FromString("Blackout"));
 	CapitalShipNameList.Add(FText::FromString("Crescent"));
 	CapitalShipNameList.Add(FText::FromString("Comet"));
 	CapitalShipNameList.Add(FText::FromString("Coronation"));
+	CapitalShipNameList.Add(FText::FromString("Demeter"));
 	CapitalShipNameList.Add(FText::FromString("Destiny"));
 	CapitalShipNameList.Add(FText::FromString("Duty"));
 	CapitalShipNameList.Add(FText::FromString("Enterprise"));
 	CapitalShipNameList.Add(FText::FromString("Giant"));
 	CapitalShipNameList.Add(FText::FromString("Goliath"));
 	CapitalShipNameList.Add(FText::FromString("Hammer"));
+	CapitalShipNameList.Add(FText::FromString("Hera"));
+	CapitalShipNameList.Add(FText::FromString("Hermes"));
+	CapitalShipNameList.Add(FText::FromString("Hestia"));
 	CapitalShipNameList.Add(FText::FromString("Honor"));
 	CapitalShipNameList.Add(FText::FromString("Intruder"));
 	CapitalShipNameList.Add(FText::FromString("Explorer"));

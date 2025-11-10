@@ -36,7 +36,8 @@ public:
 
 	/** Get a ship from identifier */
 	FFlareSpacecraftDescription* Get(FName Identifier) const;
-	const void GetSpacecraftList(TArray<FFlareSpacecraftDescription*>& OutData);
+	const void GetShipList(TArray<FFlareSpacecraftDescription*>& OutData);
+	const void GetStationList(TArray<FFlareSpacecraftDescription*>& OutData);
 
 	void ReplaceOldEntrySettings(FFlareSpacecraftDescription* OldEntryDesc, UFlareSpacecraftCatalogEntry* Spacecraft);
 };

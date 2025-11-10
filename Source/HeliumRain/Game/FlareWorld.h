@@ -112,7 +112,10 @@ struct IncomingValue
 	int32 CombatValue = 0;
 };
 
-
+struct CapturePointsCompanyHelper
+{
+	TMap<UFlareCompany*, int32> CompanyCaptureValues;
+};
 
 UCLASS()
 class HELIUMRAIN_API UFlareWorld: public UObject
@@ -150,9 +153,9 @@ public:
 
 	void CompanyMutualAssistance();
 
-	void ProcessShipCapture();
+	void ProcessAllCaptures();
 
-	void ProcessStationCapture();
+	void ProcessStolenResearch(UFlareCompany* Capturer, UFlareCompany* Owner, bool StolenFromStation);
 
 	void CheckAIBattleState();
 
@@ -182,6 +185,7 @@ public:
 
 	/** Clear all factories associated to ParentSpacecraft */
 	void ClearFactories(UFlareSimulatedSpacecraft *ParentSpacecraft);
+	void ClearSpecificFactory(UFlareFactory* SpecificFactory);
 
 	/** Add a factory to world */
 	void AddFactory(UFlareFactory* Factory);
@@ -212,6 +216,10 @@ protected:
 	/** Shipyards */
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>    Shipyards;
+
+	/** Shipyards */
+	UPROPERTY()
+	TArray<UFlareSimulatedSpacecraft*>    CarrierShipyards;
 
 	UPROPERTY()
 	TArray<UFlareTravel*>                Travels;
@@ -273,6 +281,11 @@ public:
 	inline TArray<UFlareSimulatedSpacecraft*> GetShipyards()
 	{
 		return Shipyards;
+	}
+
+	inline TArray<UFlareSimulatedSpacecraft*> GetCarrierShipyards()
+	{
+		return CarrierShipyards;
 	}
 
 	TArray<UFlareSimulatedSpacecraft*> GetShipyardsFor(UFlareCompany* Company);

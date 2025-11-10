@@ -356,8 +356,8 @@ bool UFlareWorld::CheckIntegrity()
 		for (int32 ShipIndex = 0 ; ShipIndex < Company->GetCompanyShips().Num(); ShipIndex++)
 		{
 			UFlareSimulatedSpacecraft* Ship = Company->GetCompanyShips()[ShipIndex];
-
 			UFlareSimulatedSector* ShipSector = Ship->GetCurrentSector();
+
 			if(IsValid(ShipSector) && ShipSector->IsValidLowLevel())
 			{
 				if (Ship->GetCurrentFleet() == NULL)
@@ -378,12 +378,41 @@ bool UFlareWorld::CheckIntegrity()
 			}
 			else
 			{
-				if (Ship->GetCurrentFleet() == NULL)
+				if (Ship->IsComplexElement())
+				{
+					FLOGV("WARNING : World integrity failure : %s complex child not in sector",
+					*Ship->GetImmatriculation().ToString());
+
+					if (Ship->GetData().AttachComplexStationName != NAME_None)
+					{
+						UFlareSimulatedSpacecraft* ComplexOwner = FindSpacecraft(Ship->GetData().AttachComplexStationName);
+						if (ComplexOwner && ComplexOwner->GetCurrentSector())
+						{
+							Ship->SetCurrentSector(ComplexOwner->GetCurrentSector());
+							FLOGV("WARNING : World integrity failure : %s complex child found complex master %s, attempting to fix sector",
+							*Ship->GetImmatriculation().ToString(),
+							*ComplexOwner->GetImmatriculation().ToString());
+						}
+					}
+
+					Integrity = false;
+				}
+				else if (Ship->GetCurrentFleet() == NULL)
 				{
 					FLOGV("WARNING : World integrity failure : %s not in sector but in no fleet",
 						  *Ship->GetImmatriculation().ToString());
-					Integrity = false;
 
+					if (Ship->GetDescription()->IsDroneShip)
+					{
+						if (Ship->GetCompany())
+						{
+							FLOGV("WARNING : World integrity failure : %s was errant drone, attempting deletion",
+							*Ship->GetImmatriculation().ToString());
+
+							Ship->GetCompany()->DestroySpacecraft(Ship);
+						}
+					}
+					Integrity = false;
 				}
 				else if(Ship->GetCurrentFleet()->GetCurrentTravel() == NULL)
 				{
@@ -425,6 +454,7 @@ bool UFlareWorld::CheckIntegrity()
 					Integrity = false;
 				}
 			}
+
 		}
 
 		// Fleets
@@ -484,7 +514,7 @@ void UFlareWorld::Simulate()
 	/**
 	 *  End previous day
 	 */
-	FLOGV("** Simulate day %d", WorldData.Date);
+	FLOGV("** UFlareWorld::Simulate day %d", WorldData.Date);
 
 	FLOG("* Simulate > Player autotrade");
 	AITradeHelper::CompanyAutoTrade(PlayerCompany);
@@ -775,7 +805,7 @@ void UFlareWorld::Simulate()
 						MaxCombatPointCompany->GetCompanyName()),
 						FName("global-war"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Leaderboard);
 				}
 			}
@@ -799,8 +829,7 @@ void UFlareWorld::Simulate()
 				FText::Format(LOCTEXT("MeteorStormInfo", "Warning: Nema is entering a period of heightened meteoroid activity. This period of activity is expected to pass in {0} days."),
 				(GlobalMeteorStormEvent->EventDateEnd - GlobalMeteorStormEvent->EventDate) - 1),
 				FName("MeteorStorm"),
-				EFlareNotification::NT_Info,
-				false);
+				EFlareNotification::NT_Info);
 				MeteorStormInProgress = true;
 			}
 		}
@@ -879,14 +908,17 @@ void UFlareWorld::Simulate()
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Company->GetCompanySpacecrafts().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Company->GetCompanySpacecrafts()[SpacecraftIndex];
-			if (!Spacecraft->IsStation())
+			if (Spacecraft)
 			{
-				Spacecraft->SetTrading(false);
-				Spacecraft->SetIntercepted(false);
+				if (!Spacecraft->IsStation())
+				{
+					Spacecraft->SetTrading(false);
+					Spacecraft->SetIntercepted(false);
+				}
+				Spacecraft->Repair();
+				Spacecraft->Refill();
+				Spacecraft->Stabilize();
 			}
-			Spacecraft->Repair();
-			Spacecraft->Refill();
-			Spacecraft->Stabilize();
 		}
 	}
 
@@ -928,7 +960,7 @@ void UFlareWorld::Simulate()
 			RepairText,
 			FName("fleet-repaired"),
 			EFlareNotification::NT_Military,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Orbit,
 			MenuData);
 	}
@@ -955,30 +987,30 @@ void UFlareWorld::Simulate()
 			RefillText,
 			FName("fleet-refilled"),
 			EFlareNotification::NT_Military,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Orbit,
 			MenuData);
 	}
 
 	// Process captures
-	ProcessShipCapture();
-	ProcessStationCapture();
+	ProcessAllCaptures();
 
 	// Factories
 	FLOG("* Simulate > Factories");
-	for (UFlareFactory* Factory: Factories)
+
+	for (UFlareSimulatedSpacecraft* CurrentShipyard : GetShipyards())
 	{
-		if(Factory->IsShipyard())
-		{
-			Factory->GetParent()->UpdateShipyardProduction();
-		}
+		CurrentShipyard->UpdateShipyardProduction();
+	}	
+	for (UFlareSimulatedSpacecraft* CurrentCarrierShipyard : GetCarrierShipyards())
+	{
+		CurrentCarrierShipyard->UpdateShipyardProduction();
 	}
 
 	for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
 	{
 		Factories[FactoryIndex]->Simulate();
 	}
-
 
 	// Peoples
 	FLOG("* Simulate > Peoples");
@@ -1073,20 +1105,25 @@ void UFlareWorld::Simulate()
 	{
 		// Check if it the last ship
 		bool EmptyFleet = true;
-		for(int ShipIndex = 0; ShipIndex < GetGame()->GetPC()->GetPlayerFleet()->GetShips().Num(); ShipIndex++)
+		if (GetGame()->GetPC()->GetPlayerFleet())
 		{
-			UFlareSimulatedSpacecraft* Ship = GetGame()->GetPC()->GetPlayerFleet()->GetShips()[ShipIndex];
-			if(Ship->GetDamageSystem()->IsAlive() && !Ship->GetDamageSystem()->IsUncontrollable())
+		// Check fleet because it's possible in some circumstances for the player ship to die or even get captured under them.
+			for (int ShipIndex = 0; ShipIndex < GetGame()->GetPC()->GetPlayerFleet()->GetShips().Num(); ShipIndex++)
 			{
-				EmptyFleet = false;
-				break;
+				UFlareSimulatedSpacecraft* Ship = GetGame()->GetPC()->GetPlayerFleet()->GetShips()[ShipIndex];
+				if (!Ship->IsDestroyed() && !Ship->GetDamageSystem()->IsUncontrollable())
+				{
+					EmptyFleet = false;
+					break;
+				}
 			}
 		}
 
 		// If last, activate recovery
 		if (EmptyFleet)
 		{
-			GetGame()->GetPC()->GetMenuManager()->OpenMenu(EFlareMenu::MENU_GameOver);
+			FLOG("* UFlareWorld::Simulate > Recovery should open gameover menu");
+			GetGame()->GetPC()->GetMenuManager()->OpenMenu(EFlareMenu::MENU_GameOver, FFlareMenuParameterData(), false, true, true);
 		}
 	}
 
@@ -1141,8 +1178,9 @@ void UFlareWorld::Simulate()
 	 {
 		 GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_ALL_SHIPS", 1);
 	 }
-	 RunningPrimarySimulate = false;
 
+	 RunningPrimarySimulate = false;
+	 FLOG("* UFlareWorld::Simulate > Finished");
 }
 
 void UFlareWorld::UpdateReserveShips()
@@ -1175,107 +1213,360 @@ void UFlareWorld::UpdateStorageLocks()
 	}
 }
 
-void UFlareWorld::ProcessShipCapture()
+void UFlareWorld::ProcessStolenResearch(UFlareCompany* Capturer, UFlareCompany* Owner, bool StolenFromStation)
 {
+	// TODO research steal techno ?
+	int32 CapturerResearch = Capturer->GetResearchValue();
+	int32 OwnerResearch = Owner->GetResearchValue();
+
+	if (OwnerResearch > CapturerResearch)
+	{
+		int32 GameDifficulty = -1;
+		GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+
+		float StealDevisor = 1.f;
+		if (!StolenFromStation)
+		{
+			StealDevisor = 10.f;
+			if (GetGame()->GetPC()->GetCompany() == Capturer)
+			{
+				switch (GameDifficulty)
+				{
+				case -1: // Easy
+					StealDevisor = 9.f;
+					break;
+				case 0: // Normal
+					break;
+				case 1: // Hard
+					StealDevisor = 11.f;
+					break;
+				case 2: // Very Hard
+					StealDevisor = 12.f;
+					break;
+				case 3: // Expert
+					StealDevisor = 14.f;
+					break;
+				case 4: // Unfair
+					StealDevisor = 16.f;
+					break;
+				}
+			}
+		}
+
+		// There is a chance to gain a research reward
+		int32 ResearchSteal = FMath::Sqrt(float(OwnerResearch - CapturerResearch) / StealDevisor);
+
+		Capturer->GiveResearch(ResearchSteal);
+
+		if (ResearchSteal > 0 && GetGame()->GetPC()->GetCompany() == Capturer)
+		{
+			FFlareMenuParameterData MenuData;
+			MenuData.Company = Owner;
+
+			if (StolenFromStation)
+			{
+				GetGame()->GetPC()->Notify(LOCTEXT("StationResearchStolen", "Research stolen in the station"),
+					FText::Format(LOCTEXT("StationResearchStolenFormat", "You stole {0} research during the station capture."),
+						FText::AsNumber(ResearchSteal)),
+					FName("station-research-stolen"),
+					EFlareNotification::NT_Military,
+					NOTIFY_DEFAULT_TIMER,
+					EFlareMenu::MENU_Sector,
+					MenuData);
+			}
+			else
+			{
+				GetGame()->GetPC()->Notify(LOCTEXT("ShipResearchStolen", "Research stolen in the ship"),
+				FText::Format(LOCTEXT("ShipResearchStolenFormat", "You stole {0} research during the ship capture."),
+				FText::AsNumber(ResearchSteal)),
+				FName("ship-research-stolen"),
+				EFlareNotification::NT_Military,
+				NOTIFY_DEFAULT_TIMER,
+				EFlareMenu::MENU_Sector,
+				MenuData);
+			}
+		}
+	}
+}
+
+void UFlareWorld::ProcessAllCaptures()
+{
+	int32 GameDifficulty = -1;
+	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+
+	TMap<UFlareSimulatedSector*, CapturePointsCompanyHelper> SectorCapturePointsMap;
+
+	TArray<UFlareSimulatedSpacecraft*> StationToCapture;
+	TArray<UFlareCompany*> StationCapturer;
+
 	TArray<UFlareSimulatedSpacecraft*> ShipToCapture;
+	TArray<UFlareCompany*>			   ShipCapturer;
 
 	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
 	{
 		UFlareSimulatedSector* Sector = Sectors[SectorIndex];
 
+		//Ship Captures
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorShips().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorShips()[SpacecraftIndex];
-
-			if(Spacecraft->IsHarpooned()) {
-				// Capture the ship if the following condition is ok :
-				// - The harpoon owner must be at war this the ship owner
-				// - The harpoon owner must in won state : military presence only for him
-
-				UFlareCompany* HarpoonOwner = Spacecraft->GetHarpoonCompany();
-
-
-				FFlareSectorBattleState  HarpoonOwnerBattleState = Sector->GetSectorBattleState(HarpoonOwner);
-				FFlareSectorBattleState  SpacecraftOwnerBattleState = Sector->GetSectorBattleState(Spacecraft->GetCompany());
-
-
-				if(HarpoonOwner
-						&& Spacecraft->IsHostile(HarpoonOwner)
-						&& !HarpoonOwnerBattleState.HasDanger)
-				{
-					// If battle won state, this mean the Harpoon owner has at least one dangerous ship
-					// This also mean that no company at war with this company has a military ship
-
-					ShipToCapture.Add(Spacecraft);
-					// Need to keep the harpoon for capture process
-				}
-				else if(!SpacecraftOwnerBattleState.HasDanger)
-				{
-//					Spacecraft->RemoveCapturePoint(HarpoonOwner->GetIdentifier(), Spacecraft->GetCapturePointThreshold());
-					Spacecraft->SetHarpooned(NULL);
-				}
-			}
-			else
+			FFlareSectorBattleState SpacecraftOwnerBattleState = Sector->GetSectorBattleState(Spacecraft->GetCompany());
+			if (!SpacecraftOwnerBattleState.HasDanger)
 			{
+				// The spacecraft is not being captured
 				Spacecraft->ResetCapture();
+				continue;
+			}
+
+			TMap<FName, int32> SpacecraftCapturePointsMap = Spacecraft->GetCapturePointsMap();
+
+			if (SpacecraftCapturePointsMap.Num() > 0)
+			{
+				TArray<FName> Keys;
+				SpacecraftCapturePointsMap.GetKeys(Keys);
+
+				for (int i = 0; i < Keys.Num(); i++)
+				{
+					FName Identifier = Keys[i];
+					UFlareCompany* Company = FindCompany(Identifier);
+					if (Company)
+					{
+						CapturePointsCompanyHelper& CapturePointsValue = SectorCapturePointsMap.FindOrAdd(Sector);
+
+						if (!Company->WantCapture(Spacecraft))
+						{
+							continue;
+						}
+
+						if (!Spacecraft->IsHostile(Company)
+							|| Sector->GetSectorBattleState(Company).HasDanger)
+						{
+							// Friend don't capture and not winner don't capture
+							continue;
+						}
+
+						// Capture
+						int32 CompanyCapturePoints = 0;
+						if (CapturePointsValue.CompanyCaptureValues.Contains(Company))
+						{
+							CompanyCapturePoints = CapturePointsValue.CompanyCaptureValues[Company];
+						}
+						else
+						{
+							CompanyCapturePoints = Sector->GetCompanyCapturePoints(Company);
+							CapturePointsValue.CompanyCaptureValues.Add(Company, CompanyCapturePoints);
+						}
+/*
+						FLOGV("UFlareWorld::CapturePointProgression %s is capturing in %s. with %d capture points",
+							*Company->GetCompanyName().ToString(),
+							*Sector->GetSectorName().ToString(),
+							CompanyCapturePoints);
+*/
+						bool CapturedSpacecraft = false;
+						if (CompanyCapturePoints > 0)
+						{
+							CapturedSpacecraft = Spacecraft->TryCapture(Company, &CompanyCapturePoints);
+						}
+
+						CapturePointsValue.CompanyCaptureValues[Company] = CompanyCapturePoints;
+						if (CapturedSpacecraft)
+						{
+							ShipToCapture.Add(Spacecraft);
+							ShipCapturer.Add(Company);
+							break;
+						}
+					}
+				}
 			}
 		}
+
+		//Station Captures
+		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorStations().Num(); SpacecraftIndex++)
+		{
+			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorStations()[SpacecraftIndex];
+			FFlareSectorBattleState SpacecraftOwnerBattleState = Sector->GetSectorBattleState(Spacecraft->GetCompany());
+			if (!SpacecraftOwnerBattleState.HasDanger)
+			{
+				// The spacecraft is not being captured
+				Spacecraft->ResetCapture();
+				continue;
+			}
+
+			TMap<FName, int32> SpacecraftCapturePointsMap = Spacecraft->GetCapturePointsMap();
+
+			if (SpacecraftCapturePointsMap.Num() > 0)
+			{
+				TArray<FName> Keys;
+				SpacecraftCapturePointsMap.GetKeys(Keys);
+
+				for (int i = 0; i < Keys.Num(); i++)
+				{
+					FName Identifier = Keys[i];
+					UFlareCompany* Company = FindCompany(Identifier);
+					if (Company)
+					{
+						CapturePointsCompanyHelper& CapturePointsValue = SectorCapturePointsMap.FindOrAdd(Sector);
+
+						if (!Company->WantCapture(Spacecraft))
+						{
+							FLOGV("UFlareWorld::CapturePointProgression !WantCapture %s is capturing in %s",
+								*Company->GetCompanyName().ToString(),
+								*Sector->GetSectorName().ToString());
+							continue;
+						}
+
+						if (!Spacecraft->IsHostile(Company)
+							|| Sector->GetSectorBattleState(Company).HasDanger)
+						{
+							// Friend don't capture and not winner don't capture
+							FLOGV("UFlareWorld::CapturePointProgression !Hostile/Battlestate %s is capturing in %s",
+								*Company->GetCompanyName().ToString(),
+								*Sector->GetSectorName().ToString());
+
+							continue;
+						}
+
+						// Capture
+						int32 CompanyCapturePoints = 0;
+						if (CapturePointsValue.CompanyCaptureValues.Contains(Company))
+						{
+							CompanyCapturePoints = CapturePointsValue.CompanyCaptureValues[Company];
+						}
+						else
+						{
+							CompanyCapturePoints = Sector->GetCompanyCapturePoints(Company);
+							CapturePointsValue.CompanyCaptureValues.Add(Company, CompanyCapturePoints);
+						}
+
+						FLOGV("UFlareWorld::CapturePointProgression %s is capturing in %s. with %d capture points",
+							*Company->GetCompanyName().ToString(),
+							*Sector->GetSectorName().ToString(),
+							CompanyCapturePoints);
+
+						bool CapturedSpacecraft = false;
+						if (CompanyCapturePoints > 0)
+						{
+							CapturedSpacecraft = Spacecraft->TryCapture(Company, &CompanyCapturePoints);
+						}
+
+						CapturePointsValue.CompanyCaptureValues[Company] = CompanyCapturePoints;
+						if (CapturedSpacecraft)
+						{
+							StationToCapture.Add(Spacecraft);
+							StationCapturer.Add(Company);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	FLOGV("Station to capture %d", StationToCapture.Num());
+
+	// Finalize capture for stations
+	for (int32 SpacecraftIndex = 0; SpacecraftIndex < StationToCapture.Num(); SpacecraftIndex++)
+	{
+		UFlareSimulatedSpacecraft* Spacecraft = StationToCapture[SpacecraftIndex];
+		UFlareCompany* Capturer = StationCapturer[SpacecraftIndex];
+		UFlareCompany* Owner = Spacecraft->GetCompany();
+
+		UFlareSimulatedSector* Sector = Spacecraft->GetCurrentSector();
+		FVector SpawnLocation = Spacecraft->GetData().Location;
+		FRotator SpawnRotation = Spacecraft->GetData().Rotation;
+		FFlareSpacecraftSave Data = Spacecraft->GetData();
+		FFlareSpacecraftDescription* ShipDescription = Spacecraft->GetDescription();
+
+		TArray<TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>> ChildStructure;
+
+		if (Spacecraft->IsComplex())
+		{
+			for (UFlareSimulatedSpacecraft* Child : Spacecraft->GetComplexChildren())
+			{
+				ChildStructure.Add(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>(Child->GetDescription(), Child->GetData()));
+			}
+		}
+
+		Owner->GetAI()->FinishedConstruction(Spacecraft);
+		Owner->DestroySpacecraft(Spacecraft);
+		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
+		Capturer->CapturedStation(NewShip, Owner);
+		Spacecraft->SetImmatriculationReplacementTo(NewShip->GetImmatriculation());
+
+		for (TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
+		{
+			UFlareSimulatedSpacecraft* NewChildStation = Sector->CreateSpacecraft(Pair.Key, Capturer, SpawnLocation, SpawnRotation, &Pair.Value, false, false, NewShip->GetImmatriculation());
+			Sector->AttachStationToComplexStation(NewChildStation, NewShip->GetImmatriculation(), Pair.Value.AttachComplexConnectorName);
+		}
+
+		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
+
+		if (GetGame()->GetPC()->GetCompany() == Capturer)
+		{
+			Owner->GivePlayerReputation(-10);
+
+			if (Owner != GetGame()->GetScenarioTools()->Pirates)
+			{
+				GetGame()->GetPC()->GetCompany()->GivePlayerReputationToOthers(-5);
+			}
+
+			FFlareMenuParameterData MenuData;
+			MenuData.Sector = Sector;
+
+			GetGame()->GetPC()->Notify(LOCTEXT("StationCaptured", "Station captured"),
+				FText::Format(LOCTEXT("StationCapturedFormat", "You have captured a {0} in {1}. Its new name is {2}."),
+					NewShip->GetDescription()->Name,
+					FText::FromString(Sector->GetSectorName().ToString()),
+					UFlareGameTools::DisplaySpacecraftName(NewShip)),
+				FName("station-captured"),
+				EFlareNotification::NT_Military,
+				NOTIFY_DEFAULT_TIMER,
+				EFlareMenu::MENU_Sector,
+				MenuData);
+		}
+
+		// Research steal
+		ProcessStolenResearch(Capturer, Owner, true);
 	}
 
 	FLOGV("ShipToCapture %d", ShipToCapture.Num());
+	// Finalize capture for ships
 
-
-	// Capture consist on :
-	// - Kill rotation and velocity
-	// - respawn the ship at near location
-	// - change its owner
-
-	int32 GameDifficulty = -1;
-	GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+	//TODO: Consider not making captured stations/ships delete/recreate and instead literally have them captured and update their immatriculation.
+	// Due to this deletion the SHipMenu which gets assigned a ship won't update to the captured ship (because it's different) if skipping a day. changing above is one solution to address it and improve perf
+	// It could still be useful keeping an old version of the ship for various reasons. another solution would be to save the new immaculation of the replacement ship on the old and use that to iterate through the found immatriculation ships until it finds one alive
 
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < ShipToCapture.Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* Spacecraft = ShipToCapture[SpacecraftIndex];
-
-		UFlareCompany* HarpoonOwner = Spacecraft->GetHarpoonCompany();
+		UFlareCompany* Capturer = ShipCapturer[SpacecraftIndex];
 		UFlareCompany* Owner = Spacecraft->GetCompany();
-		UFlareSimulatedSector* Sector =  Spacecraft->GetCurrentSector();
-		FVector SpawnLocation =  Spacecraft->GetData().Location;
-		FRotator SpawnRotation =  Spacecraft->GetData().Rotation;
+
+		UFlareSimulatedSector* Sector = Spacecraft->GetCurrentSector();
+		FVector SpawnLocation = Spacecraft->GetData().Location;
+		FRotator SpawnRotation = Spacecraft->GetData().Rotation;
 		FFlareSpacecraftSave Data = Spacecraft->GetData();
 		FFlareSpacecraftDescription* ShipDescription = Spacecraft->GetDescription();
 
+		Owner->DestroySpacecraft(Spacecraft);
 
-		float NegotiationRatio = 1.f;
-		if (HarpoonOwner->IsTechnologyUnlocked("negociations"))
-		{
-			NegotiationRatio *= 1.5;
-		}
-		if (Spacecraft->GetCompany()->IsTechnologyUnlocked("negociations"))
-		{
-			NegotiationRatio *= 0.5;
-		}
+		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
+		Capturer->CapturedShip(NewShip, Owner);
+		Spacecraft->SetImmatriculationReplacementTo(NewShip->GetImmatriculation());
 
-		int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(HarpoonOwner) * NegotiationRatio;
-		if (!Spacecraft->TryCapture(HarpoonOwner, CompanyCapturePoint))
-		{
-			continue;
-		}
-
-		Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
-		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, HarpoonOwner, SpawnLocation, SpawnRotation, &Data);
 		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
 
-		if (GetGame()->GetPC()->GetCompany() == HarpoonOwner)
+		if (GetGame()->GetPC()->GetCompany() == Capturer)
 		{
 			int32 ReputationDrop = -20;
 			int32 NonPirateDrop = -5;
 
 			switch (GameDifficulty)
-				{
+			{
 				case -1: // Easy
 					ReputationDrop = -15;
-					NonPirateDrop = - 4;
+					NonPirateDrop = -4;
 					break;
 				case 0: // Normal
 					break;
@@ -1295,250 +1586,38 @@ void UFlareWorld::ProcessShipCapture()
 					ReputationDrop = -40;
 					NonPirateDrop = -10;
 					break;
-				}
-
-				Owner->GivePlayerReputation(ReputationDrop);
-				if (Owner != GetGame()->GetScenarioTools()->Pirates)
-				{
-					HarpoonOwner->GivePlayerReputationToOthers(NonPirateDrop);
-				}
-
-				FFlareMenuParameterData MenuData;
-				MenuData.Sector = Sector;
-
-				GetGame()->GetPC()->Notify(LOCTEXT("ShipCaptured", "Ship captured"),
-					FText::Format(LOCTEXT("ShipCapturedFormat", "You have captured a {0}-class ship in {1}. Its new name is {2}."),
-						NewShip->GetDescription()->Name,
-						FText::FromString(Sector->GetSectorName().ToString()),
-						UFlareGameTools::DisplaySpacecraftName(NewShip)),
-					FName("ship-captured"),
-					EFlareNotification::NT_Military,
-					false,
-					EFlareMenu::MENU_Sector,
-					MenuData);
-
-				GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_CAPTURE", 1);
 			}
 
-		// Research steal
-		{
-
-			// TODO research steal techno ?
-			int32 CapturerResearch = HarpoonOwner->GetResearchValue();
-			int32 OwnerResearch = Owner->GetResearchValue();
-
-			if(OwnerResearch > CapturerResearch)
-			{
-				// There is a Fchance to hava research reward
-
-				float StealDevisor = 10.f;
-				if (GetGame()->GetPC()->GetCompany() == HarpoonOwner)
-				{
-					switch (GameDifficulty)
-					{
-					case -1: // Easy
-						StealDevisor = 9.f;
-						break;
-					case 0: // Normal
-						break;
-					case 1: // Hard
-						StealDevisor = 11.f;
-						break;
-					case 2: // Very Hard
-						StealDevisor = 12.f;
-						break;
-					case 3: // Expert
-						StealDevisor = 14.f;
-						break;
-					case 4: // Unfair
-						StealDevisor = 16.f;
-						break;
-					}
-				}
-
-				int32 ResearchSteal = FMath::Sqrt(float(OwnerResearch - CapturerResearch) / StealDevisor);
-				HarpoonOwner->GiveResearch(ResearchSteal);
-
-				if (ResearchSteal > 0 && GetGame()->GetPC()->GetCompany() == HarpoonOwner)
-				{
-					FFlareMenuParameterData MenuData;
-					MenuData.Company = Owner;
-
-					GetGame()->GetPC()->Notify(LOCTEXT("ShipResearchStolen", "Research stolen in the ship"),
-						FText::Format(LOCTEXT("ShipResearchStolenFormat", "You stole {0} research during the ship capture."),
-									FText::AsNumber(ResearchSteal)),
-						FName("ship-research-stolen"),
-						EFlareNotification::NT_Military,
-						false,
-						EFlareMenu::MENU_Sector,
-						MenuData);
-				}
-			}
-		}
-	}
-}
-
-void UFlareWorld::ProcessStationCapture()
-{
-	TArray<UFlareSimulatedSpacecraft*> StationToCapture;
-	TArray<UFlareCompany*> StationCapturer;
-
-	for (int SectorIndex = 0; SectorIndex < Sectors.Num(); SectorIndex++)
-	{
-		UFlareSimulatedSector* Sector = Sectors[SectorIndex];
-
-		for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorStations().Num(); SpacecraftIndex++)
-		{
-			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorStations()[SpacecraftIndex];
-			FFlareSectorBattleState StationOwnerBattleState = Sector->GetSectorBattleState(Spacecraft->GetCompany());
-
-			if (!StationOwnerBattleState.HasDanger)
-			{
-				// The station is not being captured
-				Spacecraft->ResetCapture();
-				continue;
-			}
-
-			// Find capturing companies
-			for (int CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
-			{
-				UFlareCompany* Company = Companies[CompanyIndex];
-
-				if (!Company->WantCapture(Spacecraft))
-				{
-					continue;
-				}
-
-				if (!Spacecraft->IsHostile(Company)
-					|| Sector->GetSectorBattleState(Company).HasDanger)
-				{
-					// Friend don't capture and not winner don't capture
-					continue;
-				}
-
-				// Capture
-				float NegotiationRatio = 1.f;
-				if(Company->IsTechnologyUnlocked("negociations"))
-				{
-					NegotiationRatio *= 1.5;
-				}
-				if(Spacecraft->GetCompany()->IsTechnologyUnlocked("negociations"))
-				{
-					NegotiationRatio *= 0.5;
-				}
-
-				int32 CompanyCapturePoint = Sector->GetCompanyCapturePoints(Company) * NegotiationRatio;
-/*
-				FLOGV("%s is capturing in %s. with %d capture points", 
-				*Company->GetCompanyName().ToString(),
-				*Sector->GetSectorName().ToString(),
-				CompanyCapturePoint);
-*/
-				if(Spacecraft->TryCapture(Company, CompanyCapturePoint))
-				{
-					StationToCapture.Add(Spacecraft);
-					StationCapturer.Add(Company);
-					break;
-				}
-			}
-		}
-	}
-
-	FLOGV("Station to capture %d", StationToCapture.Num());
-
-	// Capture consist on :
-	// - Kill rotation and velocity
-	// - respawn the ship at near location
-	// - change its owner
-	for (int32 SpacecraftIndex = 0; SpacecraftIndex < StationToCapture.Num(); SpacecraftIndex++)
-	{
-		UFlareSimulatedSpacecraft* Spacecraft = StationToCapture[SpacecraftIndex];
-		UFlareCompany* Capturer = StationCapturer[SpacecraftIndex];
-		UFlareCompany* Owner = Spacecraft->GetCompany();
-
-		UFlareSimulatedSector* Sector =  Spacecraft->GetCurrentSector();
-		FVector SpawnLocation =  Spacecraft->GetData().Location;
-		FRotator SpawnRotation =  Spacecraft->GetData().Rotation;
-		FFlareSpacecraftSave Data = Spacecraft->GetData();
-		FFlareSpacecraftDescription* ShipDescription = Spacecraft->GetDescription();
-
-		TArray<TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>> ChildStructure;
-
-		if(Spacecraft->IsComplex())
-		{
-			for(UFlareSimulatedSpacecraft* Child: Spacecraft->GetComplexChildren())
-			{
-				ChildStructure.Add(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>(Child->GetDescription(), Child->GetData()));
-			}
-		}
-
-		Owner->GetAI()->FinishedConstruction(Spacecraft);
-		Owner->DestroySpacecraft(Spacecraft);
-		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
-		Capturer->CapturedStation(NewShip, Owner);
-
-		for(TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
-		{
-			UFlareSimulatedSpacecraft* NewChildStation = Sector->CreateSpacecraft(Pair.Key, Capturer, SpawnLocation, SpawnRotation, &Pair.Value, false, false, NewShip->GetImmatriculation());
-			Sector->AttachStationToComplexStation(NewChildStation, NewShip->GetImmatriculation(), Pair.Value.AttachComplexConnectorName);
-		}
-
-		GetGame()->GetQuestManager()->OnSpacecraftCaptured(Spacecraft, NewShip);
-		
-		if (GetGame()->GetPC()->GetCompany() == Capturer)
-		{
-			Owner->GivePlayerReputation(-10);
-
+			Owner->GivePlayerReputation(ReputationDrop);
 			if (Owner != GetGame()->GetScenarioTools()->Pirates)
 			{
-				GetGame()->GetPC()->GetCompany()->GivePlayerReputationToOthers(-5);
+				Capturer->GivePlayerReputationToOthers(NonPirateDrop);
 			}
 
 			FFlareMenuParameterData MenuData;
 			MenuData.Sector = Sector;
 
-			GetGame()->GetPC()->Notify(LOCTEXT("StationCaptured", "Station captured"),
-				FText::Format(LOCTEXT("StationCapturedFormat", "You have captured a {0} in {1}. Its new name is {2}."),
-							NewShip->GetDescription()->Name,
-							FText::FromString(Sector->GetSectorName().ToString()),
-							UFlareGameTools::DisplaySpacecraftName(NewShip)),
-				FName("station-captured"),
+			GetGame()->GetPC()->Notify(LOCTEXT("ShipCaptured", "Ship captured"),
+				FText::Format(LOCTEXT("ShipCapturedFormat", "You have captured a {0}-class ship in {1}. Its new name is {2}."),
+				NewShip->GetDescription()->Name,
+				FText::FromString(Sector->GetSectorName().ToString()),
+				UFlareGameTools::DisplaySpacecraftName(NewShip)),
+				FName("ship-captured"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Sector,
 				MenuData);
+
+			GetGame()->GetPC()->SetAchievementProgression("ACHIEVEMENT_CAPTURE", 1);
 		}
 
 		// Research steal
+		ProcessStolenResearch(Capturer, Owner, false);
+
+		if(NewShip->GetDescription()->IsDroneShip)
 		{
-
-			// TODO research steal techno ?
-			int32 CapturerResearch = Capturer->GetResearchValue();
-			int32 OwnerResearch = Owner->GetResearchValue();
-
-			if(OwnerResearch > CapturerResearch)
-			{
-				// There is a chance to hava research reward
-
-				int32 ResearchSteal = FMath::Sqrt(float(OwnerResearch - CapturerResearch));
-
-				Capturer->GiveResearch(ResearchSteal);
-
-				if (ResearchSteal > 0 && GetGame()->GetPC()->GetCompany() == Capturer)
-				{
-					FFlareMenuParameterData MenuData;
-					MenuData.Company = Owner;
-
-					GetGame()->GetPC()->Notify(LOCTEXT("StationResearchStolen", "Research stolen in the station"),
-						FText::Format(LOCTEXT("StationResearchStolenFormat", "You stole {0} research during the station capture."),
-									FText::AsNumber(ResearchSteal)),
-						FName("station-research-stolen"),
-						EFlareNotification::NT_Military,
-						false,
-						EFlareMenu::MENU_Sector,
-						MenuData);
-				}
-			}
+//The captured ship is a drone and must belong to a master/carrier
+			NewShip->TryMigrateDrones();
 		}
 	}
 }
@@ -1658,7 +1737,6 @@ TMap<IncomingKey, IncomingValue> UFlareWorld::GetIncomingPlayerEnemy()
 
 		IncomingValue& Value = IncomingMap.FindOrAdd(key);
 
-
 		if (RemainingDuration == 1 || Travel->PickNeedNotification())
 		{
 			Value.NeedNotification = true;
@@ -1766,7 +1844,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 							Entry.Value.CombatValue),
 						FName("travel-raid-soon"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Orbit,
 						Data);
 				}
@@ -1782,7 +1860,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 							GetUnknownShipText(UnknownShipCount)),
 						FName("travel-raid-soon"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Orbit,
 						Data);
 				}
@@ -1816,7 +1894,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					CombatValue),
 				FName("travel-raid-soon"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Orbit,
 				Data);
 		}
@@ -1839,7 +1917,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					GetUnknownShipText(UnknownShipCount)),
 				FName("travel-raid-soon"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Orbit,
 				Data);
 		}
@@ -1868,7 +1946,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 							Entry.Value.CombatValue),
 						FName("travel-raid-distant"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Orbit,
 						Data);
 				}
@@ -1884,7 +1962,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 							GetUnknownShipText(UnknownShipCount)),
 						FName("travel-raid-distant"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Orbit,
 						Data);
 				}
@@ -1918,7 +1996,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					CombatValue),
 				FName("travel-raid-distant"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Orbit,
 				Data);
 		}
@@ -1941,7 +2019,7 @@ void UFlareWorld::ProcessIncomingPlayerEnemy()
 					GetUnknownShipText(UnknownShipCount)),
 				FName("travel-raid-distant"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Orbit,
 				Data);
 		}
@@ -1992,17 +2070,36 @@ TArray<FFlareWorldEvent> UFlareWorld::GenerateEvents(UFlareCompany* PointOfView)
 	return NextEvents;
 }
 
-void UFlareWorld::ClearFactories(UFlareSimulatedSpacecraft *ParentSpacecraft)
+void UFlareWorld::ClearFactories(UFlareSimulatedSpacecraft* ParentSpacecraft)
 {
-	for (int FactoryIndex = Factories.Num() -1 ; FactoryIndex >= 0; FactoryIndex--)
+	for (int FactoryIndex = ParentSpacecraft->GetAllFactories().Num() - 1; FactoryIndex >= 0; FactoryIndex--)
 	{
-		UFlareFactory* Factory = Factories[FactoryIndex];
-		if (Factory->GetParent() == ParentSpacecraft)
+		UFlareFactory* Factory = ParentSpacecraft->GetAllFactories()[FactoryIndex];
+		ClearSpecificFactory(Factory);
+	}
+
+	if (ParentSpacecraft->GetStationConstructionFactory())
+	{
+		ClearSpecificFactory(ParentSpacecraft->GetStationConstructionFactory());
+	}
+}
+
+void UFlareWorld::ClearSpecificFactory(UFlareFactory* SpecificFactory)
+{
+	Factories.RemoveSwap(SpecificFactory);
+
+	UFlareSimulatedSpacecraft* ParentSpacecraft = SpecificFactory->GetParent();
+	if (ParentSpacecraft)
+	{
+		if (ParentSpacecraft->IsShipyard())
 		{
-			Factories.RemoveAt(FactoryIndex);
-			if (ParentSpacecraft->IsShipyard())
+			if (!SpecificFactory->GetParent()->GetDescription()->IsDroneCarrier)
 			{
 				Shipyards.Remove(ParentSpacecraft);
+			}
+			else
+			{
+				CarrierShipyards.RemoveSwap(ParentSpacecraft);
 			}
 		}
 	}
@@ -2012,12 +2109,19 @@ void UFlareWorld::AddFactory(UFlareFactory* Factory)
 {
 	Factories.Add(Factory);
 
-	if (Factory->GetParent()->IsShipyard() && !Factory->GetParent()->GetDescription()->IsDroneCarrier)
+	if (Factory->GetParent()->IsShipyardAllFactories())
 	{
-		Shipyards.AddUnique(Factory->GetParent());
-		FLOGV("UFlareWorld::AddFactory : AddShipyard %s as factory for %s",
-		*Factory->GetDescription()->Name.ToString(),
-		*Factory->GetParent()->GetImmatriculation().ToString());
+		if (!Factory->GetParent()->GetDescription()->IsDroneCarrier)
+		{
+			Shipyards.AddUnique(Factory->GetParent());
+			FLOGV("UFlareWorld::AddFactory : AddShipyard %s as factory for %s",
+			*Factory->GetDescription()->Name.ToString(),
+			*Factory->GetParent()->GetImmatriculation().ToString());
+		}
+		else
+		{
+			CarrierShipyards.AddUnique(Factory->GetParent());
+		}
 	}
 }
 
@@ -2064,7 +2168,7 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 									  FText::FromString(OriginSector->GetSectorName().ToString())),
 						FName("ships-intersepted"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Sector,
 						Data);
 				}
@@ -2538,6 +2642,86 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 	}
 
 	// List ship productions
+
+	for (int32 ShipyardIndex = 0; ShipyardIndex < Shipyards.Num(); ShipyardIndex++)
+	{
+		UFlareSimulatedSpacecraft* CompanyStation = Shipyards[ShipyardIndex];
+		for (int32 FactoryIndex = 0; FactoryIndex < CompanyStation->GetFactories().Num(); FactoryIndex++)
+		{
+			// Get shipyard if existing
+			UFlareFactory* TargetFactory = CompanyStation->GetFactories()[FactoryIndex];
+			FText SectorName = CompanyStation->GetCurrentSector()->GetSectorName();
+			FName CompanyIdentifier = PlayerCompany->GetIdentifier();
+			if (!TargetFactory->IsShipyard())
+			{
+				continue;
+			}
+
+			// Ship being built
+			else if (TargetFactory->GetTargetShipCompany() == CompanyIdentifier)
+			{
+				int64 ProductionTime = TargetFactory->GetRemainingProductionDuration();
+
+				FText ProductionText;
+
+				if (TargetFactory->IsActive() && TargetFactory->IsNeedProduction() && !TargetFactory->HasCostReserved() && !TargetFactory->HasInputResources())
+				{
+					FString MissingResources = TargetFactory->GetInputResourcesRequiredString();
+					ProductionText = FText::Format(LOCTEXT("ShipProductionNoResourcesProdTextFormat", "\u2022 {0} being built at {1} (missing {2})"),
+						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
+						SectorName,
+						FText::FromString(MissingResources));
+				}
+				else
+				{
+					ProductionText = FText::Format(LOCTEXT("ShipProductionTextFormat", "\u2022 {0} being built at {1} ({2} left)"),
+						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
+						SectorName,
+						UFlareGameTools::FormatDate(ProductionTime, 2));
+				}
+
+				FFlareIncomingEvent ProductionEvent;
+				ProductionEvent.Text = ProductionText;
+				ProductionEvent.RemainingDuration = ProductionTime;
+				IncomingEvents.Add(ProductionEvent);
+			}
+		}
+
+		TArray<FFlareShipyardOrderSave>& Orders = CompanyStation->GetShipyardOrderQueue();
+
+		for (int32 i = 0; i < Orders.Num(); i++)
+		{
+			FFlareShipyardOrderSave& Order = Orders[i];
+
+			if (Order.Company == PlayerCompany->GetIdentifier())
+			{
+				FFlareSpacecraftDescription* OrderDesc = Game->GetSpacecraftCatalog()->Get(Order.ShipClass);
+				FText SectorName = CompanyStation->GetCurrentSector()->GetSectorName();
+				int32 ProductionTime = CompanyStation->GetShipProductionTime(Order.ShipClass) + CompanyStation->GetEstimatedQueueAndProductionDuration(Order.ShipClass, i);
+				FText ProductionText;
+
+				if (CompanyStation->IsShipyardMissingResources())
+				{
+					ProductionText = FText::Format(LOCTEXT("ShipNoResourcesProdTextFormat", "\u2022 {0} ordered at {1} (missing resources)"),
+						OrderDesc->Name,
+						SectorName);
+				}
+				else
+				{
+					ProductionText = FText::Format(LOCTEXT("ShipWaitingProdTextFormat", "\u2022 {0} ordered at {1} ({2} left)"),
+						OrderDesc->Name,
+						SectorName,
+						UFlareGameTools::FormatDate(ProductionTime, 2));
+				}
+
+				FFlareIncomingEvent ProductionEvent;
+				ProductionEvent.Text = ProductionText;
+				ProductionEvent.RemainingDuration = ProductionTime;
+				IncomingEvents.Add(ProductionEvent);
+			}
+		}
+	}
+
 	for (int32 CompanyIndex = 0; CompanyIndex < Companies.Num(); CompanyIndex++)
 	{
 		TArray<UFlareSimulatedSpacecraft*>& CompanyStations = Companies[CompanyIndex]->GetCompanyStations();
@@ -2546,81 +2730,6 @@ TArray<FFlareIncomingEvent> UFlareWorld::GetIncomingEvents()
 			if(!CompanyStation->IsShipyard())
 			{
 				continue;
-			}
-
-			for (int32 FactoryIndex = 0; FactoryIndex < CompanyStation->GetFactories().Num(); FactoryIndex++)
-			{
-				// Get shipyard if existing
-				UFlareFactory* TargetFactory = CompanyStation->GetFactories()[FactoryIndex];
-				FText SectorName = CompanyStation->GetCurrentSector()->GetSectorName();
-				FName CompanyIdentifier = PlayerCompany->GetIdentifier();
-				if (!TargetFactory->IsShipyard())
-				{
-					continue;
-				}
-
-				// Ship being built
-				else if (TargetFactory->GetTargetShipCompany() == CompanyIdentifier)
-				{
-					int64 ProductionTime = TargetFactory->GetRemainingProductionDuration();
-
-					FText ProductionText;
-
-					if (TargetFactory->IsActive() && TargetFactory->IsNeedProduction() && !TargetFactory->HasCostReserved() && !TargetFactory->HasInputResources())
-					{
-						FString MissingResources = TargetFactory->GetInputResourcesRequiredString();
-						ProductionText = FText::Format(LOCTEXT("ShipProductionNoResourcesProdTextFormat", "\u2022 {0} being built at {1} (missing {2})"),
-						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
-						SectorName,
-						FText::FromString(MissingResources));
-					}
-					else
-					{
-						ProductionText = FText::Format(LOCTEXT("ShipProductionTextFormat", "\u2022 {0} being built at {1} ({2} left)"),
-						Game->GetSpacecraftCatalog()->Get(TargetFactory->GetTargetShipClass())->Name,
-						SectorName,
-						UFlareGameTools::FormatDate(ProductionTime, 2));
-					}
-
-					FFlareIncomingEvent ProductionEvent;
-					ProductionEvent.Text = ProductionText;
-					ProductionEvent.RemainingDuration = ProductionTime;
-					IncomingEvents.Add(ProductionEvent);
-				}
-			}
-
-			TArray<FFlareShipyardOrderSave>& Orders = CompanyStation->GetShipyardOrderQueue();
-
-			for(int32 i = 0; i < Orders.Num(); i++)
-			{
-				FFlareShipyardOrderSave& Order = Orders[i];
-
-				if(Order.Company == PlayerCompany->GetIdentifier())
-				{
-					FFlareSpacecraftDescription* OrderDesc = Game->GetSpacecraftCatalog()->Get(Order.ShipClass);
-					FText SectorName = CompanyStation->GetCurrentSector()->GetSectorName();
-					int32 ProductionTime = CompanyStation->GetShipProductionTime(Order.ShipClass) + CompanyStation->GetEstimatedQueueAndProductionDuration(Order.ShipClass, i);
-					FText ProductionText;
-
-					if (CompanyStation->IsShipyardMissingResources())
-					{
-						ProductionText = FText::Format(LOCTEXT("ShipNoResourcesProdTextFormat", "\u2022 {0} ordered at {1} (missing resources)"),
-						OrderDesc->Name,
-						SectorName);
-					}
-					else
-					{
-						ProductionText = FText::Format(LOCTEXT("ShipWaitingProdTextFormat", "\u2022 {0} ordered at {1} ({2} left)"),
-						OrderDesc->Name,
-						SectorName,
-						UFlareGameTools::FormatDate(ProductionTime, 2));
-					}
-
-					FFlareIncomingEvent ProductionEvent;
-					ProductionEvent.Text = ProductionText;
-					ProductionEvent.RemainingDuration = ProductionTime;
-					IncomingEvents.Add(ProductionEvent);
-				}
 			}
 		}
 	}

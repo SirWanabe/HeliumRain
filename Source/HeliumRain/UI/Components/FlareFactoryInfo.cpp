@@ -255,9 +255,23 @@ FText SFlareFactoryInfo::GetFactoryName() const
 
 	if (TargetFactory)
 	{
-		Result = FText::Format(LOCTEXT("FactoryNameFormat", "{0} - {1}"),
+		if (TargetFactory->ShouldShowFactoryEfficiencyPercentage())
+		{
+			FNumberFormattingOptions NumeralDisplayOptions;
+			NumeralDisplayOptions.MaximumFractionalDigits = 0;
+
+			Result = FText::Format(LOCTEXT("FactoryNameFormat", "({0}%) {1} - {2}"),
+				FText::AsNumber(TargetFactory->GetFactoryEfficiency() * 100, &NumeralDisplayOptions),
+				FText::FromString(TargetFactory->GetDescription()->Name.ToString()),
+				TargetFactory->GetFactoryStatus());
+		}
+		else
+		{
+			Result = FText::Format(LOCTEXT("FactoryNameFormat", "{0} - {1}"),
 			FText::FromString(TargetFactory->GetDescription()->Name.ToString()),
 			TargetFactory->GetFactoryStatus());
+
+		}
 	}
 
 	return Result;

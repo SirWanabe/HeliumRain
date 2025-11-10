@@ -203,6 +203,11 @@ void UFlareScenarioTools::GenerateCustomScenario(int32 ScenarioIndex, bool Rando
 	{
 		UnprotectedPlayerCompanyDescription->StartingMoney += CurrentScenario->StartingMoney;
 
+		if (CurrentScenario->StartingTechnologyLevel)
+		{
+			UnprotectedPlayerCompanyDescription->StartingTechnologyLevel = CurrentScenario->StartingTechnologyLevel;
+		}
+
 		if (CurrentScenario->StartingResearchPoints >= 0)
 		{
 			UnprotectedPlayerCompanyDescription->StartingResearchPoints += CurrentScenario->StartingResearchPoints;
@@ -273,6 +278,7 @@ void UFlareScenarioTools::GenerateDebugScenario(bool RandomizeStationLocations, 
 void UFlareScenarioTools::GeneratePlayerStartingResearch()
 {
 	int32 AutoPilotCost = PlayerCompany->GetTechnologyCostFromID("auto-docking");
+
 	if (AutoPilotCost)
 	{
 		PlayerCompany->GiveResearch(AutoPilotCost);
@@ -405,11 +411,18 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	{
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
 		int64 StartingMoney = Company->GetDescription()->StartingMoney;
+		int32 StartingTechnologyLevel = Company->GetDescription()->StartingTechnologyLevel;
 		int32 StartingResearchPoints = Company->GetDescription()->StartingResearchPoints;
 
 		TArray<FName> StartingSectorKnowledge = Company->GetDescription()->StartingSectorKnowledge;
 		TArray<FName> StartingTechnology = Company->GetDescription()->StartingTechnology;
 		TArray<FFlareCompanyStartingShips> StartingShips = Company->GetDescription()->StartingShips;
+
+		if (StartingTechnologyLevel)
+		{
+			int32 LevelDifference = StartingTechnologyLevel - Company->GetTechnologyLevel();
+			Company->UpgradeTechnologyLevel(LevelDifference, true);
+		}
 
 		if (StartingMoney)
 		{
@@ -461,7 +474,12 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 			for (int KnowIndex = 0; KnowIndex < StartingTechnology.Num(); KnowIndex++)
 			{
 				FName CurrentTech = StartingTechnology[KnowIndex];
-				Company->UnlockTechnology(CurrentTech, false, true, true);
+				Company->UnlockTechnology(CurrentTech, false, true, true, false);
+
+				
+
+
+
 			}
 		}
 
@@ -475,7 +493,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 				{
 					if (CurrentShips.IsStation == true)
 					{
-						CreateStations(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity, CurrentShips.Level + StationLevelBonus, SpawnParameters, RandomizeStationLocations,CurrentShips.StartVarianceMinInputs,CurrentShips.StartVarianceMaxInputs,CurrentShips.StartVarianceMinOutputs,CurrentShips.StartVarianceMaxOutputs);
+						CreateStations(CurrentShips.ShipIdentifier, Company, RealSector, CurrentShips.Quantity, CurrentShips.Level + StationLevelBonus, SpawnParameters, RandomizeStationLocations,CurrentShips.StartVarianceMinInputs,CurrentShips.StartVarianceMaxInputs,CurrentShips.StartVarianceMinOutputs,CurrentShips.StartVarianceMaxOutputs, CurrentShips.StationTryAttachComplex);
 					}
 					else
 					{
@@ -527,48 +545,48 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	//for testing
 	*/
 	// Give technology
-	IonLane->UnlockTechnology("stations", false, true);
-	IonLane->UnlockTechnology("chemicals", false, true);
+	IonLane->UnlockTechnology("stations", false, true, true, false);
+	IonLane->UnlockTechnology("chemicals", false, true, true, false);
 
-	MiningSyndicate->UnlockTechnology("stations", false, true);
-	MiningSyndicate->UnlockTechnology("mining", false, true);
+	MiningSyndicate->UnlockTechnology("stations", false, true, true, false);
+	MiningSyndicate->UnlockTechnology("mining", false, true, true, false);
 
-	UnitedFarmsChemicals->UnlockTechnology("stations", false, true);
-	UnitedFarmsChemicals->UnlockTechnology("orbital-pumps", false, true);
-	UnitedFarmsChemicals->UnlockTechnology("chemicals", false, true);
+	UnitedFarmsChemicals->UnlockTechnology("stations", false, true, true, false);
+	UnitedFarmsChemicals->UnlockTechnology("orbital-pumps", false, true, true, false);
+	UnitedFarmsChemicals->UnlockTechnology("chemicals", false, true, true, false);
 	
-	Sunwatch->UnlockTechnology("instruments", false, true);
-	Sunwatch->UnlockTechnology("stations", false, true);
-	Sunwatch->UnlockTechnology("metallurgy", false, true);
+	Sunwatch->UnlockTechnology("instruments", false, true, true, false);
+	Sunwatch->UnlockTechnology("stations", false, true, true, false);
+	Sunwatch->UnlockTechnology("metallurgy", false, true, true, false);
 
-	NemaHeavyWorks->UnlockTechnology("stations", false, true);
-	NemaHeavyWorks->UnlockTechnology("metallurgy", false, true);
-	NemaHeavyWorks->UnlockTechnology("orbital-pumps", false, true);
+	NemaHeavyWorks->UnlockTechnology("stations", false, true, true, false);
+	NemaHeavyWorks->UnlockTechnology("metallurgy", false, true, true, false);
+	NemaHeavyWorks->UnlockTechnology("orbital-pumps", false, true, true, false);
 
-	AxisSupplies->UnlockTechnology("stations", false, true);
-	AxisSupplies->UnlockTechnology("metallurgy", false, true);
+	AxisSupplies->UnlockTechnology("stations", false, true, true, false);
+	AxisSupplies->UnlockTechnology("metallurgy", false, true, true, false);
 
-	HelixFoundries->UnlockTechnology("stations", false, true);
-	HelixFoundries->UnlockTechnology("metallurgy", false, true);
+	HelixFoundries->UnlockTechnology("stations", false, true, true, false);
+	HelixFoundries->UnlockTechnology("metallurgy", false, true, true, false);
 	
-	GhostWorksShipyards->UnlockTechnology("stations", false, true);
-	GhostWorksShipyards->UnlockTechnology("mining", false, true);
-	GhostWorksShipyards->UnlockTechnology("chemicals", false, true);
-	GhostWorksShipyards->UnlockTechnology("metallurgy", false, true);
-	GhostWorksShipyards->UnlockTechnology("shipyard-station", false, true);
+	GhostWorksShipyards->UnlockTechnology("stations", false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology("mining", false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology("chemicals", false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology("metallurgy", false, true, true, false);
+	GhostWorksShipyards->UnlockTechnology("shipyard-station", false, true, true, false);
 	
-	Pirates->UnlockTechnology("pirate-tech", false, true);
-	Pirates->UnlockTechnology("quick-repair", false, true);
+	Pirates->UnlockTechnology("pirate-tech", false, true, true, false);
+	Pirates->UnlockTechnology("quick-repair", false, true, true, false);
 
-	BrokenMoon->UnlockTechnology("quick-repair", false, true);
-	BrokenMoon->UnlockTechnology("stations", false, true);
+	BrokenMoon->UnlockTechnology("quick-repair", false, true, true, false);
+	BrokenMoon->UnlockTechnology("stations", false, true, true, false);
 
-	InfiniteOrbit->UnlockTechnology("fast-travel", false, true);
-	InfiniteOrbit->UnlockTechnology("stations", false, true);
+	InfiniteOrbit->UnlockTechnology("fast-travel", false, true, true, false);
+	InfiniteOrbit->UnlockTechnology("stations", false, true, true, false);
 
-	Quantalium->UnlockTechnology("stations", false, true);
-	Quantalium->UnlockTechnology("mining", false, true);
-	Quantalium->UnlockTechnology("metallurgy", false, true);
+	Quantalium->UnlockTechnology("stations", false, true, true, false);
+	Quantalium->UnlockTechnology("mining", false, true, true, false);
+	Quantalium->UnlockTechnology("metallurgy", false, true, true, false);
 
 	// Population setup
 	if (BlueHeart)
@@ -822,7 +840,7 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 	{
 		UFlareCompany* Company = Game->GetGameWorld()->GetCompanies()[CompanyIndex];
 		Company->GiveAllStationSectorLicenses();
-		Company->GetAI()->GetData()->CalculatedDefaultBudget = true;
+		Company->GetAI()->GetData()->DateCalculatedDefaultBudget = 0;
 	}
 }
 
@@ -1036,7 +1054,7 @@ TArray<UFlareSimulatedSector*> UFlareScenarioTools::GetRandomAllowedSectors(FNam
 	return AllowedSectors;
 }
 
-void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level, FFlareStationSpawnParameters SpawnParameters, bool RandomLocation, float VarianceMinInputs, float VarianceMaxInputs, float VarianceMinOutputs, float VarianceMaxOutputs)
+void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Company, UFlareSimulatedSector* Sector, uint32 Count, int32 Level, FFlareStationSpawnParameters SpawnParameters, bool RandomLocation, float VarianceMinInputs, float VarianceMaxInputs, float VarianceMinOutputs, float VarianceMaxOutputs, bool TryToAttachComplex)
 {
 	if (Sector && Company)
 	{
@@ -1072,42 +1090,59 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				}
 			}
 
+			UFlareSimulatedSpacecraft* ComplexCandidate = NULL;
+			FName SelectedComplexConnector = NAME_None;
+			bool ComplexCandidateHasSpecialSlot = false;
+
+			if (TryToAttachComplex)
+			{
+				ComplexCandidate = Sector->FindViableComplex(Company, Desc, ComplexCandidate, &SelectedComplexConnector, &ComplexCandidateHasSpecialSlot);
+				FLOGV("UFlareScenarioTools::CreateStations: Attempting to find station Complex for '%s' in %s. Found %s", *Desc->Identifier.ToString(),*Sector->GetSectorName().ToString(), *SelectedComplexConnector.ToString());
+				if (ComplexCandidate)
+				{
+					FLOGV("UFlareScenarioTools::CreateStations: Complex Candidate %s", *ComplexCandidate->GetDescription()->Identifier.ToString());
+				}
+			}
+
+			SpawnParameters.AttachComplexStationName = ComplexCandidate ? ComplexCandidate->GetImmatriculation() : NAME_None;
+			SpawnParameters.AttachComplexConnectorName = SelectedComplexConnector;
+
 			UFlareSimulatedSpacecraft* Station = Sector->CreateStation(StationClass, Company, false, SpawnParameters, Level);
 			if (!Station)
 			{
 				continue;
 			}
 
+			TArray<FName> UniqueInputResources;
+			TArray<FName> UniqueOutputResources;
+
 			if (Station->GetFactories().Num() > 0)
 			{
-				TArray<FName> InputIDS;
-				TArray<FName> OutputIDS;
 				for (UFlareFactory* ActiveFactory : Station->GetFactories())
 				{
+					if (!ActiveFactory->OwnerCompanyHasRequiredTechnologies())
+					{
+						continue;
+					}
+
 					// Give input resources
 					for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.InputResources.Num(); ResourceIndex++)
 					{
 						const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.InputResources[ResourceIndex];
-						if (InputIDS.Find(Resource->Resource->Data.Identifier) != INDEX_NONE)
+						if (Resource)
 						{
-							continue;
+							UniqueInputResources.AddUnique(Resource->Resource->Data.Identifier);
 						}
-						float StartRatio = FMath::FRandRange(VarianceMinInputs, VarianceMaxInputs);
-						Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
-						InputIDS.Add(Resource->Resource->Data.Identifier);
 					}
 
 					// Give output resources
 					for (int32 ResourceIndex = 0; ResourceIndex < ActiveFactory->GetDescription()->CycleCost.OutputResources.Num(); ResourceIndex++)
 					{
 						const FFlareFactoryResource* Resource = &ActiveFactory->GetDescription()->CycleCost.OutputResources[ResourceIndex];
-						if (OutputIDS.Find(Resource->Resource->Data.Identifier) != INDEX_NONE)
+						if (Resource)
 						{
-							continue;
+							UniqueOutputResources.AddUnique(Resource->Resource->Data.Identifier);
 						}
-						float StartRatio = FMath::FRandRange(VarianceMinOutputs, VarianceMaxOutputs);
-						Station->GetActiveCargoBay()->GiveResources(&Resource->Resource->Data, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
-						OutputIDS.Add(Resource->Resource->Data.Identifier);
 					}
 				}
 			}
@@ -1118,8 +1153,10 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->ConsumerResources.Num(); ResourceIndex++)
 				{
 					FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->ConsumerResources[ResourceIndex]->Data;
-					float StartRatio = FMath::FRandRange(0.25, 0.75);
-					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
+					if (Resource)
+					{
+						UniqueInputResources.AddUnique(Resource->Identifier);
+					}
 				}
 			}
 
@@ -1129,8 +1166,31 @@ void UFlareScenarioTools::CreateStations(FName StationClass, UFlareCompany* Comp
 				for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->MaintenanceResources.Num(); ResourceIndex++)
 				{
 					FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->MaintenanceResources[ResourceIndex]->Data;
-					float StartRatio = FMath::FRandRange(0.25, 0.75);
-					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * StartRatio, Company);
+					if (Resource)
+					{
+						UniqueOutputResources.AddUnique(Resource->Identifier);
+					}
+				}
+			}
+
+
+			for (int32 UniqueInputResourcesIndex = 0; UniqueInputResourcesIndex < UniqueInputResources.Num(); UniqueInputResourcesIndex++)
+			{
+				FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(UniqueInputResources[UniqueInputResourcesIndex]);
+				if (Resource)
+				{
+					float InputStartRatio = FMath::FRandRange(VarianceMinInputs, VarianceMaxInputs);
+					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * InputStartRatio, Company);
+				}
+			}
+
+			for (int32 UniqueOutputResourcesIndex = 0; UniqueOutputResourcesIndex < UniqueOutputResources.Num(); UniqueOutputResourcesIndex++)
+			{
+				FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(UniqueOutputResources[UniqueOutputResourcesIndex]);
+				if (Resource)
+				{
+					float OutputStartRatio = FMath::FRandRange(VarianceMinOutputs, VarianceMaxOutputs);
+					Station->GetActiveCargoBay()->GiveResources(Resource, Station->GetActiveCargoBay()->GetSlotCapacity() * OutputStartRatio, Company);
 				}
 			}
 		}

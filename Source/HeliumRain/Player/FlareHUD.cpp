@@ -1921,7 +1921,8 @@ FVector2D AFlareHUD::DrawHUDDesignatorStatus(FVector2D Position, float Designato
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDWeaponIcon, Color);
 	}
 
-	if (Ship->GetParent()->IsHarpooned() && Ship->GetParent()->GetCompany()->GetPlayerHostility() != EFlareHostility::Owned)
+//	if (Ship->GetParent()->IsHarpooned() && Ship->GetParent()->GetCompany()->GetPlayerHostility() != EFlareHostility::Owned)
+	if (Ship->GetParent()->GetCapturePointsMap().Num() > 0 && Ship->GetParent()->GetCompany()->GetPlayerHostility() != EFlareHostility::Owned)
 	{
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDHarpoonedIcon, Color);
 	}

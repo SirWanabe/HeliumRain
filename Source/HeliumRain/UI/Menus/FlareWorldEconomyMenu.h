@@ -231,6 +231,7 @@ protected:
 	TSharedPtr<SFlareButton>                                  StorageHubButton;
 	TSharedPtr<SFlareButton>                                  ShipyardsFilterButton;
 	TSharedPtr<SFlareButton>                                  UnderConstructionFilterButton;
+	TSharedPtr<SFlareButton>                                  ComplexFilterButton;
 	TSharedPtr<SFlareButton>                                  AddRemoveSelectedCompany;
 	TSharedPtr<SFlareButton>                                  QuantityButton;
 	TSharedPtr<SFlareButton>                                  DistanceButton;

@@ -55,9 +55,8 @@ void SFlareTechnologyInfo::Construct(const FArguments& InArgs)
 			.ButtonStyle(FCoreStyle::Get(), "NoBorder")
 			[
 				SNew(SBorder)
-				.Padding(FMargin(0))			
 				.BorderImage(this, &SFlareTechnologyInfo::GetBackgroundBrush)
-				.Padding(Theme.SmallContentPadding)
+				.Padding(FMargin(0))
 				[
 					SNew(SBox)
 					.WidthOverride(4 * Theme.ResourceWidth)
@@ -65,11 +64,12 @@ void SFlareTechnologyInfo::Construct(const FArguments& InArgs)
 					.Padding(FMargin(0))
 					[
 						SNew(SVerticalBox)
-						
+
 						// Title
 						+ SVerticalBox::Slot()
 						.AutoHeight()
-						.Padding(Theme.SmallContentPadding)
+						.Padding(FMargin(0))
+						//.Padding(Theme.SmallContentPadding)
 						[
 							SNew(STextBlock)
 							.TextStyle(&Theme.NameFont)
@@ -135,7 +135,12 @@ FSlateColor SFlareTechnologyInfo::GetCategoryColor() const
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
 	// Get color
-	if (MenuManager->GetPC()->GetCompany()->IsTechnologyAvailable(Technology->Identifier, Unused))
+
+	if (!MenuManager->GetTechnologyMenu()->GetTutorialQuestComplete())
+	{
+		Result = Theme.UnknownColor;
+	}
+	else if (MenuManager->GetPC()->GetCompany()->IsTechnologyAvailable(Technology->Identifier, Unused))
 	{
 		switch (Technology->Category)
 		{

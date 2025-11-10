@@ -108,19 +108,6 @@ void SFlareTooltip::Tick(const FGeometry& AllottedGeometry, const double InCurre
 		auto screenPosition = AllottedGeometry.LocalToAbsolute(FVector2D(0, 0)); //TopLeft
 		ViewPortSize = AllottedGeometry.AbsoluteToLocal(PC->GetNavHUD()->GetViewportSize() + screenPosition);
 		CurrentMousePos = AllottedGeometry.AbsoluteToLocal(FSlateApplication::Get().GetCursorPos());
-
-/*
-		PC->Notify(
-			LOCTEXT("TestInfo", "Test Notification"),
-			FText::Format(
-				LOCTEXT("TestInfoFormat", "Viewport Size {0}/{1} Mouse {2}/{3}"),
-				ViewPortSize.X,
-				ViewPortSize.Y,
-				CurrentMousePos.X,
-				CurrentMousePos.Y),
-			"discover-sector",
-			EFlareNotification::NT_Info);
-*/
 	}
 
 	// Hide
@@ -242,22 +229,6 @@ FMargin SFlareTooltip::GetTooltipPosition() const
 		MousePos.X = FMath::Min(MousePos.X + 30, ViewPortSize.X - WidgetSize.X);
 		MousePos.Y = FMath::Min(MousePos.Y + 40, ViewPortSize.Y - WidgetSize.Y);
 
-/*
-		PC->Notify(
-		LOCTEXT("TestInfo", "Test Notification"),
-		FText::Format(
-			LOCTEXT("TestInfoFormat", "Mouse {0}/{1} Widget {2}/{3} Size {4}/{5}, Finalized Location {6}/{7}"),
-			CurrentMousePos.X,
-			CurrentMousePos.Y,
-			WidgetSize.X,
-			WidgetSize.Y,
-			ViewPortSize.X,
-			ViewPortSize.Y,
-			MousePos.X,
-			MousePos.Y),
-		"discover-sector",
-		EFlareNotification::NT_Info);
-*/
 		return FMargin(MousePos.X, MousePos.Y, 0, 0);
 	}
 	return FMargin(0);

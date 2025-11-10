@@ -427,9 +427,11 @@ public:
 
 	float GetSectorLimits();
 
-    /** Create a station in the level  for a specific company */
+	UFlareSimulatedSpacecraft* FindViableComplex(UFlareCompany* Company, FFlareSpacecraftDescription* StationDescription, UFlareSimulatedSpacecraft* ComplexCandidate, FName* SelectedComplexConnector, bool* ComplexCandidateHasSpecialSlot);
+
+	/** Create a station in the level  for a specific company */
 	UFlareSimulatedSpacecraft* CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction,
-		FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), int32 StartingLevel = 1);
+	FFlareStationSpawnParameters SpawnParameters = FFlareStationSpawnParameters(), int32 StartingLevel = 1);
 
     /** Create a ship in the level  for a specific company */
 	UFlareSimulatedSpacecraft* CreateSpacecraft(FName ShipClass, UFlareCompany* Company, FVector TargetPosition, UFlareSimulatedSpacecraft* BuiltBy = NULL);

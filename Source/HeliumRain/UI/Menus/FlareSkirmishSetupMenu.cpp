@@ -1386,7 +1386,7 @@ void SFlareSkirmishSetupMenu::OnAutoCreateEnemyFleet()
 				// Define how much of this ship we want
 				float RawShipCount = (DiversityRatio * RemainingCombatValue) / (float)Spacecraft->Data.CombatPoints;
 				int32 ShipCount = IsHighValueFleet ? FMath::FloorToInt(RawShipCount) :  FMath::CeilToInt(RawShipCount);
-				if(ShipCount>0)
+				if(ShipCount > 0)
 				{
 					//Max of 100 for each ship order so the order bars don't go out of bounds
 					if (ShipCount > 100)

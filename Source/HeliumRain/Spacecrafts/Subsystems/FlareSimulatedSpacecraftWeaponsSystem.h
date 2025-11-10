@@ -55,6 +55,8 @@ public:
 
 	virtual int32 GetWeaponGroupCount() const;
 
+	bool IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::Type TypeCheck);
+
 	virtual EFlareWeaponGroupType::Type GetActiveWeaponType() const;
 
 	inline FFlareSimulatedWeaponGroup* GetWeaponGroup(int32 Index)
@@ -70,6 +72,7 @@ public:
 
 	bool HasSalvagingWeaponEquipped();
 
+
 protected:
 
 
@@ -82,5 +85,6 @@ protected:
 	FFlareSpacecraftDescription*                     Description;
 	TArray <FFlareSpacecraftComponentSave*>          WeaponList;
 	TArray <FFlareSpacecraftComponentDescription*>   WeaponDescriptionList;
-	TArray <FFlareSimulatedWeaponGroup*>                      WeaponGroupList;
+	TArray <FFlareSimulatedWeaponGroup*>             WeaponGroupList;
+	TArray<TEnumAsByte<EFlareShellDamageType::Type>> AvailableWeaponDamageTypes;
 };

@@ -175,7 +175,7 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, 
 						FText::Format(LOCTEXT("ShipDestroyedByStationFormat", "Your ship was destroyed by a {0}-class station"), LastDamageCause.Spacecraft->GetDescription()->Name),
 						FName("ship-destroyed"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Company);
 				}
 				else
@@ -185,7 +185,7 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, 
 						FText::Format(LOCTEXT("ShipDestroyedByShipFormat", "Your ship was destroyed by a {0}-class ship"), LastDamageCause.Spacecraft->GetDescription()->Name),
 						FName("ship-destroyed"),
 						EFlareNotification::NT_Military,
-						false,
+						NOTIFY_DEFAULT_TIMER,
 						EFlareMenu::MENU_Company);
 				}
 
@@ -197,7 +197,7 @@ void UFlareSpacecraftDamageSystem::OnSpacecraftDestroyed(bool SuppressMessages, 
 					LOCTEXT("ShipCrashedDestroyedFormat", "You crashed your ship"),
 					FName("ship-crashed"),
 					EFlareNotification::NT_Military,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Company);
 			}
 		}
@@ -323,7 +323,7 @@ void UFlareSpacecraftDamageSystem::OnControlLost()
 					FText::Format(LOCTEXT("ShipUncontrollableFormat", "Your ship has been rendered uncontrollable by a {0}-class ship"), LastDamageCause.Spacecraft->GetDescription()->Name),
 					FName("ship-uncontrollable"),
 					EFlareNotification::NT_Military,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Company);
 			}
 		}
@@ -336,7 +336,7 @@ void UFlareSpacecraftDamageSystem::OnControlLost()
 					LOCTEXT("ShipUncontrollableCrashedFormat", "You crashed your ship"),
 					FName("ship-uncontrollable-crashed"),
 					EFlareNotification::NT_Military,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Company);
 			}
 		}
@@ -449,7 +449,7 @@ void UFlareSpacecraftDamageSystem::CheckRecovery()
 		}
 		else
 		{
-			PC->GetMenuManager()->OpenMenu(EFlareMenu::MENU_GameOver);
+			PC->GetMenuManager()->OpenMenu(EFlareMenu::MENU_GameOver, FFlareMenuParameterData(), false, true, true);
 		}
 	}
 }

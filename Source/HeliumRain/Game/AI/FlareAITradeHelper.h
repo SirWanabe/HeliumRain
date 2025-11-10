@@ -61,6 +61,7 @@ struct AITradeNeed
 	UFlareSimulatedSector* Sector;
 	UFlareSimulatedSpacecraft* Station;
 	size_t SourceFunctionIndex;
+	int32 SourceFunctionIndexIterationsPerTry;
 	bool Maintenance;
 	int32 HighPriority;
 
@@ -255,7 +256,7 @@ struct AITradeHelper
 
 	static void ComputeGlobalTrading(UFlareWorld* World, AITradeNeeds& Needs, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney);
 
-	static bool ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney);
+	static bool ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney, int32 SourceFunctionIndexIterationsPerTry);
 
 	static AITradeSource* FindBestSource(AITradeSources& Sources, AITradeNeed& Need, AICompaniesMoney& CompaniesMoney);
 //FindBestSource(AITradeSources& Sources, FFlareResourceDescription* Resource, UFlareSimulatedSector* Sector, UFlareCompany* Company, int32 NeededQuantity, size_t FunctionIndex, AICompaniesMoney& CompaniesMoney);

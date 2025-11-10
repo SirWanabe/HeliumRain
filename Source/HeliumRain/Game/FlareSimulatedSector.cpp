@@ -186,6 +186,75 @@ float UFlareSimulatedSector::GetSectorLimits()
 	return 2000000; // 20 km
 }
 
+UFlareSimulatedSpacecraft* UFlareSimulatedSector::FindViableComplex(UFlareCompany* Company, FFlareSpacecraftDescription* StationDescription, UFlareSimulatedSpacecraft* ComplexCandidate, FName* SelectedComplexConnector, bool* ComplexCandidateHasSpecialSlot)
+{
+	if (!StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::NoComplex))
+	{
+		TArray<UFlareSimulatedSpacecraft*> ExistingLocalComplexes = Company->GetCompanySectorComplexes(this);
+		if (ExistingLocalComplexes.Num() > 0)
+		{
+			TArray<UFlareSimulatedSpacecraft*> LocalComplexOptions;
+			for (UFlareSimulatedSpacecraft* ExistingComplexStation : ExistingLocalComplexes)
+			{
+				if (ExistingComplexStation->IsUnderConstruction())
+				{
+					continue;
+				}
+
+				for (FFlareDockingInfo& Connector : ExistingComplexStation->GetStationConnectors())
+				{
+					//if not granted there is no station yet built in this slot
+					if (!Connector.Granted)
+					{
+						LocalComplexOptions.Add(ExistingComplexStation);
+						break;
+					}
+				}
+			}
+
+			if (LocalComplexOptions.Num() >= 1)
+			{
+				ComplexCandidate = LocalComplexOptions[FMath::RandRange(0, LocalComplexOptions.Num() - 1)];
+				if (ComplexCandidate)
+				{
+					for (FFlareDockingInfo& Connector : ComplexCandidate->GetStationConnectors())
+					{
+						//if not granted there is no station yet built in this slot
+						if (!Connector.Granted)
+						{
+							if (UFlareSimulatedSpacecraft::IsSpecialComplexSlot(Connector.Name))
+							{
+								*ComplexCandidateHasSpecialSlot = true;
+
+								// Requires special complex slot
+								if (StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::SpecialSlotInComplex))
+								{
+									*SelectedComplexConnector = Connector.Name;
+									break;
+								}
+							}
+							else
+							{
+								if (!StationDescription->BuildConstraint.Contains(EFlareBuildConstraint::SpecialSlotInComplex))
+								{
+									*SelectedComplexConnector = Connector.Name;
+								}
+							}
+						}
+					}
+
+					// no suitable connection found this time
+					if (*SelectedComplexConnector == NAME_None)
+					{
+						ComplexCandidate = NULL;
+					}
+				}
+			}
+		}
+	}
+	return ComplexCandidate;
+}
+
 UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateStation(FName StationClass, UFlareCompany* Company, bool UnderConstruction, FFlareStationSpawnParameters SpawnParameters, int32 StartingLevel)
 {
 	FFlareSpacecraftDescription* Desc = Game->GetSpacecraftCatalog()->Get(StationClass);
@@ -276,6 +345,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.Rotation = TargetRotation;
 	ShipData.LinearVelocity = FVector::ZeroVector;
 	ShipData.AngularVelocity = FVector::ZeroVector;
+
 	switch (SpawnLocation)
 	{
 	case 0:
@@ -302,7 +372,7 @@ UFlareSimulatedSpacecraft* UFlareSimulatedSector::CreateSpacecraft(FFlareSpacecr
 	ShipData.AllowExternalOrder = true;
 	ShipData.AllowAutoConstruction = true;
 	ShipData.Level = StartingLevel;
-	ShipData.HarpoonCompany = NAME_None;
+//	ShipData.HarpoonCompany = NAME_None;
 	ShipData.OwnerShipName = NAME_None;
 	ShipData.DynamicComponentStateIdentifier = FName("idle");
 	ShipData.AttachComplexStationName = AttachComplexStationName;
@@ -580,6 +650,29 @@ void UFlareSimulatedSector::SetSectorOrbitParameters(const FFlareSectorOrbitPara
 	Getters
 ----------------------------------------------------*/
 
+FText UFlareSimulatedSector::GetSectorName()
+{
+	//if (this) statement suppresses a rare crash bug when viewing previous contracts, in particular VIP ones, apparently?
+	//crash stack trace from FText UFlareQuestConditionDockAt::GetInitialLabel(), final return statement
+
+	if (this)
+	{
+		if (!SectorData.GivenName.IsEmptyOrWhitespace() && SectorData.GivenName.ToString().Len())
+		{
+			return SectorData.GivenName;
+		}
+
+		else if (SectorDescription->Name.ToString().Len())
+		{
+			return SectorDescription->Name;
+		}
+		else
+		{
+			return FText::FromString(GetSectorCode());
+		}
+	}
+	return FText();
+}
 
 FText UFlareSimulatedSector::GetSectorDescription() const
 {
@@ -613,20 +706,20 @@ bool UFlareSimulatedSector::CanBuildStation(FFlareSpacecraftDescription* Station
 	}
 
 	// Too many stations
-//	int32 StationCount = GetSectorCompanyStationCount(Company, true);
 	int32 StationCount = Company->GetCompanySectorStationsCount(this, true);
-
-	if (!InComplex && StationCount >= GetMaxStationsPerCompany()/2 && !Company->IsTechnologyUnlocked("dense-sectors"))
+	
+	if (!InComplex && (StationCount + StationDescription->GetStationSectorSlots()) > Company->GetCompanyMaxStationsForSector(this))
 	{
-		OutReasons.Add(LOCTEXT("BuildNeedDenseSectors", "You have too many stations. Unlock 'dense sectors' technology to build more stations"));
-		Result = false;
-	}
-
-	// Too many stations
-	if (!InComplex && StationCount >= GetMaxStationsPerCompany())
-	{
-		OutReasons.Add(LOCTEXT("BuildTooManyStations", "You have too many stations"));
-		Result = false;
+		if (!Company->IsTechnologyUnlocked("dense-sectors"))
+		{
+			OutReasons.Add(LOCTEXT("BuildNeedDenseSectors", "You have too many stations. Unlock 'dense sectors' technology to build more stations"));
+			Result = false;
+		}
+		else
+		{
+			OutReasons.Add(LOCTEXT("BuildTooManyStations", "You have too many stations"));
+			Result = false;
+		}
 	}
 
 	// Too many stations
@@ -1192,30 +1285,6 @@ void UFlareSimulatedSector::SaveResourcePrices()
 	}
 }
 
-FText UFlareSimulatedSector::GetSectorName()
-{
-//if (this) statement suppresses a rare crash bug when viewing previous contracts, in particular VIP ones, apparently?
-//crash stack trace from FText UFlareQuestConditionDockAt::GetInitialLabel(), final return statement
-
-	if (this)
-	{
-		if (!SectorData.GivenName.IsEmptyOrWhitespace() && SectorData.GivenName.ToString().Len())
-		{
-			return SectorData.GivenName;
-		}
-
-		else if (SectorDescription->Name.ToString().Len())
-		{
-			return SectorDescription->Name;
-		}
-		else
-		{
-			return FText::FromString(GetSectorCode());
-		}
-	}
-	return FText();
-}
-
 FString UFlareSimulatedSector::GetSectorCode()
 {
 	return SectorOrbitParameters.CelestialBodyIdentifier.ToString() + "-" + FString::FromInt(SectorOrbitParameters.Altitude) + "-" + FString::FromInt(SectorOrbitParameters.Phase);
@@ -1764,8 +1833,7 @@ void UFlareSimulatedSector::ProcessMeteorites()
 					GetGame()->GetPC()->Notify(FText::Format(LOCTEXT("MeteoriteHere", "Meteoroids in {0}"), GetSectorName()),
 										FText::Format(LOCTEXT("MeteoriteHereFormat", "A meteoroid group has entered {0} and threatens stations"), GetSectorName()),
 										FName("meteorite-in-sector"),
-										EFlareNotification::NT_Military,
-										false);
+										EFlareNotification::NT_Military);
 
 				}
 				else if(Meteorite.DaysBeforeImpact == 1 && !GetGame()->GetPC()->GetCompany()->IsTechnologyUnlocked("early-warning") && PlayerTarget)
@@ -1773,8 +1841,7 @@ void UFlareSimulatedSector::ProcessMeteorites()
 					GetGame()->GetPC()->Notify(LOCTEXT("ImminentMeteoriteDetected", "Meteoroids detected"),
 										FText::Format(LOCTEXT("ImminentMeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger at {0}"), GetSectorName()),
 										FName("meteorite-detected"),
-										EFlareNotification::NT_Military,
-										false);
+										EFlareNotification::NT_Military);
 				}
 
 			}
@@ -1818,8 +1885,7 @@ void UFlareSimulatedSector::ProcessMeteorites()
 					GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteCrash", "Meteoroid crashed"),
 										FText::Format(LOCTEXT("MeteoriteCrashFormat", "A meteoroid crashed on {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft)),
 										FName("meteorite-crash"),
-										EFlareNotification::NT_Military,
-										false);
+										EFlareNotification::NT_Military);
 				}
 
 				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("meteorite-hit-station").PutName("sector", GetIdentifier()));
@@ -1940,8 +2006,7 @@ void UFlareSimulatedSector::GenerateMeteoriteGroup(UFlareSimulatedSpacecraft* Ta
 			GetGame()->GetPC()->Notify(LOCTEXT("MeteoriteDetected", "Meteoroid detected"),
 								FText::Format(LOCTEXT("MeteoriteDetectedFormat", "A meteoroid group has been detected as potential danger for one of your stations at {0}"), GetSectorName()),
 								FName("meteorite-detected"),
-								EFlareNotification::NT_Military,
-								false);
+								EFlareNotification::NT_Military);
 		}
 	}
 	else
@@ -2517,16 +2582,17 @@ int32 UFlareSimulatedSector::GetCompanyCapturePoints(UFlareCompany* Company)
 			CapturePoints += 10;
 		}
 	}
-/*
-	if (LastCompanySectorCapturePoints.Contains(Company))
+
+	if (Company->IsTechnologyUnlocked("negociations"))
 	{
-		LastCompanySectorCapturePoints[Company] = CapturePoints;
+		CapturePoints *= 1.5;
 	}
-*/	
+
 	{
 		LastCompanySectorCapturePoints.Add(Company, CapturePoints);
 	}
 
 	return CapturePoints;
 }
+
 #undef LOCTEXT_NAMESPACE

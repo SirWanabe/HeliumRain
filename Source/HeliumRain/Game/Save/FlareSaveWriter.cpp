@@ -265,6 +265,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompany(FFlareCompanySave* Data)
 	JsonObject->SetStringField("TradeRouteImmatriculationIndex", FormatInt32(Data->TradeRouteImmatriculationIndex));
 	JsonObject->SetStringField("WhiteListImmatriculationIndex", FormatInt32(Data->WhiteListImmatriculationIndex));
 	JsonObject->SetStringField("DefaultWhiteListIdentifier", Data->DefaultWhiteListIdentifier.ToString());
+	JsonObject->SetStringField("TechnologyLevel", FormatInt32(Data->TechnologyLevel));
 	JsonObject->SetStringField("ResearchAmount", FormatInt32(Data->ResearchAmount));
 	JsonObject->SetStringField("ResearchSpent", FormatInt32(Data->ResearchSpent));
 	JsonObject->SetObjectField("AI", SaveCompanyAI(&Data->AI));
@@ -384,6 +385,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetBoolField("IsDestroyed", Data->IsDestroyed);
 	JsonObject->SetBoolField("IsUnderConstruction", Data->IsUnderConstruction);
 	JsonObject->SetStringField("Immatriculation", Data->Immatriculation.ToString());
+	JsonObject->SetStringField("ImmatriculationReplacement", Data->ImmatriculationReplacement.ToString());
 	JsonObject->SetStringField("NickName", Data->NickName.ToString());
 	JsonObject->SetStringField("Identifier", Data->Identifier.ToString());
 	JsonObject->SetStringField("CompanyIdentifier", Data->CompanyIdentifier.ToString());
@@ -414,7 +416,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetBoolField("AllowAutoConstruction", Data->AllowAutoConstruction);
 	JsonObject->SetObjectField("Pilot", SavePilot(&Data->Pilot));
 	JsonObject->SetObjectField("Asteroid", SaveAsteroid(&Data->AsteroidData));
-	JsonObject->SetStringField("HarpoonCompany", Data->HarpoonCompany.ToString());
+//	JsonObject->SetStringField("HarpoonCompany", Data->HarpoonCompany.ToString());
 	JsonObject->SetStringField("OwnerShipName", Data->OwnerShipName.ToString());
 	JsonObject->SetStringField("AttachActorName", Data->AttachActorName.ToString());
 	JsonObject->SetStringField("AttachComplexStationName", Data->AttachComplexStationName.ToString());
@@ -444,12 +446,23 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	}
 	JsonObject->SetArrayField("ProductionCargoBay", ProductionCargoBay);
 
+
+	TArray< TSharedPtr<FJsonValue> > FactoryConstructionStates;
+	FactoryConstructionStates.Reserve(Data->FactoryConstructionStates.Num());
+	for (int i = 0; i < Data->FactoryConstructionStates.Num(); i++)
+	{
+		FactoryConstructionStates.Add(MakeShareable(new FJsonValueObject(SaveFactory(&Data->FactoryConstructionStates[i]))));
+	}
+
+	JsonObject->SetArrayField("FactoryConstructionStates", FactoryConstructionStates);
+
 	TArray< TSharedPtr<FJsonValue> > FactoryStates;
 	FactoryStates.Reserve(Data->FactoryStates.Num());
 	for(int i = 0; i < Data->FactoryStates.Num(); i++)
 	{
 		FactoryStates.Add(MakeShareable(new FJsonValueObject(SaveFactory(&Data->FactoryStates[i]))));
 	}
+
 	JsonObject->SetArrayField("FactoryStates", FactoryStates);
 
 	TArray< TSharedPtr<FJsonValue> > ShipyardOrderQueue;
@@ -695,6 +708,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveFactory(FFlareFactorySave* Data)
 	JsonObject->SetStringField("CycleCount", FormatInt32(Data->CycleCount));
 	JsonObject->SetStringField("TargetShipClass", Data->TargetShipClass.ToString());
 	JsonObject->SetStringField("TargetShipCompany", Data->TargetShipCompany.ToString());
+	SaveFloat(JsonObject, "FactoryEfficiency", Data->FactoryEfficiency);
 
 	TArray< TSharedPtr<FJsonValue> > ResourceReserved;
 	ResourceReserved.Reserve(Data->ResourceReserved.Num());
@@ -876,12 +890,12 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveCompanyAI(FFlareCompanyAISave* Dat
 	JsonObject->SetStringField("BudgetStation", FormatInt64(Data->BudgetStation));
 	JsonObject->SetStringField("BudgetTechnology", FormatInt64(Data->BudgetTechnology));
 	JsonObject->SetStringField("BudgetTrade", FormatInt64(Data->BudgetTrade));
+	JsonObject->SetStringField("DateCalculatedDefaultBudget", FormatInt64(Data->DateCalculatedDefaultBudget));
 	JsonObject->SetStringField("DateBoughtLicense", FormatInt64(Data->DateBoughtLicense));
 	SaveFloat(JsonObject,"Caution", Data->Caution);
 	SaveFloat(JsonObject,"Pacifism", Data->Pacifism);
 	JsonObject->SetStringField("ResearchProject", Data->ResearchProject.ToString());
 	JsonObject->SetStringField("DesiredStationLicense", Data->DesiredStationLicense.ToString());
-	JsonObject->SetBoolField("CalculatedDefaultBudget", Data->CalculatedDefaultBudget);
 	return JsonObject;
 }
 

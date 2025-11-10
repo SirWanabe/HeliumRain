@@ -325,8 +325,14 @@ void SFlareSpacecraftOrderOverlay::Open(UFlareSimulatedSector* Sector, FOrderDel
 					}
 				}
 
-				UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->StationCatalog[SpacecraftIndex];
-				SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
+				int32 StationCount = MenuManager->GetPC()->GetCompany()->GetCompanySectorStationsCount(TargetSector, true);
+				int32 MaxStationCount = MenuManager->GetPC()->GetCompany()->GetCompanyMaxStationsForSector(TargetSector);
+
+				if (StationCount + Description->GetStationSectorSlots() <= MaxStationCount)
+				{
+					UFlareSpacecraftCatalogEntry* Entry = SpacecraftCatalog->StationCatalog[SpacecraftIndex];
+					SpacecraftList.AddUnique(FInterfaceContainer::New(&Entry->Data));
+				}
 			}
 		}
 	}

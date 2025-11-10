@@ -43,6 +43,10 @@ DECLARE_CYCLE_STAT(TEXT("AITradeHelper ApplyDeal"), STAT_AITradeHelper_ApplyDeal
 #define DEBUG_AI_TRADING_RESOURCES "Fuel"
 //#define DEBUG_AI_TRADING_RESOURCES "Feo"
 //#define DEBUG_AI_TRADING_RESOURCES "Food"
+#define DEBUG_NEW_AI_TRADING_ITERATIONS
+
+#define TRADING_MIN_NEED_QUANTITY 50
+
 
 #define LOCTEXT_NAMESPACE "AITradeHelper"
 
@@ -74,15 +78,16 @@ void AITradeHelper::CompanyAutoTrade(UFlareCompany* Company)
 UFlareSimulatedSpacecraft* AITradeHelper::FindBestMasterShip(int32& UsableShipCount,UFlareFleet* Fleet, TArray<UFlareSimulatedSpacecraft*>& ExcludeList)
 {
 	UFlareSimulatedSpacecraft* MasterShip = nullptr;
-	int32 MasterShipCapacity = 0;
-	int32 MasterShipQuantity = 0;
+	int32 MasterShipUsedCargoSpace = 0;
 	UsableShipCount = 0;
 
 	for(UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
 	{
+		UFlareCargoBay* ShipCargoBay = Ship->GetActiveCargoBay();
+
 		if (Ship->IsMilitary())
 		{
-			if (Ship->GetActiveCargoBay()->GetCapacity() == 0)
+			if (ShipCargoBay->GetCapacity() == 0)
 			{
 				continue;
 			}
@@ -105,25 +110,19 @@ UFlareSimulatedSpacecraft* AITradeHelper::FindBestMasterShip(int32& UsableShipCo
 			continue;
 		}
 
-		int32 ShipQuantity = Ship->GetActiveCargoBay()->GetUsedCargoSpace();
-		int32 ShipCapacity = Ship->GetActiveCargoBay()->GetUsedCargoSpace();
+		int32 ShipUsedCargoSpace = ShipCargoBay->GetUsedCargoSpace();
 
 		auto SelectMasterShip = [&]()
 		{
 			MasterShip = Ship;
-			MasterShipCapacity = ShipCapacity;
-			MasterShipQuantity = ShipQuantity;
+			MasterShipUsedCargoSpace = ShipUsedCargoSpace;
 		};
 
 		if(MasterShip == nullptr)
 		{
 			SelectMasterShip();
 		}
-		else if(ShipQuantity > MasterShipQuantity)
-		{
-			SelectMasterShip();
-		}
-		else if(ShipQuantity == MasterShipQuantity && ShipCapacity > MasterShipCapacity)
+		else if(ShipUsedCargoSpace > MasterShipUsedCargoSpace)
 		{
 			SelectMasterShip();
 		}
@@ -159,7 +158,7 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 			FText::Format(LOCTEXT("StrandedAutoTradeFormat", "Your fleet {0} is stranded and has limited trading capabilities."), Fleet->GetFleetName()),
 			FName("auto-trade-stranded"),
 			EFlareNotification::NT_Economy,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Fleet,
 			Data);
 		}
@@ -191,7 +190,7 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 					FText::Format(LOCTEXT("NoAutoTradeCapabilityFormat", "Your fleet {0} doesn't have any trading ship."), Fleet->GetFleetName()),
 					FName("no-auto-trade-capability"),
 					EFlareNotification::NT_Economy,
-					false,
+					NOTIFY_DEFAULT_TIMER,
 					EFlareMenu::MENU_Fleet,
 					Data);
 			}
@@ -203,7 +202,6 @@ void AITradeHelper::FleetAutoTrade(UFlareFleet* Fleet, TMap<UFlareSimulatedSecto
 			// No deal possible
 			return;
 		}
-
 
 		if(IsFleetStranded)
 		{
@@ -1085,7 +1083,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 		}
 
 		bool IsConstruction = Station->IsUnderConstruction();
-		bool IsShipyard = Station->IsShipyard();
+		bool IsShipyard = Station->IsShipyardAllFactories();
 		UFlareScenarioTools* ST = Game->GetScenarioTools();
 
 		for (int32 ResourceIndex = 0; ResourceIndex < Game->GetResourceCatalog()->Resources.Num(); ResourceIndex++)
@@ -1183,7 +1181,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 				}
 #endif
 
-			if ((!Factory->IsActive() || !Factory->IsNeedProduction()))
+			if (!Factory->OwnerCompanyHasRequiredTechnologies() || !Factory->IsActive() || !Factory->IsNeedProduction())
 			{
 				// No resources needed
 				continue;
@@ -1207,7 +1205,7 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 					{
 						Variation->HighPriority += 1000000;
 					}
-					else if(IsShipyard && Company != ST->Pirates)
+					if (IsShipyard && Company != ST->Pirates)
 					{
 						Variation->HighPriority += 1500000;
 					}
@@ -1470,8 +1468,6 @@ SectorVariation AITradeHelper::ComputeSectorResourceVariation(UFlareCompany* Com
 	return SectorVariation;
 }
 
-#define TRADING_MIN_NEED_QUANTITY 50
-
 inline static int32 NeedComparatorComparator(const AITradeNeed& n1, const AITradeNeed& n2)
 {
 	if(n1.HighPriority == n2.HighPriority)
@@ -1491,23 +1487,15 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 	int32 GameDifficulty = -1;
 	GameDifficulty = World->GetGame()->GetPC()->GetPlayerData()->DifficultyId;
 	
-	int32 PlayerPriority = 0;
-	bool PlayerallowedpriorityConstruction = true;
-	if (GameDifficulty >= 1) // Hard
-	{
-		PlayerallowedpriorityConstruction = false;
-	}
-	if (GameDifficulty >= 2)  // Very Hard
-	{
-		PlayerPriority = -1;
-	}
+	int32 PlayerPriority = 0 - GameDifficulty;
 
 	for(UFlareCompany* Company : World->GetCompanies())
 	{
 		for(UFlareSimulatedSpacecraft* Station : Company->GetCompanyStations())
 		{
 			bool IsConstruction = Station->IsUnderConstruction();
-			bool IsShipyard = Station->IsShipyard();
+			bool IsShipyard = Station->IsShipyardAllFactories();
+			bool HasLicense = Station->GetOwnerHasStationLicense();
 
 			for(UFlareResourceCatalogEntry* ResourceEntry : World->GetGame()->GetResourceCatalog()->Resources)
 			{
@@ -1516,7 +1504,6 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 				if(Station->GetActiveCargoBay()->WantBuy(Resource, nullptr))
 				{
 					int32 Quantity = Station->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, nullptr);
-
 					if (!IsConstruction && Station->IsComplex())
 					{
 						if(Station->GetActiveCargoBay()->WantBuy(Resource, Company) && Station->GetActiveCargoBay()->WantSell(Resource, Company))
@@ -1526,7 +1513,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						}
 					}
 
-					if(Quantity > TRADING_MIN_NEED_QUANTITY || (IsConstruction && Quantity > 0) || (IsShipyard && Quantity > 0))
+					if(Quantity > TRADING_MIN_NEED_QUANTITY || (IsConstruction && Quantity > 0))
 					{
 						AITradeNeed Need;
 						Need.Resource = Resource;
@@ -1536,53 +1523,86 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						Need.Sector = Station->GetCurrentSector();
 						Need.Station = Station;
 						Need.SourceFunctionIndex = 0;
+						Need.SourceFunctionIndexIterationsPerTry = 1;
 						Need.Maintenance = false;
 						Need.Consume(0); // Generate ratio
 
 						if (Company == World->GetGame()->GetPC()->GetCompany())
 						{
 							Need.HighPriority = PlayerPriority;
-							if (PlayerallowedpriorityConstruction && (IsConstruction || IsShipyard))
+							if (IsConstruction && HasLicense)
 							{
-								if (IsConstruction)
-								{
-									Need.HighPriority += 1;
-								}
-								else if (IsShipyard && Station->IsAllowExternalOrder())
-								{
-									Need.HighPriority += 2;
-								}
+								Need.HighPriority += 10;
+							}
+
+							if (IsShipyard && Station->IsAllowExternalOrder())
+							{
+								Need.HighPriority += 10;
+								Need.SourceFunctionIndexIterationsPerTry += 1;
 							}
 						}
 
-						else if (IsConstruction)
+						else
 						{
-							Need.HighPriority = 2;
-						}
-
-						else if (IsShipyard && Station->IsAllowExternalOrder())
-						{
-							if (Company != ST->Pirates)
+							if (IsConstruction)
 							{
-								Need.HighPriority = 5;
+								if (HasLicense)
+								{
+									Need.SourceFunctionIndexIterationsPerTry += 1;
+									Need.HighPriority += 15;
+								}
 							}
-							else
+
+							if (IsShipyard && Station->IsAllowExternalOrder())
 							{
-								Need.HighPriority = 2;
+								if (Company == ST->Pirates)
+								{
+									Need.HighPriority += 15;
+									Need.SourceFunctionIndexIterationsPerTry += 1;
+								}
+								else
+								{
+									Need.HighPriority += 25;
+									Need.SourceFunctionIndexIterationsPerTry += 2;
+								}
 							}
 						}
 
 						if (Company != World->GetGame()->GetPC()->GetCompany() && !IsConstruction && !IsShipyard)
 						{
+							int32 FactoriesAtMinimumEfficiency = 0;
+							uint32 SeekingCycles = 14;
+							if (!HasLicense)
+							{
+								SeekingCycles /= 2;
+							}
+
 							for (int32 FactoryIndex = 0; FactoryIndex < Station->GetFactories().Num(); FactoryIndex++)
 							{
 								UFlareFactory* Factory = Station->GetFactories()[FactoryIndex];
-								uint32 InputQuantityCycles = Factory->GetInputResourceQuantityCycles(Resource);
-								if (InputQuantityCycles >= 0 && InputQuantityCycles < 7)
+								if (Factory->OwnerCompanyHasRequiredTechnologies())
 								{
-									Need.HighPriority++;
-//									break;
+									uint32 InputQuantityCycles = Factory->GetInputResourceQuantityCycles(Resource);
+									if (InputQuantityCycles >= 0 && InputQuantityCycles < SeekingCycles)
+									{
+
+										{
+											Need.HighPriority += (SeekingCycles - InputQuantityCycles);
+										}
+
+										// If the factory is down to minimum efficiency that indicates it may have been without resources for some time
+										if (Factory->GetFactoryEfficiency() >= Factory->GetFactoryEfficiency_Minimum())
+										{
+											FactoriesAtMinimumEfficiency++;
+										}
+									}
 								}
+							}
+
+							Need.HighPriority *= float(1 + (FactoriesAtMinimumEfficiency * 0.50));
+							if (HasLicense && FactoriesAtMinimumEfficiency > 0)
+							{
+								Need.SourceFunctionIndexIterationsPerTry += 1;
 							}
 						}
 
@@ -1625,6 +1645,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 				Need.Sector = Sector;
 				Need.Station = nullptr;
 				Need.SourceFunctionIndex = 0;
+				Need.SourceFunctionIndexIterationsPerTry = 1;
 				Need.Maintenance = true;
 				Need.HighPriority = true;
 				Need.Consume(0); // Generate ratio
@@ -1634,7 +1655,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 		}
 	}
 #if DEBUG_NEW_AI_TRADING
-	Needs.List.Sort(&NeedComparatorComparator);
+//	Needs.List.Sort(&NeedComparatorComparator);
 #endif
 }
 
@@ -1656,7 +1677,6 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 				{
 					if(Station->GetActiveCargoBay()->WantBuy(Resource, nullptr) && !Station->HasCapability(EFlareSpacecraftCapability::Storage))
 					{
-//						if(Resource == World->GetGame()->GetScenarioTools()->FleetSupply)
 						if(Resource->IsMaintenanceResource)
 						{
 							MaintenanceSource = true;
@@ -1666,7 +1686,6 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 							FLOGV("DEBUG : %d", Station->IsComplex());
 							check(Station->IsComplex() == true);
 							// Trade to not use as source
-							//continue;
 						}
 					}
 
@@ -1702,16 +1721,13 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 				}
 			}
 		}
-	}
 
-	for(UFlareCompany* Company : World->GetCompanies())
-	{
-		if(Company->IsPlayerCompany())
+		if (Company->IsPlayerCompany())
 		{
 			continue;
 		}
 
-		for(UFlareSimulatedSpacecraft* Ship : Company->GetCompanyShips())
+		for (UFlareSimulatedSpacecraft* Ship : Company->GetCompanyShips())
 		{
 			if (Ship->IsMilitary())
 			{
@@ -1730,16 +1746,16 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 				continue;
 			}
 
-			if(Ship->GetDamageSystem()->IsUncontrollable() || Ship->IsTrading())
+			if (Ship->GetDamageSystem()->IsUncontrollable() || Ship->IsTrading())
 			{
 				continue;
 			}
 
-			for(UFlareResourceCatalogEntry* ResourceEntry : World->GetGame()->GetResourceCatalog()->Resources)
+			for (UFlareResourceCatalogEntry* ResourceEntry : World->GetGame()->GetResourceCatalog()->Resources)
 			{
 				FFlareResourceDescription* Resource = &ResourceEntry->Data;
 				int32 Quantity = Ship->GetActiveCargoBay()->GetResourceQuantity(Resource, nullptr);
-				if(Quantity > 0)
+				if (Quantity > 0)
 				{
 					bool Traveling = Ship->GetCurrentFleet()->IsTraveling();
 					AITradeSource Source;
@@ -1756,6 +1772,7 @@ void AITradeHelper::GenerateTradingSources(AITradeSources& Sources, AITradeSourc
 			}
 		}
 	}
+
 	Sources.GenerateCache();
 	MaintenanceSources.GenerateCache();
 }
@@ -1832,7 +1849,7 @@ void AITradeHelper::ComputeGlobalTrading(UFlareWorld* World, AITradeNeeds& Needs
 
 		for(AITradeNeed& Need : Needs.List)
 		{
-			bool Keep = ProcessNeed(Need, Sources, MaintenanceSources, IdleShips, CompaniesMoney);
+			bool Keep = ProcessNeed(Need, Sources, MaintenanceSources, IdleShips, CompaniesMoney, Need.SourceFunctionIndexIterationsPerTry);
 
 			if(Keep)
 			{
@@ -1845,7 +1862,7 @@ void AITradeHelper::ComputeGlobalTrading(UFlareWorld* World, AITradeNeeds& Needs
 }
 
 
-bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney)
+bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITradeSources& MaintenanceSources, AITradeIdleShips& IdleShips, AICompaniesMoney& CompaniesMoney, int32 SourceFunctionIndexIterationsPerTry)
 {
 	bool MaintenanceSource = false;
 	AITradeSource* Source = FindBestSource(Sources, Need, CompaniesMoney);
@@ -1860,10 +1877,26 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 	{
 		//FLOG("No best source");
 		// No possible source, don't keep
+		SourceFunctionIndexIterationsPerTry--;
 		Need.SourceFunctionIndex++;
 
 		if(Need.SourceFunctionIndex < SourceFunctionCount)
 		{
+			if (SourceFunctionIndexIterationsPerTry > 0)
+			{
+
+				FLOGV("Need still has more attempts before moving to others : %s %s in %s: %d/%d %s. Remaining SourceFunctionIndexIterationsPerTry %d.",
+					*Need.Company->GetCompanyName().ToString(),
+					*Need.Station->GetImmatriculation().ToString(),
+					*Need.Sector->GetSectorName().ToString(),
+					Need.Quantity,
+					Need.TotalCapacity,
+					*Need.Resource->Name.ToString(),
+					SourceFunctionIndexIterationsPerTry
+				);
+
+				return ProcessNeed(Need, Sources, MaintenanceSources, IdleShips, CompaniesMoney, SourceFunctionIndexIterationsPerTry);
+			}
 			return true;
 		}
 #if DEBUG_NEW_AI_TRADING
@@ -1915,6 +1948,7 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 			  Need.TotalCapacity,
 			  *Need.Resource->Name.ToString()
 			  );
+
 		FLOGV(" use source %s %s in %s: %d %s (stranded: %d, travelling: %d)",
 			  *Source->Company->GetCompanyName().ToString(),
 			  *Source->Ship->GetImmatriculation().ToString(),
@@ -2028,7 +2062,6 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 		{
 			ApplyDeal(Ship, Deal, nullptr, true, false);
 		}
-
 
 		if(MaintenanceSource)
 		{

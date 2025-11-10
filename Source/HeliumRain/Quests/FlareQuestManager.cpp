@@ -503,7 +503,7 @@ void UFlareQuestManager::NotifyNewQuests(TArray<UFlareQuest*>& QuestsToNotify)
 		Data.Quest = Quest;
 
 		GetGame()->GetPC()->Notify(Text, Info, FName(*(FString("quest-") + Quest->GetIdentifier().ToString() + "-status")),
-			EFlareNotification::NT_NewQuest, false, EFlareMenu::MENU_Quest, Data);
+			EFlareNotification::NT_NewQuest, NOTIFY_DEFAULT_TIMER, EFlareMenu::MENU_Quest, Data);
 	}
 	else if(QuestsToNotify.Num() > 1)
 	{
@@ -514,7 +514,7 @@ void UFlareQuestManager::NotifyNewQuests(TArray<UFlareQuest*>& QuestsToNotify)
 		Data.Quest = QuestsToNotify[0];
 
 		GetGame()->GetPC()->Notify(Text, Info, FName("new-quest"),
-			EFlareNotification::NT_NewQuest, false, EFlareMenu::MENU_Quest, Data);
+			EFlareNotification::NT_NewQuest, NOTIFY_DEFAULT_TIMER, EFlareMenu::MENU_Quest, Data);
 	}
 }
 
@@ -555,7 +555,7 @@ void UFlareQuestManager::OnQuestSuccess(UFlareQuest* Quest)
 		Data.Quest = Quest;
 
 		GetGame()->GetPC()->Notify(Text, Info, FName(*(FString("quest-") + Quest->GetIdentifier().ToString() + "-status")),
-			EFlareNotification::NT_Quest, false, EFlareMenu::MENU_Quest, Data);
+			EFlareNotification::NT_Quest, NOTIFY_DEFAULT_TIMER, EFlareMenu::MENU_Quest, Data);
 		OnEvent(FFlareBundle().PutTag("success-contract"));
 	}
 
@@ -586,7 +586,7 @@ void UFlareQuestManager::OnQuestFail(UFlareQuest* Quest, bool Notify)
 		Data.Quest = Quest;
 
 		GetGame()->GetPC()->Notify(Text, Info, FName(*(FString("quest-") + Quest->GetIdentifier().ToString() + "-status")),
-			EFlareNotification::NT_Quest, false, EFlareMenu::MENU_Quest, Data);
+			EFlareNotification::NT_Quest, NOTIFY_DEFAULT_TIMER, EFlareMenu::MENU_Quest, Data);
 	}
 
 	if (Quest == SelectedQuest)

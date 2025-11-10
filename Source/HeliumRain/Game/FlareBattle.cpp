@@ -202,7 +202,9 @@ bool UFlareBattle::SimulateTurn()
 			CurrentSectorViableFightingShips.Remove(Ship);
 			ShipIndex--;
 			ShipDisabledPreviousTurn = true;
+#ifdef DEBUG_SIMULATE
 			FLOGV("%s removed from viable fighting ships", *Ship->GetImmatriculation().ToString());
+#endif
 			continue;
 		}
 
@@ -235,8 +237,10 @@ bool UFlareBattle::SimulateTurn()
 
 bool UFlareBattle::SimulateShipTurn(UFlareSimulatedSpacecraft* Ship)
 {
+#ifdef DEBUG_SIMULATE
 	FLOGV("%s Simulating turn", *Ship->GetImmatriculation().ToString());
-    if(Ship->GetSize() == EFlarePartSize::S)
+#endif
+	if(Ship->GetSize() == EFlarePartSize::S)
     {
         return SimulateSmallShipTurn(Ship);
     }
@@ -461,12 +465,12 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 	UFlareSimulatedSpacecraft* BestTarget = NULL;
 	float BestScore = 0;
 
-//	FLOGV("GetBestTarget for %s", *Ship->GetImmatriculation().ToString());
+	bool HasSmallSalvager = Ship->GetWeaponsSystem()->IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::LightSalvage);
+	bool HasLargeSalvager = Ship->GetWeaponsSystem()->IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::HeavySalvage);
 
 	for (int32 SpacecraftIndex = 0; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 	{
 		UFlareSimulatedSpacecraft* ShipCandidate = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
-
 		if(ShipCandidate->IsReserve())
 		{
 			// No in fight
@@ -507,6 +511,7 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 		{
 			StateScore *= Preferences.IsLarge;
 		}
+
 		else if (ShipCandidate->GetSize() == EFlarePartSize::S)
 		{
 			StateScore *= Preferences.IsSmall;
@@ -571,13 +576,28 @@ UFlareSimulatedSpacecraft* UFlareBattle::GetBestTarget(UFlareSimulatedSpacecraft
 			StateScore *= Preferences.IsNotUncontrollable;
 		}
 
-		if(ShipCandidate->IsHarpooned()) {
+//		if(ShipCandidate->IsHarpooned())
+		if(ShipCandidate->GetCapturePointsMap().Num() > 0)
+		{
 			if(ShipCandidate->GetDamageSystem()->IsUncontrollable())
 			{
 				// Never target harpooned uncontrollable ships
 				continue;
 			}
 			StateScore *=  Preferences.IsHarpooned;
+		}
+
+		if (ShipCandidate->GetDescription()->IsUncapturable)
+		{
+			if (ShipCandidate->GetSize() == EFlarePartSize::L && HasLargeSalvager)
+			{
+				StateScore *= 0.50f;
+			}
+
+			else if (ShipCandidate->GetSize() == EFlarePartSize::S && HasSmallSalvager)
+			{
+				StateScore *= 0.50f;
+			}
 		}
 
 		DistanceScore = FMath::FRand();
@@ -701,7 +721,6 @@ bool UFlareBattle::SimulateShipWeaponAttack(UFlareSimulatedSpacecraft* Ship, FFl
 	else if(WeaponDescription->WeaponCharacteristics.BombCharacteristics.IsBomb && CurrentAmmo > 0)
 	{
 		// Drop one bomb with a hit probability of (1 + usable ratio + isUncontrollable)/3
-
 		if (ShipTarget)
 		{
 			if (FMath::FRand() < (1 + UsageRatio + (ShipTarget->GetDamageSystem()->IsUncontrollable() ? 1.f : 0.f)))
@@ -784,7 +803,8 @@ void UFlareBattle::SimulateBombDamage(FFlareSpacecraftComponentDescription* Weap
 	 || (WeaponDescription->WeaponCharacteristics.DamageType == EFlareShellDamageType::HeavySalvage && Target->GetDescription()->Size == EFlarePartSize::L)))
 	{
 		FLOGV("UFlareBattle::SimulateBombDamage : salvaging %s for %s", *Target->GetImmatriculation().ToString(), *DamageSource->GetCompany()->GetCompanyName().ToString());
-		Target->SetHarpooned(DamageSource->GetCompany());
+//		Target->SetHarpooned(DamageSource->GetCompany());
+		DamageSource->GetCompany()->StartCapture(Target, false);
 	}
 }
 

@@ -25,8 +25,6 @@ struct AIWarContext
 	void Generate();
 };
 
-
-
 struct DefenseSector
 {
 	UFlareSimulatedSector* Sector;
@@ -337,6 +335,5 @@ public:
 	{
 		return &AIData;
 	}
-
 };
 

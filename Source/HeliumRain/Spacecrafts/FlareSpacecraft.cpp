@@ -1668,6 +1668,8 @@ void AFlareSpacecraft::FinishLoadandReady()
 		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 	SetLoadedAndReady();
+
+	AFlarePlayerController* PC = GetGame()->GetPC();
 }
 
 void AFlareSpacecraft::SetLoadedAndReady()
@@ -1709,7 +1711,7 @@ void AFlareSpacecraft::Redock()
 }
 
 //Todo: RedockTo doesn't calculate the proper location and needs to be fixed to prevent the redudant second movement/rotation call.
-//"everything is fine *fire in background*"
+//"everything is fine *fire in background*" :)
 void AFlareSpacecraft::RedockTo(AFlareSpacecraft* Station)
 {
 	FFlareDockingInfo DockingPort = Station->GetDockingSystem()->GetDockInfo(GetData().DockedAt);

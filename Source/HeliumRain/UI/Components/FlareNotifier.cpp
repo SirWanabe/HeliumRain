@@ -137,7 +137,7 @@ void SFlareNotifier::Construct(const FArguments& InArgs)
 	Interaction
 ----------------------------------------------------*/
 
-bool SFlareNotifier::Notify(FText Text, FText Info, FName Identifier, EFlareNotification::Type Type, bool Pinned, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
+bool SFlareNotifier::Notify(FText Text, FText Info, FName Identifier, EFlareNotification::Type Type, float NotificationTimeout, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
 {
 	// search for recent notification with the same tag
 
@@ -176,7 +176,7 @@ bool SFlareNotifier::Notify(FText Text, FText Info, FName Identifier, EFlareNoti
 			.Info(Info)
 			.Type(Type)
 			.Tag(Identifier)
-			.Pinned(Pinned)
+			.NotificationTimeout(NotificationTimeout)
 			.TargetMenu(TargetMenu)
 			.TargetInfo(TargetInfo)
 		];

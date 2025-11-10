@@ -591,7 +591,8 @@ int32 UFlareSpacecraftWeaponsSystem::FindBestWeaponGroup(PilotHelper::PilotTarge
 			if(DamageType == EFlareShellDamageType::LightSalvage || DamageType == EFlareShellDamageType::HeavySalvage)
 			{
 				Score *= (UncontrollableTarget ? 1.f : 0.f);
-				Score *= (SpacecraftTarget->GetParent()->IsHarpooned() ? 0.f: 1.f);
+//				Score *= (SpacecraftTarget->GetParent()->IsHarpooned() ? 0.f: 1.f);
+				Score *= (SpacecraftTarget->GetParent()->GetCapturePointsMap().Num() > 0 ? 0.f : 1.f);
 			}
 			else
 			{

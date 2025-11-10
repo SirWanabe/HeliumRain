@@ -416,6 +416,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	TradingBoth = 0.5f;
 
 	DaysUntilTryGetStationLicense = 365;
+	ComplexAffility = 1.f;
 	ShipyardAffility = 1.f;
 	ConsumerAffility = 0.5f;
 	MaintenanceAffility = 0.1f;
@@ -494,12 +495,14 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	BuildEfficientTradeChance = 0.10f;
 	BuildEfficientTradeChanceSmall = 0.35f;
 
-	BuildStationWorthMultiplier = 1.2f;
+	BuildStationWorthMultiplier = 1.f;
 	Station_Shipyard_Maximum = 5;
 	Scrap_Minimum_Ships = 60;
 	Scrap_Min_S_Cargo = 10;
 	Scrap_Min_S_Military = 10;
 	BuildDroneCombatWorth = 3;
+
+	ResearchTechEligableBias = 0.25f;
 
 	if((Company && Company == ST->Pirates) || (CompanyDescription && CompanyDescription->ShortName==FName("PIR")))
 	{
@@ -524,8 +527,12 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		{
 			SetSectorAffilities(0.f);
 			SetSectorAffility(ST->Boneyard, 10.f);
+			SetSectorAffility(ST->Decay, 0.5f);
+			SetSectorAffility(ST->Daedalus, 0.5f);
+
 		}
 
+		ComplexAffility = 0.f;
 		ShipyardAffility = 0.f;
 		ConsumerAffility = 0.10f;
 		MaintenanceAffility = 0.05f;
@@ -574,6 +581,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildEfficientMilitaryChanceSmall = 0.030f;
 		UpgradeMilitarySalvagerSRatio = 0.25f;
 		UpgradeMilitarySalvagerLRatio = 0.25f;
+
+		ResearchTechEligableBias = 1.f;
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("flak");
@@ -607,9 +616,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildMilitaryDiversity = 2;
 		BuildTradeDiversity = 2;
 		BuildEfficientTradeChance = 0.15f;
-		ResearchOrder.Reserve(2);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
+
 	}
 	else if((Company && Company == ST->MiningSyndicate) || (CompanyDescription && CompanyDescription->ShortName == FName("MSY")))
 	{
@@ -650,6 +657,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		BuildEfficientTradeChance = 0.05f;
 		BuildEfficientTradeChanceSmall = 0.2f;
+
+		ResearchTechEligableBias = 0.50f;
 		ResearchOrder.Reserve(5);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -678,9 +687,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 
 		// Budget
-		ResearchOrder.Reserve(2);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
 	}
 	else if((Company && Company == ST->Sunwatch) || (CompanyDescription && CompanyDescription->ShortName == FName("SUN")))
 	{
@@ -696,7 +702,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("fuel"), 10.f);
 		}
 
-		// Budget
 		//already starts with instruments
 		ResearchOrder.Reserve(2);
 		ResearchOrder.Add("science");
@@ -730,6 +735,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildTradeDiversity = 2;
 		BuildTradeDiversitySize = 4;
 		BuildEfficientTradeChance = 0.20f;
+
 		ResearchOrder.Reserve(4);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -757,9 +763,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		BuildEfficientTradeChance = 0.05f;
 		BuildEfficientTradeChanceSmall = 0.20f;
-		ResearchOrder.Reserve(2);
-		ResearchOrder.Add("science");
-		ResearchOrder.Add("instruments");
+
+		ResearchTechEligableBias = 0.50f;
 	}
 	else if((Company && Company == ST->NemaHeavyWorks) || (CompanyDescription && CompanyDescription->ShortName == FName("NHW")))
 	{
@@ -789,6 +794,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		MaxMilitaryShipsBuildingPeace = 2;
 
 		BuildEfficientTradeChance = 0.15f;
+
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -811,6 +817,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("food"), 2.f);
 		}
 
+		ComplexAffility = 0.01f;
 		ShipyardAffility = 0.f;
 		MaintenanceAffility = 10.f;
 
@@ -839,6 +846,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		BuildTradeDiversitySize = 4;
 
 		BuildEfficientTradeChance = 0.15f;
+
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -873,6 +881,7 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		PacifismAfterTribute = 50;
 		BuildEfficientMilitaryChance = 0.10f;
 		BuildEfficientMilitaryChanceSmall = 0.25f;
+
 		ResearchOrder.Reserve(6);
 		ResearchOrder.Add("instruments");
 		ResearchOrder.Add("pirate-tech");
@@ -894,15 +903,17 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			SetResourceAffility(Game->GetResourceCatalog()->Get("tech"), 10.f);
 		}
 
-		BudgetTechnologyWeight = 0.30f;
+		ComplexAffility = 1.25f;
+
+		BudgetTechnologyWeight = 0.25f;
 		BudgetMilitaryWeight = 0.10f;
-		BudgetStationWeight = 0.30f;
+		BudgetStationWeight = 0.35f;
 		BudgetTradeWeight = 0.30f;
 
 		BudgetWarTechnologyWeight = 0.05f;
 		BudgetWarMilitaryWeight = 0.50f;
-		BudgetWarStationWeight = 0.20f;
-		BudgetWarTradeWeight = 0.25f;
+		BudgetWarStationWeight = 0.15f;
+		BudgetWarTradeWeight = 0.30f;
 
 		WarDeclared_TechnologyBudgetFactor = 0.40f;
 		WarDeclared_TradeBudgetFactor = 1.50f;
@@ -917,6 +928,8 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 
 		BuildEfficientTradeChance = 0.20f;
 		BuildEfficientTradeChanceSmall = 0.50f;
+
+		ResearchTechEligableBias = 0.f;
 		ResearchOrder.Reserve(3);
 		ResearchOrder.Add("science");
 		ResearchOrder.Add("instruments");
@@ -966,6 +979,15 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		}
 	}
 
+	if (CompanyDescription->AI_Behaviours.AIStationUpgradePriority)
+	{
+		AIStationUpgradePriority = CompanyDescription->AI_Behaviours.AIStationUpgradePriority;
+	}
+	else
+	{
+		AIStationUpgradePriority = EFlareAICompanyUpgradePriority::UpgradeLowest;
+	}
+
 	if (CompanyDescription->AI_Behaviours.ResourceAffilities.Num() > 0)
 	{
 		TArray<FName> Keys;
@@ -977,6 +999,11 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 			float Value = CompanyDescription->AI_Behaviours.ResourceAffilities[CurrentResource];
 			SetResourceAffility(Game->GetResourceCatalog()->Get(CurrentResource), Value);
 		}
+	}
+
+	if (CompanyDescription->AI_Behaviours.ResearchTechEligableBias)
+	{
+		ResearchTechEligableBias = CompanyDescription->AI_Behaviours.ResearchTechEligableBias;
 	}
 
 	if (CompanyDescription->AI_Behaviours.ResearchOrder.Num() > 0)
@@ -1018,10 +1045,17 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 		TradingSell = CompanyDescription->AI_Behaviours.TradingSell;
 	}
 
+	if (CompanyDescription->AI_Behaviours.ComplexAffility)
+	{
+		ComplexAffility = CompanyDescription->AI_Behaviours.ComplexAffility;
+	}
+
 	if (CompanyDescription->AI_Behaviours.ShipyardAffility)
 	{
 		ShipyardAffility = CompanyDescription->AI_Behaviours.ShipyardAffility;
 	}
+
+	
 	if (CompanyDescription->AI_Behaviours.ConsumerAffility)
 	{
 		ConsumerAffility = CompanyDescription->AI_Behaviours.ConsumerAffility;
@@ -1065,8 +1099,6 @@ void UFlareAIBehavior::GenerateAffilities(bool Basic)
 	{
 		BudgetMinimumRepairFactor = CompanyDescription->AI_Behaviours.BudgetMinimumRepairFactor;
 	}
-
-	
 
 	if (CompanyDescription->AI_Behaviours.WarDeclared_StationBudgetFactor)
 	{

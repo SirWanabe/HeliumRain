@@ -83,6 +83,31 @@ void GameLog::AIConstructionStart(UFlareCompany* Company,
 	FFlareLogWriter::PushWriterMessage(Message);
 }
 
+void GameLog::UnlockTechnologyLevel(UFlareCompany* Company,
+	int32 TechnologyLevel)
+{
+	FlareLogMessage Message;
+	Message.Target = EFlareLogTarget::Game;
+	Message.Event = EFlareLogEvent::COMPANY_UNLOCK_TECH_LEVEL;
+
+	{
+		FlareLogMessageParam Param;
+		Param.Type = EFlareLogParam::String;
+		Param.StringValue = Company->GetShortName().ToString();
+		Message.Params.Add(Param);
+	}
+	{
+		FlareLogMessageParam Param;
+		Param.Type = EFlareLogParam::String;
+		Param.StringValue = FString::FromInt(TechnologyLevel);
+		Message.Params.Add(Param);
+	}
+
+	FFlareLogWriter::PushWriterMessage(Message);
+}
+
+
+
 void GameLog::UnlockResearch(UFlareCompany* Company,
 								FFlareTechnologyDescription* Research)
 {

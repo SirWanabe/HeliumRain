@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Content)
 	FText StartDescription;
 
+	UPROPERTY(EditAnywhere, Category = Content)
+	int32 StartingTechnologyLevel;
+
 	/** Set to -1 to have research points automatically set to the cost of Auto-Docking research*/
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 StartingResearchPoints;

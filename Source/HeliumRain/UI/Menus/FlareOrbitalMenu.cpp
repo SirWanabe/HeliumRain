@@ -821,7 +821,7 @@ void SFlareOrbitalMenu::OnOpenSector(TSharedPtr<int32> Index)
 			if (TargetFleet->GetUnableToTravelShips() < TargetFleet->GetShips().Num())
 			{
 				// Open the confirmation
-				MenuManager->GetPC()->GetMenuManager()->Confirm(TitleText,
+				MenuManager->Confirm(TitleText,
 					ConfirmText,
 					FSimpleDelegate::CreateSP(this, &SFlareOrbitalMenu::OnStartSelectedFleetTravelConfirmed),
 					FSimpleDelegate::CreateSP(this, &SFlareOrbitalMenu::OnStartSelectedFleetTravelCanceled));
@@ -905,6 +905,11 @@ void SFlareOrbitalMenu::OnFastForwardAutomaticClicked()
 
 void SFlareOrbitalMenu::OnFastForwardConfirmed(bool Automatic)
 {
+	if (MenuManager->GetCurrentMenu() != EFlareMenu::MENU_Orbit)
+	{
+		return;
+	}
+
 	FLOGV("Start fast forward, automatic = %d", Automatic);
 
 	if (Automatic)

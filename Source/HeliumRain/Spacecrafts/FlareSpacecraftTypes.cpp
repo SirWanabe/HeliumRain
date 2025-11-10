@@ -105,6 +105,21 @@ int32 FFlareSpacecraftDescription::GetCapacity() const
 	return CargoBayCapacity * CargoBayCount;
 }
 
+int32 FFlareSpacecraftDescription::GetStationSectorSlots()
+{
+	int32 SectorStationSlots_Returned = 0;
+	if (!IsSubstation)
+	{
+		SectorStationSlots_Returned = StationSectorSlots;
+		if (!SectorStationSlots_Returned || SectorStationSlots_Returned == -1)
+		{
+			SectorStationSlots_Returned = 1;
+		}
+	}
+	return SectorStationSlots_Returned;
+}
+
+
 bool FFlareSpacecraftDescription::IsAnUncapturable() const
 {
 	return IsUncapturable;
@@ -150,6 +165,19 @@ bool FFlareSpacecraftDescription::IsMilitaryArmed() const
 bool FFlareSpacecraftDescription::CheckIsNotMilitary() const
 {
 	return IsNotMilitary;
+}
+
+
+bool FFlareSpacecraftDescription::IsComplex() const
+{
+	if (Identifier == "station-complex" || StationConnectorNames.Num() > 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool FFlareSpacecraftDescription::IsResearch() const

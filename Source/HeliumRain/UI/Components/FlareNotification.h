@@ -25,7 +25,7 @@ class SFlareNotification : public SCompoundWidget
 	SLATE_ARGUMENT(FText, Text)
 	SLATE_ARGUMENT(FText, Info)
 	SLATE_ARGUMENT(FName, Tag)
-	SLATE_ARGUMENT(bool, Pinned)
+	SLATE_ARGUMENT(float, NotificationTimeout)
 	SLATE_ARGUMENT(EFlareMenu::Type, TargetMenu)
 	SLATE_ARGUMENT(FFlareMenuParameterData, TargetInfo)
 
@@ -130,6 +130,4 @@ protected:
 	float                                CurrentAlpha;
 	float                                CurrentMargin;
 	float                                LastHeight;
-
-
 };

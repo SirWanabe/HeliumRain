@@ -1997,7 +1997,7 @@ int64 UFlareGameTools::ComputeSpacecraftPrice(FName ShipClass, UFlareSimulatedSe
 	float ShipyardfabricationBonus = 0;
 	if (SellingCompany)
 	{
-		ShipyardfabricationBonus = SellingCompany->GetTechnologyBonus("shipyard-fabrication-bonus");
+		ShipyardfabricationBonus = SellingCompany->GetTechnologyBonus_Float("shipyard-fabrication-bonus");
 		if (BuyingCompany && BuyingCompany != SellingCompany)
 		{
 			ShipyardfabricationBonus *= 0.50f;

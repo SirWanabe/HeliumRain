@@ -37,12 +37,17 @@ public:
 	/** Exit this menu */
 	void Exit();
 
+	void ResetDefaults();
 
 protected:
 
 	/*----------------------------------------------------
 		Callbacks
 	----------------------------------------------------*/
+
+	void UpdateAllInfos();
+	void UpdateTechnologyButtonInfo();
+	void UpdateCompanyTechnologyInfo();
 
 	/** Company info text */
 	FText GetCompanyTechnologyInfo() const;
@@ -53,17 +58,10 @@ protected:
 	/** Technology description text */
 	FText GetTechnologyDescription() const;
 
-	/** Coloring for the levle text */
+	/** Coloring for the level text */
 	FSlateColor GetTitleTextColor(int32 RowLevel) const;
-
-	/** Is the unlocking of technology disabled */
-	bool IsUnlockDisabled() const;
-
-	/** Unlock button text */
-	FText GetTechnologyUnlockText() const;
-
-	/** Unlock button hint text */
-	FText GetTechnologyUnlockHintText() const;
+	FSlateColor GetTechnologyLevelCostTextColor(int32 RowLevel) const;
+	
 
 	/** Technology selected */
 	void OnTechnologySelected(const FFlareTechnologyDescription* Technology);
@@ -74,6 +72,10 @@ protected:
 	/** Count of unlocked scannables */
 	FText GetUnlockedScannableCount() const;
 
+	/** Coloring for the upgrade tech text */
+	FSlateColor GetTechnologyUpgradeTextColor(int32 RowLevel) const;
+
+	FText GetTechnologyLevelCost(int32 Level) const;
 
 protected:
 
@@ -81,13 +83,18 @@ protected:
 		Protected data
 	----------------------------------------------------*/
 
+	bool											TutorialQuestComplete = false;
+
 	// General data
 	TWeakObjectPtr<class AFlareMenuManager>         MenuManager;
 	const FFlareTechnologyDescription*              SelectedTechnology;
-	
+
 	// Slate objects
 	TSharedPtr<SScrollBox>                          TechnologyTree;
 	TSharedPtr<SVerticalBox>                        ArtifactList;
+	TSharedPtr<SRichTextBlock>						CompanyTechnologyInfo;
+	TSharedPtr<SFlareButton>						UnlockTechnologyButton;
+	
 
 public:
 
@@ -99,5 +106,8 @@ public:
 	{
 		return SelectedTechnology;
 	}
-
+	const bool GetTutorialQuestComplete()
+	{
+		return TutorialQuestComplete;
+	}
 };

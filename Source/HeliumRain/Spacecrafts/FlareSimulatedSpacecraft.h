@@ -33,8 +33,12 @@ public:
 	void SelectWhiteListDefault(UFlareCompanyWhiteList* NewWhiteList);
 	UFlareCompanyWhiteList* GetActiveWhitelist();
 
+	void SetImmatriculationReplacementTo(FName NewImmatriculationValue);
+
 	/** Save the ship to a save file */
 	virtual FFlareSpacecraftSave* Save();
+
+	FFlareFactorySave SetDefaultFactoryData(FFlareFactorySave FactoryData, FFlareFactoryDescription* FactoryDescription);
 
 	/** Get the parent company */
 	virtual UFlareCompany* GetCompany() const;
@@ -43,6 +47,7 @@ public:
 	virtual EFlarePartSize::Type GetSize() const;
 
 	virtual FName GetImmatriculation() const;
+	virtual FName GetImmatriculationReplacement() const;
 
 	/** Check if this is a military ship */
 	virtual bool IsMilitary() const;
@@ -91,7 +96,8 @@ public:
 
 	virtual void SetCurrentSector(UFlareSimulatedSector* Sector);
 
-	void TryMigrateDrones();
+	bool TryMigrateDrones();
+	void DroneAttemptMigration();
 
 	virtual void SetCurrentFleet(UFlareFleet* Fleet)
 	{
@@ -155,21 +161,16 @@ public:
 
 	bool IsInternalDockedTo(UFlareSimulatedSpacecraft* OwnerShip);
 
-	bool IsHarpooned()
-	{
-		return SpacecraftData.HarpoonCompany != NAME_None;
-	}
-
 	void SetDestroyed(bool Destroyed)
 	{
 		SpacecraftData.IsDestroyed = Destroyed;
 	}
 
-	UFlareCompany* GetHarpoonCompany();
-
 	void ResetCapture(UFlareCompany* Company = NULL);
 
-	bool TryCapture(UFlareCompany* Company, int32 CapturePoint);
+	TMap<FName, int32> GetCapturePointsMap();
+
+	bool TryCapture(UFlareCompany* Company, int32 *CapturePoint);
 
 	void RemoveCapturePoint(FName CompanyIdentifier, int32 CapturePoint);
 
@@ -190,6 +191,7 @@ public:
 
 	bool NeedRefill();
 
+	bool IsShipyardAllFactories();
 	bool IsShipyard();
 
 	void AutoFillConstructionCargoBay();
@@ -329,7 +331,13 @@ protected:
 	class UFlareSimulatedSpacecraftWeaponsSystem*                 WeaponsSystem;
 
 	UPROPERTY()
+	TArray<UFlareFactory*>								          AllFactories;
+
+	UPROPERTY()
 	TArray<UFlareFactory*>								          Factories;
+
+	UPROPERTY()
+	UFlareFactory*												  StationConstructionFactory;
 
 	UPROPERTY()
 	UFlareCargoBay*												  ProductionCargoBay;
@@ -352,9 +360,7 @@ protected:
 	UFlareCompanyWhiteList*									ShipSelectedWhiteList;
 	float													EngineAccelerationPower = 0.f;
 
-	UFlareCompany*											HarpooningCompany;
-
-
+	bool													CreatedInitialFactories;
 
 public:
 
@@ -440,11 +446,18 @@ public:
 		return ConstructionCargoBay;
 	}
 
+	UFlareCargoBay* GetActiveCargoBayFromFactory(UFlareFactory* Factory) const;
 	UFlareCargoBay* GetActiveCargoBay() const;
 
+	TArray<UFlareFactory*>& GetAllFactories();
 	TArray<UFlareFactory*>& GetFactories();
-
 	TArray<UFlareFactory*> GetShipyardFactories();
+
+	inline UFlareFactory* GetStationConstructionFactory() const
+	{
+		return StationConstructionFactory;
+	}
+
 	int32 GetShipyardFactoriesCount();
 
 
@@ -456,6 +469,11 @@ public:
 	inline int32 GetLevel() const
 	{
 		return SpacecraftData.Level;
+	}
+
+	inline int32 GetMaxLevel() const
+	{
+		return GetDescription()->MaxLevel;
 	}
 
 	inline bool IsTrading() const
@@ -521,6 +539,7 @@ public:
 
 	void SetOwnerHasStationLicense(bool Setting);
 
+	int32 GetStationSectorSlots();
 	int32 GetEquippedSalvagerCount();
 
 	int32 GetCombatPoints(bool ReduceByDamage);

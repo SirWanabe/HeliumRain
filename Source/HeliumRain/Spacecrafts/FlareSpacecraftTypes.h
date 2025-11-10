@@ -417,6 +417,10 @@ struct FFlareFactorySave
 	/** Target ship company owner */
 	UPROPERTY(EditAnywhere, Category = Save)
 	FName TargetShipCompany;
+
+	/** Efficiency value of this factory*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	float FactoryEfficiency;
 };
 
 /** Catalog binding between FFlareSpacecraftDescription and FFlareSpacecraftComponentDescription structure */
@@ -586,6 +590,31 @@ struct FFlareProductionData
 	TArray<FFlareFactoryResource> OutputResources;
 };
 
+USTRUCT()
+struct FFlareFactoryTechnologyEffects
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Technology Identifier. Set this to the identifier of a technology required for the other values to take effect*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	FName Identifier;
+
+	/** Adds to the minimum efficiency of a factory. Default total value starts at 0.90.*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	float Efficiency_Minimum;
+
+	/** Adds to the maximum efficiency of a factory. Default total value starts at 1.10.*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	float Efficiency_Maximum;
+
+	/** Increases the rate of efficiency gain while producing. Default total value starts at 0.00025.*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	float Efficiency_ProductionOngoing;
+	/** Increases the rate of efficiency gain at tne end of a production cycle. Default total value starts at 0.001.*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	float Efficiency_ProductionFinished;
+};
+
 /** Factory description */
 USTRUCT()
 struct FFlareFactoryDescription
@@ -600,7 +629,7 @@ struct FFlareFactoryDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	FText Description;
 
-	/** Resource identifier */
+	/** Factory identifier */
 	UPROPERTY(EditAnywhere, Category = Content)
 	FName Identifier;
 
@@ -623,6 +652,13 @@ struct FFlareFactoryDescription
 	/** Visible states */
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool VisibleStates;
+
+	/** All technologies that the owning company requires to make use of this factory*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
+
+	/** Array of technologies and what values of the factory they are allowed to modify*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	TArray<FFlareFactoryTechnologyEffects> TechnologiesEffects;
 
 	bool IsShipyard() const
 	{
@@ -670,6 +706,25 @@ struct FFlareSpacecraftDescription
 	/** Spacecraft internal name */
 	UPROPERTY(EditAnywhere, Category = Content) FName Identifier;
 
+	/** This ship is disabled */
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
+
+	/** This ship is disabled but it will override the stats of an older version that was found with this ones. Useful if rebalancing ships that your mod doesn't have the models etc for*/
+	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
+
+	/** Disables this entry if any of the designated mods aren't detected*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsDisabledIfModsNotLoaded;
+
+	/** Enables this entry only if any mods in the array aren't detected as loaded*/
+	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsEnabledIfModsNotLoaded;
+
+	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
+	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
+
+	/** Save version for ship/station. If SaveVersion is higher than save value the ship will try to refresh components on load to prevent crashing*/
+	UPROPERTY(EditAnywhere, Category = Content)
+	int32 SaveVersion;
+
 	/** Spacecraft name */
 	UPROPERTY(EditAnywhere, Category = Content) FText Name;
 
@@ -685,7 +740,10 @@ struct FFlareSpacecraftDescription
 	/** Spacecraft mass */
 	UPROPERTY(EditAnywhere, Category = Content) float Mass;
 
-	/** Build constraints for stations */
+	/** How many station slots this station occupies within a sector */
+	UPROPERTY(EditAnywhere, Category = Content) int32 StationSectorSlots;
+
+	/** Station Build constraints */
 	UPROPERTY(EditAnywhere, Category = Content)
 	TArray<TEnumAsByte<EFlareBuildConstraint::Type>> BuildConstraint;
 
@@ -712,21 +770,6 @@ struct FFlareSpacecraftDescription
 
 	/** If this is a drone it is not buildable via shipyards and has a different method*/
 	UPROPERTY(EditAnywhere, Category = Content) bool IsDroneShip;
-
-	/** This ship is disabled */
-	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabled;
-
-	/** This ship is disabled but it will override the stats of an older version that was found with this ones. Useful if rebalancing ships that your mod doesn't have the models etc for*/
-	UPROPERTY(EditAnywhere, Category = Content) bool IsDisabledOverrideStats;
-
-	/** Disables this entry if any of the designated mods aren't detected*/
-	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsDisabledIfModsNotLoaded;
-	
-	/** Enables this entry only if any mods in the array aren't detected as loaded*/
-	UPROPERTY(EditAnywhere, Category = Content) TArray<FString> IsEnabledIfModsNotLoaded;
-
-	/** This adjusts the priority of this ship being loaded. Higher numbers will override lower numbers. Equal numbers will override each other based on their load order*/
-	UPROPERTY(EditAnywhere, Category = Content) int ModLoadPriority;
 
 	/** All required unlocked technologies to build station or ship.*/
 	UPROPERTY(EditAnywhere, Category = Content) TArray<FName> RequiredTechnologies;
@@ -834,7 +877,7 @@ struct FFlareSpacecraftDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 CapturePointContribution;
 
-	/** Capture point to capture (scale with level.*/
+	/** Capture points to capture Scales with level. Fallback Small ship = 10, Large ship = 100.*/
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 CapturePointThreshold;
 
@@ -850,10 +893,7 @@ struct FFlareSpacecraftDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	int32 StationConnectorCount;
 
-	/** Save version for ship/station. If SaveVersion is higher than save value the ship will try to refresh components on load to prevent crashing*/
-	UPROPERTY(EditAnywhere, Category = Content)
-	int32 SaveVersion;
-
+	int32 GetStationSectorSlots();
 	int32 GetCapacity() const;
 
 	bool IsAnUncapturable() const;
@@ -863,11 +903,13 @@ struct FFlareSpacecraftDescription
 	bool IsImmobileStation() const;
 
 	bool IsShipyard() const;
+	bool IsShipyardAllFactories() const;
 
 	bool IsMilitary() const;
 	bool IsMilitaryArmed() const;
 	bool CheckIsNotMilitary() const;
 
+	bool IsComplex() const;
 	bool IsResearch() const;
 	bool IsTelescope() const;
 	static const FSlateBrush* GetIcon(FFlareSpacecraftDescription* Characteristic);
@@ -913,6 +955,11 @@ struct FFlareSpacecraftSave
 	/** Ship immatriculation. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)
 	FName Immatriculation;
+
+	/** Ship immatriculation. In the event of a ship capture this value gets set to the captured ships new immatriculation for the now dead ship*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName ImmatriculationReplacement;
+
 
 	/** Ship nickname. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -972,9 +1019,13 @@ struct FFlareSpacecraftSave
 
 	/** Factory states */
 	UPROPERTY(EditAnywhere, Category = Save)
+	TArray<FFlareFactorySave> FactoryConstructionStates;
+
+	/** Factory states */
+	UPROPERTY(EditAnywhere, Category = Save)
 	TArray<FFlareFactorySave> FactoryStates;
 
-	/** Asteroid we're stuck to */
+		/** Asteroid we're stuck to */
 	UPROPERTY(EditAnywhere, Category = Save)
 	FFlareAsteroidSave AsteroidData;
 
@@ -1009,12 +1060,11 @@ struct FFlareSpacecraftSave
 	float RefillStock;
 
 	/** Company that harpooned us */
-	UPROPERTY(EditAnywhere, Category = Save)
-	FName HarpoonCompany;
+//	UPROPERTY(EditAnywhere, Category = Save) FName HarpoonCompany;
 
 	/** Current capture points */
 	UPROPERTY(EditAnywhere, Category = Save)
-		TMap<FName, int32> CapturePoints;
+	TMap<FName, int32> CapturePoints;
 
 	/** Actor to attach to */
 	UPROPERTY(EditAnywhere, Category = Save)

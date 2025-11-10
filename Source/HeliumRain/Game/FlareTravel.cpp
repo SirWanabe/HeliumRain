@@ -177,7 +177,7 @@ void UFlareTravel::Simulate()
 					DestinationSector->GetSectorName()),
 				FName("travel-raid-soon"),
 				EFlareNotification::NT_Military,
-				false,
+				NOTIFY_DEFAULT_TIMER,
 				EFlareMenu::MENU_Sector,
 				Data);
 		}
@@ -369,7 +369,7 @@ void UFlareTravel::EndTravel()
 				DestinationSector->GetSectorName()),
 			FName("travel-end"),
 			EFlareNotification::NT_Info,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Sector,
 			Data);
 
@@ -548,7 +548,7 @@ int64 UFlareTravel::ComputeTravelDuration(UFlareWorld* World, UFlareSimulatedSec
 	if(Company)
 	{
 		float TechnologyBonus = Company->IsTechnologyUnlocked("fast-travel") ? 0.5f : 1.f;
-		float TechnologyBonusSecondary = Company->GetTechnologyBonus("travel-bonus");
+		float TechnologyBonusSecondary = Company->GetTechnologyBonus_Float("travel-bonus");
 		TechnologyBonus -= TechnologyBonusSecondary;
 		TravelDuration *= TechnologyBonus;
 	}

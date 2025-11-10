@@ -47,9 +47,7 @@
 #include "GameFramework/InputSettings.h"
 #include "Engine.h"
 
-
 #define LOCTEXT_NAMESPACE "FlareMenuManager"
-
 
 AFlareMenuManager* AFlareMenuManager::Singleton;
 
@@ -285,9 +283,15 @@ bool AFlareMenuManager::ToggleMenu(EFlareMenu::Type Target)
 bool AFlareMenuManager::OpenMenu(EFlareMenu::Type Target, FFlareMenuParameterData Data, bool AddToHistory, bool OpenDirectly, bool UpdateQuestManager)
 {
 	// Filters
+
 	if (NextMenu.Key != EFlareMenu::MENU_None || GetGame()->IsLoggingoff())
 	{
-		return false;
+		if (Target != EFlareMenu::MENU_GameOver)
+		{
+			FLOGV("AFlareMenuManager::OpenMenu : Denied '%s' as NextMenu set to %s", *GetMenuName(Target).ToString(), *GetMenuName(NextMenu.Key).ToString());
+			return false;
+		}
+
 	}
 /*
 	//TODO (some menus elements refresh by reopening the same menu)
@@ -368,6 +372,7 @@ void AFlareMenuManager::OpenSpacecraftOrder(FFlareMenuParameterData Data, FOrder
 	}
 	else if (Data.Sector)
 	{
+		//building station
 		SpacecraftOrder->Open(Data.Sector, ConfirmationCallback);
 	}
 	else if (Data.Skirmish)
@@ -457,7 +462,7 @@ void AFlareMenuManager::Reload()
 	if (MenuIsOpen)
 	{
 		bool ValidReload = true;
-
+/*
 		// #1156 Don't reload to dead ship
 		if (CurrentMenu.Key == EFlareMenu::MENU_Ship
 		 || CurrentMenu.Key == EFlareMenu::MENU_ShipConfig
@@ -476,7 +481,7 @@ void AFlareMenuManager::Reload()
 				}
 			}
 		}
-
+*/
 		// Reload if we can
 		if (ValidReload)
 		{
@@ -504,7 +509,7 @@ void AFlareMenuManager::Confirm(FText Title, FText Text, FSimpleDelegate OnConfi
 	}
 }
 
-bool AFlareMenuManager::Notify(FText Text, FText Info, FName Tag, EFlareNotification::Type Type, bool Pinned, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
+bool AFlareMenuManager::Notify(FText Text, FText Info, FName Tag, EFlareNotification::Type Type, float NotificationTimeout, EFlareMenu::Type TargetMenu, FFlareMenuParameterData TargetInfo)
 {
 	if (MainOverlay.IsValid())
 	{
@@ -512,7 +517,7 @@ bool AFlareMenuManager::Notify(FText Text, FText Info, FName Tag, EFlareNotifica
 		{
 			OrbitMenu->RequestStopFastForward();
 		}
-		return Notifier->Notify(Text, Info, Tag, Type, Pinned, TargetMenu, TargetInfo);
+		return Notifier->Notify(Text, Info, Tag, Type, NotificationTimeout, TargetMenu, TargetInfo);
 	}
 	return false;
 }
@@ -598,6 +603,11 @@ void AFlareMenuManager::PrepareSkirmishEnd()
 /*----------------------------------------------------
 	Internal management
 ----------------------------------------------------*/
+
+void AFlareMenuManager::SetMenusToDefaults()
+{
+	TechnologyMenu->ResetDefaults();
+}
 
 void AFlareMenuManager::ResetMenu()
 {
@@ -833,9 +843,12 @@ bool AFlareMenuManager::LoadGame()
 	CurrentShip = PC->GetPlayerShip();
 	if (CurrentShip)
 	{
-		PC->GetPlayerShip()->GetCurrentSector()->UpdateReserveShips();
-		// Activate sector
 		FLOGV("AFlareMenuManager::LoadGame : found player ship '%s'", *CurrentShip->GetImmatriculation().ToString());
+
+		PC->GetPlayerShip()->GetCurrentSector()->UpdateReserveShips();
+
+		// Activate sector
+
 		PC->GetGame()->ActivateCurrentSector();
 
 		// Fly the ship - we create another set of data here to keep with the convention :) 
@@ -875,6 +888,7 @@ bool AFlareMenuManager::FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* 
 				FLOGV("AFlareMenuManager::FlyShip: need ship %s to be active", *Ship->GetImmatriculation().ToString());
 				return false;
 			}
+
 			PC->FlyShip(Ship->GetActive(), ShouldExitMenu);
 
 			if (OldShip != Ship->GetActive())
@@ -921,7 +935,7 @@ bool AFlareMenuManager::FlyShip(bool ShouldExitMenu, UFlareSimulatedSpacecraft* 
 				// Notify
 				FFlareMenuParameterData Data;
 				Data.Spacecraft = Ship;
-				Notify(Title, Info, "flying-info", EFlareNotification::NT_Info, false, EFlareMenu::MENU_Ship, Data);
+				Notify(Title, Info, "flying-info", EFlareNotification::NT_Info, NOTIFY_DEFAULT_TIMER, EFlareMenu::MENU_Ship, Data);
 			}
 		}
 
@@ -970,18 +984,6 @@ void AFlareMenuManager::Travel()
 	OpenOrbit();
 }
 
-void AFlareMenuManager::GameOver()
-{
-	OnEnterMenu(false, false);
-
-	GetGame()->DeactivateSector();
-	GetGame()->Recovery();
-	GetGame()->GetGameWorld()->Simulate();
-	GetGame()->ActivateCurrentSector();
-
-	GameOverMenu->Enter();
-}
-
 bool AFlareMenuManager::ReloadSector()
 {
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
@@ -1011,6 +1013,7 @@ bool AFlareMenuManager::ReloadSector()
 	return true;
 }
 
+//Simulate from the keybind, used to benefit from the fade to black hiding the unload/load
 bool AFlareMenuManager::FastForwardSingle()
 {
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
@@ -1021,7 +1024,19 @@ bool AFlareMenuManager::FastForwardSingle()
 		{
 			PC->GetGame()->DeactivateSector();
 			PC->GetGame()->GetGameWorld()->Simulate();
-			PC->GetGame()->ActivateCurrentSector();
+
+			EFlareMenu::Type CurrentMenu = GetCurrentMenu();
+			if (CurrentMenu != EFlareMenu::MENU_GameOver)
+			{
+				FLOG("AFlareMenuManager::FastForwardSingle: gameover screen");
+				PC->GetGame()->ActivateCurrentSector();
+			}
+		}
+
+		if (PC->GetPlayerShip()->IsDestroyed())
+		{
+			FLOG("AFlareMenuManager::FastForwardSingle: player ship is destroyed");
+			return true;
 		}
 
 		// Fly the ship - retry at new tick if not possible
@@ -1030,6 +1045,7 @@ bool AFlareMenuManager::FastForwardSingle()
 			FLOG("AFlareMenuManager::FastForwardSingle: need player ship to be active");
 			return false;
 		}
+
 		PC->FlyShip(PC->GetShipPawn());
 
 		// Notify date
@@ -1037,11 +1053,37 @@ bool AFlareMenuManager::FastForwardSingle()
 			UFlareGameTools::GetDisplayDate(GetGame()->GetGameWorld()->GetDate()),
 			FName("new-date-ff"));
 
-		ExitMenu();
-		MenuIsOpen = false;
+		EFlareMenu::Type CurrentMenu = GetCurrentMenu();
+		if (CurrentMenu != EFlareMenu::MENU_GameOver)
+		{
+			ExitMenu();
+			MenuIsOpen = false;
+		}
 	}
 	return true;
 }
+
+void AFlareMenuManager::GameOver()
+{
+	if (!GameOverMenu->IsEnabled())
+	{
+		FLOG("AFlareMenuManager::GameOver: beginning");
+		OnEnterMenu(false, false);
+
+		GetGame()->DeactivateSector();
+		GetGame()->Recovery();
+		GameOverMenu->Enter();
+
+		GetGame()->GetGameWorld()->Simulate();
+		GetGame()->ActivateCurrentSector();
+		FLOG("AFlareMenuManager::GameOver: end");
+	}
+	else
+	{
+		FLOG("AFlareMenuManager::GameOver: called but already active");
+	}
+}
+
 
 void AFlareMenuManager::OpenMainMenu()
 {
@@ -1317,6 +1359,7 @@ FText AFlareMenuManager::GetMenuName(EFlareMenu::Type MenuType, bool Uppercase)
 			case EFlareMenu::MENU_Help:			  Name = LOCTEXT("UppercaseHelpMenuName", "HELP");			            break;
 			case EFlareMenu::MENU_Settings:       Name = LOCTEXT("UppercaseSettingsMenuName", "SETTINGS");              break;
 			case EFlareMenu::MENU_Quit:           Name = LOCTEXT("UppercaseQuitMenuName", "QUIT");                      break;		
+			case EFlareMenu::MENU_FastForwardSingle:Name = LOCTEXT("UppercaseFastfwdMenuName", "ASYNC FSTFWD");         break;
 			default:                                                                                                    break;
 		}
 	}

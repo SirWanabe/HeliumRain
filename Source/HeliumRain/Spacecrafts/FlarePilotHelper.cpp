@@ -338,6 +338,8 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 	float BestScore = 0;
 
 	//FLOGV("GetBestTarget for %s", *Ship->GetImmatriculation().ToString());
+	bool HasSmallSalvager = Ship->GetParent()->GetWeaponsSystem()->IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::LightSalvage);
+	bool HasLargeSalvager = Ship->GetParent()->GetWeaponsSystem()->IsDamageTypeInAvailableWeaponDamageTypes(EFlareShellDamageType::HeavySalvage);
 
 	for (AFlareSpacecraft* ShipCandidate :Ship->GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
@@ -467,7 +469,9 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			StateScore /= (25 * IncomingBombs);
 		}
 
-		if(ShipCandidate->GetParent()->IsHarpooned()) {
+//		if(ShipCandidate->GetParent()->IsHarpooned())
+		if(ShipCandidate->GetParent()->GetCapturePointsMap().Num() > 0)	
+		{
 			if(ShipCandidate->GetParent()->GetDamageSystem()->IsUncontrollable())
 			{
 				// Never target harponned uncontrollable ships
@@ -478,6 +482,19 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 		if(Preferences.LastTarget.Is(ShipCandidate)) {
 			StateScore *=  Preferences.LastTargetWeight;
+		}
+
+		if (ShipCandidate->GetDescription()->IsUncapturable)
+		{
+			if (ShipCandidate->GetSize() == EFlarePartSize::L && HasLargeSalvager)
+			{
+				StateScore *= 0.50f;
+			}
+
+			else if (ShipCandidate->GetSize() == EFlarePartSize::S && HasSmallSalvager)
+			{
+				StateScore *= 0.50f;
+			}
 		}
 
 		float Distance = (Preferences.BaseLocation - ShipCandidate->GetActorLocation()).Size();

@@ -99,6 +99,7 @@ public:
 	int64 GetStationLicenseCost(UFlareSimulatedSector* BuyingSector);
 	int64 GetTotalStationLicenseValue();
 
+	void CapturedShip(UFlareSimulatedSpacecraft* CapturedShip, UFlareCompany* OldOwner);
 	void CapturedStation(UFlareSimulatedSpacecraft* CapturedStation, UFlareCompany* OldOwner);
 	void RemoveFromStationCache(UFlareSimulatedSector* Sector);
 
@@ -163,9 +164,9 @@ public:
 	/** Make peace with Company in echange for money */
 	void PayTribute(UFlareCompany* Company, bool AllowDepts = false);
 
-	void StartCapture(UFlareSimulatedSpacecraft* Station);
+	bool StartCapture(UFlareSimulatedSpacecraft* Station, bool CheckStationLimits = true);
 	void StopCapture(UFlareSimulatedSpacecraft* Station);
-	bool CanStartCapture(UFlareSimulatedSpacecraft* Station);
+	bool CanStartCapture(UFlareSimulatedSpacecraft* Station, bool CheckStationLimits = true);
 
 	void AddRetaliation(float Retaliation);
 	void RemoveRetaliation(float Retaliation);
@@ -203,10 +204,12 @@ public:
 	bool IsSectorStationLicenseUnlocked(FName Identifier) const;
 
 	/** Check current technology multiplier bonus */
-	float GetTechnologyBonus(FName Identifier) const;
-	
+	float GetTechnologyBonus_Float(FName Identifier) const;
+	int32 GetTechnologyBonus_Int(FName Identifier) const;
+
 	/** Check if a technology can be unlocked */
-	bool IsTechnologyAvailable(FName Identifier, FText& Reason, bool IgnoreCost=false) const;
+	bool IsTechnologyAvailable(FName Identifier, FText& Reason, bool IgnoreCost = false, bool IgnoreTechnologyLevel = false) const;
+	bool IsTechnologyAvailable(FFlareTechnologyDescription* Technology, FText& Reason, bool IgnoreCost = false, bool IgnoreTechnologyLevel = false) const;
 
 	/** Get the current technology cost */
 	int32 GetTechnologyCost(const FFlareTechnologyDescription* Technology) const;
@@ -217,6 +220,10 @@ public:
 	/** Get the current technology level */
 	int32 GetTechnologyLevel() const;
 
+	void SetTechnologyLevel(int32 NewTechLevel);
+	bool UpgradeTechnologyLevel(int32 IncrementBy = 1, bool IgnoreCost = false);
+	int32 GetTechnologyLevelUpgradeCost(int32 IncrementBy = 1);
+
 	/** Get the current amount of science */
 	int32 GetResearchAmount() const;
 
@@ -224,10 +231,13 @@ public:
 	int32 GetResearchSpent() const;
 
 	/** Get the total amount of science */
-	int32 GetResearchValue() const;
+	int32 GetResearchValue(bool GetTotalResearch = true) const;
+
+	/** Inform Factories to recheck their unlcoked technologies*/
+	void UpdateFactoryRequiredTechnologiesState();
 
 	/** Unlock a technology */
-	void UnlockTechnology(FName Identifier, bool FromSave = false, bool Force = false, bool HideMessage = false);
+	bool UnlockTechnology(FName Identifier, bool FromSave = false, bool Force = false, bool HideMessage = false, bool UpdateFactoryRequiredTechs = true);
 
 	bool HasStationTechnologyUnlocked() const;
 
@@ -258,7 +268,7 @@ protected:
 	TMap<UFlareSimulatedSector*, TArray<UFlareSimulatedSpacecraft*>> CompanyStationsBySectors;
 
 	TArray<UFlareSimulatedSpacecraft*>		CompanyTelescopes;
-
+	TArray<UFlareSimulatedSpacecraft*>      CompanyStationComplexes;
 
 	UPROPERTY()
 	TArray<UFlareSimulatedSpacecraft*>      CompanyChildStations;
@@ -297,7 +307,6 @@ protected:
 	TArray<UFlareSimulatedSector*>          KnownSectors;
 	TArray<UFlareSimulatedSector*>          VisitedSectors;
 
-	int32                                     ResearchAmount;
 	TMap<FName, FFlareTechnologyDescription*> UnlockedTechnologies;
 
 	int64									TotalDayMoneyGain;
@@ -309,7 +318,8 @@ protected:
 	mutable struct CompanyValue						CompanyValueCache;
 	mutable bool									CompanyValueCacheValid;
 
-	TMap<FName, float> ResearchBonuses;
+	TMap<FName, float> ResearchBonus_Floats;
+	TMap<FName, int32> ResearchBonus_Ints;
 
 public:
 	/*----------------------------------------------------
@@ -407,6 +417,11 @@ public:
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyStations()
 	{
 		return CompanyStations;
+	}
+
+	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyStationComplexes()
+	{
+		return CompanyStationComplexes;
 	}
 
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyTelescopes()
@@ -541,6 +556,9 @@ public:
 	float GetConfidenceLevel(UFlareCompany* ReferenceCompany, TArray<UFlareCompany*>& Allies);
 	
 	TArray<UFlareSimulatedSpacecraft*> GetCompanySectorStations(UFlareSimulatedSector* Sector);
+	TArray<UFlareSimulatedSpacecraft*> GetCompanySectorComplexes(UFlareSimulatedSector* Sector);
+
+	int32 GetCompanyMaxStationsForSector(UFlareSimulatedSector* Sector);
 	int32 GetCompanySectorStationsCount(UFlareSimulatedSector* Sector, bool IncludeCapture = true);
 
 	void AddOrRemoveCompanySectorStation(UFlareSimulatedSpacecraft* Station, bool Remove = false);

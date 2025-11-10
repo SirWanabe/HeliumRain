@@ -302,6 +302,7 @@ void UFlareSaveReaderV1::LoadCompany(const TSharedPtr<FJsonObject> Object, FFlar
 	LoadInt32(Object, "TradeRouteImmatriculationIndex", &Data->TradeRouteImmatriculationIndex);
 	LoadInt32(Object, "WhiteListImmatriculationIndex", &Data->WhiteListImmatriculationIndex);
 	LoadFName(Object, "DefaultWhiteListIdentifier", &Data->DefaultWhiteListIdentifier);
+	LoadInt32(Object, "TechnologyLevel", &Data->TechnologyLevel);
 	LoadInt32(Object, "ResearchAmount", &Data->ResearchAmount);
 	LoadInt32(Object, "ResearchSpent", &Data->ResearchSpent);
 	LoadFloat(Object, "ResearchRatio", &Data->ResearchRatio);
@@ -460,6 +461,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	Object->TryGetBoolField(TEXT("IsUnderConstruction"), Data->IsUnderConstruction);
 	LoadFName(Object, "Immatriculation", &Data->Immatriculation);
+	LoadFName(Object, "ImmatriculationReplacement", &Data->ImmatriculationReplacement);
 	LoadFText(Object, "NickName", &Data->NickName);
 	LoadFName(Object, "Identifier", &Data->Identifier);
 	LoadFName(Object, "CompanyIdentifier", &Data->CompanyIdentifier);
@@ -478,7 +480,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 	LoadFloat(Object, "PowerOutageAcculumator", &Data->PowerOutageAcculumator);
 	LoadFName(Object, "DynamicComponentStateIdentifier", &Data->DynamicComponentStateIdentifier);
 	LoadFloat(Object, "DynamicComponentStateProgress", &Data->DynamicComponentStateProgress);
-	LoadFName(Object, "HarpoonCompany", &Data->HarpoonCompany);
+//	LoadFName(Object, "HarpoonCompany", &Data->HarpoonCompany);
 	LoadFName(Object, "OwnerShipName", &Data->OwnerShipName);
 	LoadFName(Object, "AttachActorName", &Data->AttachActorName);
 	LoadFName(Object, "AttachComplexStationName", &Data->AttachComplexStationName);
@@ -601,6 +603,19 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 			FFlareCargoSave ChildData;
 			LoadCargo(Item->AsObject(), &ChildData);
 			targetCargoBay.Add(ChildData);
+		}
+	}
+
+
+	const TArray<TSharedPtr<FJsonValue>>* FactoryConstructionStates;
+	if (Object->TryGetArrayField("FactoryConstructionStates", FactoryConstructionStates))
+	{
+		Data->FactoryConstructionStates.Reserve(FactoryConstructionStates->Num());
+		for (TSharedPtr<FJsonValue> Item : *FactoryConstructionStates)
+		{
+			FFlareFactorySave ChildData;
+			LoadFactory(Item->AsObject(), &ChildData, Data);
+			Data->FactoryConstructionStates.Add(ChildData);
 		}
 	}
 
@@ -851,6 +866,7 @@ void UFlareSaveReaderV1::LoadFactory(const TSharedPtr<FJsonObject> Object, FFlar
 	LoadInt32(Object, "CycleCount", (int32*) &Data->CycleCount); // TODO clean after conversion
 	LoadFName(Object, "TargetShipClass", &Data->TargetShipClass);
 	LoadFName(Object, "TargetShipCompany", &Data->TargetShipCompany);
+	LoadFloat(Object, "FactoryEfficiency", &Data->FactoryEfficiency);
 
 	// Compatibility code
 	if(Object->HasField("OrderShipClass"))
@@ -1096,13 +1112,13 @@ void UFlareSaveReaderV1::LoadCompanyAI(const TSharedPtr<FJsonObject> Object, FFl
 	LoadInt64(Object, "BudgetStation", &Data->BudgetStation);
 	LoadInt64(Object, "BudgetTechnology", &Data->BudgetTechnology);
 	LoadInt64(Object, "BudgetTrade", &Data->BudgetTrade);
+	LoadInt64(Object, "DateCalculatedDefaultBudget", &Data->DateCalculatedDefaultBudget);
 	LoadInt64(Object, "DateBoughtLicense", &Data->DateBoughtLicense);	
 	LoadFloat(Object, "Caution", &Data->Caution);
 	LoadFloat(Object, "Pacifism", &Data->Pacifism);
 
 	LoadFName(Object, "ResearchProject", &Data->ResearchProject);
 	LoadFName(Object, "DesiredStationLicense", &Data->DesiredStationLicense);
-	Object->TryGetBoolField(TEXT("CalculatedDefaultBudget"), Data->CalculatedDefaultBudget);
 }
 
 void UFlareSaveReaderV1::LoadCompanyLicenses(const TSharedPtr<FJsonObject> Object, FFlareCompanyLicensesSave* Data)

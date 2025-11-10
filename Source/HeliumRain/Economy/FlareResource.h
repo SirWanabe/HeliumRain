@@ -57,6 +57,10 @@ struct FFlareResourceDescription
 	UPROPERTY(EditAnywhere, Category = Content)
 	bool IsMaintenanceResource;
 
+	/** Is this resource disabled */
+	UPROPERTY(EditAnywhere, Category = Content)
+	bool IsDisabled;
+
 	/** Display sorting index */
 	UPROPERTY(EditAnywhere, Category = Content)
 	float DisplayIndex;

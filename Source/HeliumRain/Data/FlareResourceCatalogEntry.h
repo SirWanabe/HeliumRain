@@ -20,5 +20,4 @@ public:
 	/** Factory data */
 	UPROPERTY(EditAnywhere, Category = Content)
 	FFlareResourceDescription Data;
-
 };

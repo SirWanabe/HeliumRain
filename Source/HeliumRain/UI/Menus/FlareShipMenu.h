@@ -292,6 +292,8 @@ protected:
 
 	// Spacecraft data
 	UFlareSimulatedSpacecraft*                      TargetSpacecraft;
+	UFlareSimulatedSector*							TargetSpacecraftSector;
+
 	FFlareSpacecraftDescription*					TargetDescription;
 	FFlareSpacecraftSave*                           TargetSpacecraftData;
 	FFlareSpacecraftComponentDescription*           RCSDescription;

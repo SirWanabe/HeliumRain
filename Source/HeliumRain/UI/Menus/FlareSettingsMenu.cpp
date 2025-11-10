@@ -2615,9 +2615,12 @@ void SFlareSettingsMenu::FillJoystickAxisList()
 	EKeys::GetAllKeys(AllKeys);
 	for (FKey Key : AllKeys)
 	{
+//		FLOGV("SFlareSettingsMenu::FillJoystickAxis KEY: %s", *Key.ToString());
+
 		if (Key.GetFName().ToString().StartsWith("Joystick")
 		&& !Key.GetFName().ToString().Contains("Button"))
 		{
+//			FLOGV("SFlareSettingsMenu::FillJoystickAxis Valid Axis %s", *Key.ToString());
 			JoystickAxisKeys.Add(MakeShareable(new FKey(Key)));
 		}
 	}

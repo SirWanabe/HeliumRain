@@ -337,8 +337,8 @@ class HELIUMRAIN_API UFlareQuestConditionTutorialResearchValue: public UFlareQue
 	GENERATED_UCLASS_BODY()
 
 public:
-	static UFlareQuestConditionTutorialResearchValue* Create(UFlareQuest* ParentQuest, int32 Count);
-	void Load(UFlareQuest* ParentQuest,  int32 Count);
+	static UFlareQuestConditionTutorialResearchValue* Create(UFlareQuest* ParentQuest, int32 Count, bool CountTotalResearch = true, FName TechnologyIdentifier = NAME_None);
+	void Load(UFlareQuest* ParentQuest, int32 Count, bool CountTotalResearch = true, FName TechnologyIdentifier = NAME_None);
 
 	virtual bool IsCompleted();
 	virtual void AddConditionObjectives(FFlarePlayerObjectiveData* ObjectiveData);
@@ -346,6 +346,8 @@ public:
 protected:
 
 	int32 TargetResearchPoints;
+	bool CountsTotalResearch;
+
 };
 
 //////////////////////////////////////////////////////

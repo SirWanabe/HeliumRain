@@ -604,7 +604,49 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 
 	// Load data
 	CanEdit = IsEditable;
+
+	if (Target != NULL && Target->IsDestroyed())
+	{
+// ship was killed or perhaps captured?
+		bool ChangedTargetShip = false;
+		FLOGV("SFlareShipMenu::Enter: target was dead, new to look for is %s", *Target->GetImmatriculationReplacement().ToString());
+
+			/*
+		if (TargetSpacecraftSector)
+		{
+			FLOG("SFlareShipMenu::Enter Target is dead, finding replacement from target sector")
+			for (UFlareSimulatedSpacecraft* UpdatedTargetSpacecraft : TargetSpacecraftSector->GetSectorSpacecrafts())
+			{
+				if (UpdatedTargetSpacecraft->GetImmatriculation() == Target->GetImmatriculationReplacement())
+				{
+					TargetSpacecraft = FoundShip;
+					ChangedTargetShip = true;
+					break;
+				}
+			}
+		}
+			*/
+
+		if (!ChangedTargetShip)
+		{
+			FLOG("SFlareShipMenu::Enter Target is dead, finding replacement from all ships")
+			UFlareSimulatedSpacecraft* FoundShip = MenuManager->GetGame()->GetGameWorld()->FindSpacecraft(Target->GetImmatriculationReplacement());
+			if (FoundShip)
+			{
+				//what if the found replacement ship is also dead? do we keep going deeper or don't bother?
+				Target = FoundShip;
+				ChangedTargetShip = true;
+			}
+		}
+		if (!ChangedTargetShip)
+		{
+			FLOG("SFlareShipMenu::Enter Did not find replacement, return")
+			return;
+		}
+	}
+
 	TargetSpacecraft = Target;
+	TargetSpacecraftSector = TargetSpacecraft->GetCurrentSector();
 	TargetDescription = TargetSpacecraft->GetDescription();
 	TargetSpacecraftData = Target->Save();
 	LoadTargetSpacecraft();
@@ -675,8 +717,6 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	TArray<UFlareSimulatedSpacecraft*> ShipChildren = TargetSpacecraft->GetShipChildren();
 	if (ShipChildren.Num() > 0)
 	{
-//		OwnedList->SetVisibility(EVisibility::Visible);
-
 		for (int32 i = 0; i < ShipChildren.Num(); i++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = ShipChildren[i];
@@ -693,23 +733,6 @@ void SFlareShipMenu::Enter(UFlareSimulatedSpacecraft* Target, bool IsEditable)
 	else
 	{
 		OwnedList->SetVisibility(EVisibility::Collapsed);
-	}
-}
-
-void SFlareShipMenu::CheckDockedShips(TArray<AFlareSpacecraft*> DockedShips)
-{
-	for (int32 i = 0; i < DockedShips.Num(); i++)
-	{
-		AFlareSpacecraft* Spacecraft = DockedShips[i];
-
-		if (Spacecraft)
-		{
-			FLOGV("SFlareShipMenu::Enter : Found docked ship %s", *Spacecraft->GetName());
-		}
-		if (DockedShips[i]->GetParent()->GetDamageSystem()->IsAlive())
-		{
-			ShipList->AddShip(DockedShips[i]->GetParent());
-		}
 	}
 }
 
@@ -742,6 +765,23 @@ void SFlareShipMenu::Exit()
 
 	SetEnabled(false);
 	SetVisibility(EVisibility::Collapsed);
+}
+
+void SFlareShipMenu::CheckDockedShips(TArray<AFlareSpacecraft*> DockedShips)
+{
+	for (int32 i = 0; i < DockedShips.Num(); i++)
+	{
+		AFlareSpacecraft* Spacecraft = DockedShips[i];
+
+		if (Spacecraft)
+		{
+			FLOGV("SFlareShipMenu::Enter : Found docked ship %s", *Spacecraft->GetName());
+		}
+		if (DockedShips[i]->GetParent()->GetDamageSystem()->IsAlive())
+		{
+			ShipList->AddShip(DockedShips[i]->GetParent());
+		}
+	}
 }
 
 void SFlareShipMenu::LoadTargetSpacecraft()
@@ -840,7 +880,15 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		}
 		else
 		{
-			ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
+			if (TargetSpacecraft->IsComplex())
+			{
+				ObjectProductionBreakdown->SetVisibility(EVisibility::Visible);
+			}
+			else
+			{
+				ObjectProductionBreakdown->SetVisibility(EVisibility::Collapsed);
+			}
+
 			ExternalOrdersConfigurationButton->SetVisibility(EVisibility::Collapsed);
 			AllowExternalOrdersButton->SetVisibility(EVisibility::Collapsed);
 			AllowAutoConstructionButton->SetVisibility(EVisibility::Collapsed);
@@ -855,15 +903,25 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 		{
 			// Name
 			FText Prefix = TargetSpacecraft->IsStation() ? LOCTEXT("Station", "Station") : LOCTEXT("Ship", "Ship");
+			FText SectorInfo = FText::Format(LOCTEXT("DescriptionStationSectorFormat", "{0}"),
+								TargetSpacecraft->GetCurrentSector()->GetSectorName());
 			FText Suffix;
 			FText NameText;
 
+		//	Format(LOCTEXT("DescriptionStationSectorFormat", "{0}"),
+		//	TargetSpacecraft->GetCurrentSector()->GetSectorName()
+
+			/*
+				return 
+				);
+			*/
+
 			if (TargetSpacecraft->GetShipMaster())
 			{
-				Suffix = FText::Format(LOCTEXT("ShipMaster", "\n\nMaster ship: {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft->GetShipMaster()));
+				Suffix = FText::Format(LOCTEXT("ShipMaster", "\nMaster ship: {0}"), UFlareGameTools::DisplaySpacecraftName(TargetSpacecraft->GetShipMaster()));
 			}
 
-			NameText = FText::Format(LOCTEXT("NameText", "{0}{1}"), Prefix, Suffix);
+			NameText = FText::Format(LOCTEXT("NameText", "{0}, {1}{2}"), Prefix, SectorInfo, Suffix);
 			ObjectName->SetText(NameText);
 			ObjectClassName->SetText(ShipDesc->Name);
 
@@ -1052,6 +1110,7 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 			float Efficiency = TargetSpacecraft->GetStationEfficiency();
 			int DurationMalus = FMath::RoundToInt(UFlareFactory::GetProductionMalus(Efficiency));
 			const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+
 			for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
 			{
 				UFlareFactory* Factory = TargetSpacecraft->GetFactories()[FactoryIndex];
@@ -1084,11 +1143,11 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 						FName ResourceIdentifier = Resource->Resource->Data.Identifier;
 						if (ResourceCosts.Contains(ResourceIdentifier))
 						{
-							ResourceCosts[ResourceIdentifier] += (Resource->Quantity / (ProductionTime * DurationMalus));
+							ResourceCosts[ResourceIdentifier] += ((Resource->Quantity * Factory->GetFactoryEfficiency())  / (ProductionTime * DurationMalus));
 						}
 						else
 						{
-							ResourceCosts.Add(ResourceIdentifier, (Resource->Quantity / (ProductionTime * DurationMalus)));
+							ResourceCosts.Add(ResourceIdentifier, ((Resource->Quantity * Factory->GetFactoryEfficiency()) / (ProductionTime * DurationMalus)));
 						}
 						IsProducing = true;
 					}
@@ -1140,6 +1199,10 @@ void SFlareShipMenu::UpdateProductionBreakdown()
 				ObjectProductionBreakdown->SetText(FText());
 			}
 		}
+		else
+		{
+			ObjectProductionBreakdown->SetText(FText());
+		}
 	}
 }
 
@@ -1153,13 +1216,17 @@ void SFlareShipMenu::UpdateFactoryList()
 		TArray<UFlareFactory*>& Factories = TargetSpacecraft->GetFactories();
 		for (int FactoryIndex = 0; FactoryIndex < Factories.Num(); FactoryIndex++)
 		{
-			FactoryList->AddSlot()
-			[
-				SNew(SFlareFactoryInfo)
-				.Factory(Factories[FactoryIndex])
-				.MenuManager(MenuManager)
-				.Visibility(this, &SFlareShipMenu::GetFactoryControlsVisibility)
-			];
+			UFlareFactory* Factory = Factories[FactoryIndex];
+			if (Factory->OwnerCompanyHasRequiredTechnologies())
+			{
+				FactoryList->AddSlot()
+				[
+					SNew(SFlareFactoryInfo)
+					.Factory(Factories[FactoryIndex])
+					.MenuManager(MenuManager)
+					.Visibility(this, &SFlareShipMenu::GetFactoryControlsVisibility)
+				];
+			}
 		}
 	}
 }
@@ -1492,7 +1559,7 @@ void SFlareShipMenu::OnBuildStationSelected(FFlareSpacecraftDescription* Station
 			LOCTEXT("ComplexStationBuiltInfo", "A new station element has been added to your complex."),
 			"complex-station-built",
 			EFlareNotification::NT_Economy,
-			false,
+			NOTIFY_DEFAULT_TIMER,
 			EFlareMenu::MENU_Station,
 			NotificationParameters);
 
