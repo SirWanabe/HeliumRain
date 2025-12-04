@@ -32,7 +32,7 @@ void UFlareCacheSystem::InitialSetup(AFlareGame* GameMode)
 void UFlareCacheSystem::StoreCachedSpacecraft(AFlareSpacecraft* Spacecraft)
 {
 	//TODO: Investigate what is still running on loaded/cached spacecraft which leads to progressively slower FPS during a game.
-	return;
+//	return;
 
 	if (CachedSpacecraft.Contains(Spacecraft->GetParent()->GetDescription()->SpacecraftTemplate))
 	{
@@ -63,7 +63,7 @@ void UFlareCacheSystem::StoreCachedSpacecraft(AFlareSpacecraft* Spacecraft)
 AFlareSpacecraft* UFlareCacheSystem::RetrieveCachedSpacecraft(UClass* SpacecraftType)
 {
 	//TODO:
-	return nullptr;
+//	return nullptr;
 
 	if (CachedSpacecraft.Contains(SpacecraftType) && CachedSpacecraft[SpacecraftType].TrackedSpacecraft.Num() > 0)
 	{

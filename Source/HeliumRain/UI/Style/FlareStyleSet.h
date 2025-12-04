@@ -51,7 +51,7 @@ public:
 
 	/** Get a color for the current health of something */
 	static FLinearColor GetHealthColor(float Health, bool WithAlpha = false);
-
+	static FLinearColor GetRatioColour(float Ratio,  bool WithAlpha = false);
 
 protected:
 
@@ -62,6 +62,4 @@ protected:
 	/** Resource pointer */
 	UPROPERTY()
 	static TSharedPtr<FSlateStyleSet> Instance;
-
-
 };

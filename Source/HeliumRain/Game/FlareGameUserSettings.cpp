@@ -31,6 +31,7 @@ void UFlareGameUserSettings::SetToDefaults()
 	DebrisQuantity = 10;
 
 	// Gameplay
+	ShowFactionColors = true;
 	InvertY = false;
 	DisableMouse = false;
 	UseCockpit = true;
@@ -42,8 +43,15 @@ void UFlareGameUserSettings::SetToDefaults()
 	MaxShipsInSector = 60;
 
 	// Input
+
 	GamepadProfileLayout = EFlareGamepadLayout::GL_Default;
+	GamepadInvertYaw = false;
+	GamepadInvertPitch = false;
+	GamepadDisableCursor = false;
+
 	ForwardOnlyThrust = false;
+	JoystickDisableCursor = false;
+	MouseCursorDeadZone = 0.0f;
 	RotationDeadZone = 0.0f;
 	TranslationDeadZone = 0.0f;
 	RollDeadZone = 0.0f;

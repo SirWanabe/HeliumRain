@@ -10,6 +10,7 @@
 #include "../../Game/FlareTradeRoute.h"
 #include "../../Player/FlareMenuManager.h"
 #include "../../Player/FlarePlayerController.h"
+#include "../../Game/FlareGameUserSettings.h"
 
 #include "../Components/FlareButton.h"
 #include "../Components/FlareSectorButton.h"
@@ -170,14 +171,41 @@ TSharedRef<SWidget> SFlareWhiteListMenu::OnGenerateCompanyComboLine(UFlareCompan
 	.Padding(Theme.ListContentPadding)
 	[
 		SNew(STextBlock)
-			.Text(Item->GetCompanyName())
-			.TextStyle(&Theme.TextFont)
+		.Text(Item->GetCompanyName())
+		.TextStyle(&Theme.TextFont)
+
 	];
 }
 
 /*----------------------------------------------------
 	Interaction
 ----------------------------------------------------*/
+
+FSlateColor SFlareWhiteListMenu::GetCompanyTextColor(UFlareCompany* Company) const
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	return Theme.NeutralColor;
+
+	if (Company)
+	{
+		if (Company->GetPlayerHostility() == EFlareHostility::Hostile)
+		{
+			return Theme.EnemyColor;
+		}
+
+		if (Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings())->ShowFactionColors)
+		{
+			if (Company != MenuManager->GetPC()->GetCompany())
+			{
+				FSlateColor PrimaryFactionColor = FSlateColor(Company->GetDescription()->PrimaryFactionColor);
+				if (PrimaryFactionColor.GetSpecifiedColor().A >= 1.f)
+				{
+					return PrimaryFactionColor;
+				}
+			}
+		}
+	}
+}
 
 void SFlareWhiteListMenu::Setup()
 {
@@ -353,6 +381,7 @@ bool SFlareWhiteListMenu::GenerateWhiteListInfoBoxFor(UFlareCompany* Company, TS
 						.TextStyle(&Theme.NameFont)
 						.WrapTextAt(Theme.ContentWidth * 0.60)
 						.Text(Company->GetDescription()->Name)
+						.ColorAndOpacity(this, &SFlareWhiteListMenu::GetCompanyTextColor, Company)
 					]
 					//Company Description
 					+ SVerticalBox::Slot()

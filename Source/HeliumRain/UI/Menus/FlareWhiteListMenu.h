@@ -51,7 +51,6 @@ protected:
 	/*----------------------------------------------------
 		Content callbacks
 	----------------------------------------------------*/
-	
 	void OnSetCompanyDefaultWhitelist();
 	void OnConfirmChangeWhiteListNameClicked();
 	void OnViewCompaniesToggle();
@@ -65,6 +64,8 @@ protected:
 	bool IsSetDefaultDisabled() const;
 
 	EVisibility GetResourceVisibility(FFlareWhiteListCompanyDataSave* CompanyData, bool TowardsOrFrom) const;
+
+	FSlateColor GetCompanyTextColor(UFlareCompany* Company) const;
 
 	/*----------------------------------------------------
 		Actions callbacks

@@ -3,6 +3,7 @@
 #include "../Flare.h"
 #include "FlarePlayerController.h"
 #include "FlareHUD.h"
+#include "../Game/FlareGame.h"
 #include "../Game/FlareGameUserSettings.h"
 
 
@@ -79,7 +80,7 @@ bool AFlareMenuPawn::GetIsEnabled() const
 void AFlareMenuPawn::SetIsEnabled(bool NewIsEnabled)
 {
 	IsEnabled = NewIsEnabled;
-	this->SetActorTickEnabled(NewIsEnabled);
+	SetActorTickEnabled(NewIsEnabled);
 }
 
 void AFlareMenuPawn::Tick(float DeltaSeconds)
@@ -110,7 +111,6 @@ void AFlareMenuPawn::Tick(float DeltaSeconds)
 		ShipContainer->SetWorldLocation(GetActorLocation() + CurrentShipOffset + SlideInDelta);
 	}
 	// Camera
-
 
 	float ManualAcc = 600; //°/s-2
 	float Resistance = 1/360.f;
@@ -208,6 +208,7 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	{
 		if (CurrentSpacecraft->GetDescription()->SpacecraftTemplate != Spacecraft->GetDescription()->SpacecraftTemplate)
 		{
+//			GetPC()->GetGame()->GetCacheSystem()->StoreCachedSpacecraft(CurrentSpacecraft);
 			CurrentSpacecraft->Destroy();
 			CurrentSpacecraft = NULL;
 		}
@@ -220,13 +221,18 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	if(!CurrentSpacecraft)
 	{
 		CreatedNew = true;
-		// Spawn parameters
-		FActorSpawnParameters Params;
-		Params.bNoFail = true;
-		Params.Instigator = this;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
+//		CurrentSpacecraft = GetPC()->GetGame()->GetCacheSystem()->RetrieveCachedSpacecraft(Spacecraft->GetDescription()->SpacecraftTemplate);
+		if (!CurrentSpacecraft)
+		{
+			// Spawn parameters
+			FActorSpawnParameters Params;
+			Params.bNoFail = true;
+			Params.Instigator = this;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			CurrentSpacecraft = GetWorld()->SpawnActor<AFlareSpacecraft>(Spacecraft->GetDescription()->SpacecraftTemplate, Params);
+		}
+		
 		CurrentSpacecraft->AttachToComponent(ShipContainer, AttachRules, NAME_None);
 	}
 
@@ -252,6 +258,7 @@ void AFlareMenuPawn::ShowShip(UFlareSimulatedSpacecraft* Spacecraft)
 	SlideInOutCurrentTime = 0.0f;
 	SlideInOutOffset = SlideInOutSideOffset;
 	SetSlideDirection(true);
+
 	CurrentSpacecraft->StartPresentation();
 
 	// UI
@@ -326,6 +333,7 @@ void AFlareMenuPawn::ResetContent(bool Unsafe, bool DeleteSpacecraft)
 	{
 		if (DeleteSpacecraft)
 		{
+			CurrentSpacecraft->ClearBombs();
 			CurrentSpacecraft->Destroy();
 			CurrentSpacecraft = NULL;
 		}

@@ -81,6 +81,8 @@ public:
 	 */
 	static void UnlockTechnologyLevel(UFlareCompany* Company, int32 TechnologyLevel);
 
+	static void GenericEvent(FString PrintedString);
+
 };
 
 class CombatLog

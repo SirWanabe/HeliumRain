@@ -86,6 +86,8 @@ public:
 	/** Close the main overlay */
 	void CloseMainOverlay();
 
+	void UpdateNavHudVisibility();
+
 	/** Open target menu if not open, close otherwise */
 	bool ToggleMenu(EFlareMenu::Type Target);
 

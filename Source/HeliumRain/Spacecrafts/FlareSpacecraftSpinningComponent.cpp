@@ -72,43 +72,57 @@ void UFlareSpacecraftSpinningComponent::TickForComponent(float DeltaSeconds)
 		return;
 	}
 
+	PreviousTick += DeltaSeconds;
+
+	if (PreviousTick < PrimaryComponentTick.TickInterval)
+	{
+		return;
+	}
+
 	// Update
 	if (!Ship->IsPresentationMode() && Ship->GetParent()->GetDamageSystem()->IsAlive())
 	{
-		SpinLODCheck += DeltaSeconds;
-		if (SpinLODCheck >= 1 && Ship->GetPC())
+		if (!Ship->IsPresentationMode())
 		{
-			AFlareSpacecraft* PlayerShipPawn = Ship->GetPC()->GetShipPawn();
-			if (PlayerShipPawn)
+			SpinLODCheck += PreviousTick;
+			if (SpinLODCheck >= 1 && Ship->GetPC())
 			{
-				// 100 = 1.0KM
-				float Distance = (PlayerShipPawn->GetActorLocation() - GetComponentLocation()).Size() / 1000;
-				if (Distance < 5)
+				AFlareSpacecraft* PlayerShipPawn = Ship->GetPC()->GetShipPawn();
+				if (PlayerShipPawn)
 				{
-					PrimaryComponentTick.TickInterval = REAL_ATTENTION_RATE;
-				}
-				else if (Distance < 100)
-				{
-					PrimaryComponentTick.TickInterval = HIGH_ATTENTION_RATE;
-				}
-				else if (Distance < 250)
-				{
-					PrimaryComponentTick.TickInterval = MODERATE_ATTENTION_RATE;
-				}
-				else if (Distance < 500)
-				{
-					PrimaryComponentTick.TickInterval = LOW_ATTENTION_RATE;
+					// 100 = 1.0KM
+					float Distance = (PlayerShipPawn->GetActorLocation() - GetComponentLocation()).Size() / 1000;
+					if (Distance < 5)
+					{
+						PrimaryComponentTick.TickInterval = REAL_ATTENTION_RATE;
+					}
+					else if (Distance < 100)
+					{
+						PrimaryComponentTick.TickInterval = HIGH_ATTENTION_RATE;
+					}
+					else if (Distance < 250)
+					{
+						PrimaryComponentTick.TickInterval = MODERATE_ATTENTION_RATE;
+					}
+					else if (Distance < 500)
+					{
+						PrimaryComponentTick.TickInterval = LOW_ATTENTION_RATE;
+					}
+					else
+					{
+						PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
+					}
 				}
 				else
 				{
 					PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
 				}
+				SpinLODCheck = 0;
 			}
-			else
-			{
-				PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
-			}
-			SpinLODCheck = 0;
+		}
+		else
+		{
+			PrimaryComponentTick.TickInterval = REAL_ATTENTION_RATE;
 		}
 
 		// Sun-looker
@@ -159,7 +173,7 @@ void UFlareSpacecraftSpinningComponent::TickForComponent(float DeltaSeconds)
 
 					Angle = FMath::UnwindDegrees(Angle);
 
-					float DeltaAngle = FMath::Sign(Angle) * FMath::Min(RotationSpeed * DeltaSeconds, FMath::Abs(Angle));
+					float DeltaAngle = FMath::Sign(Angle) * FMath::Min(RotationSpeed * PreviousTick, FMath::Abs(Angle));
 
 					if (NeedTackerInit)
 					{
@@ -178,11 +192,12 @@ void UFlareSpacecraftSpinningComponent::TickForComponent(float DeltaSeconds)
 		// Simple spinner
 		else
 		{
-			AddLocalRotation(RotationSpeed * DeltaSeconds * Axis);
+			AddLocalRotation(RotationSpeed * PreviousTick * Axis);
 		}
 	}
 	else
 	{
 		PrimaryComponentTick.TickInterval = LOWEST_ATTENTION_RATE;
 	}
+	PreviousTick = 0.f;
 }

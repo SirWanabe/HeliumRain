@@ -469,14 +469,15 @@ void SFlareFleetMenu::Enter(UFlareFleet* TargetFleet)
 			if (FleetToEdit->GetSelectedWhiteList())
 			{
 				WhiteListDropBox->SetSelectedItem(FleetToEdit->GetSelectedWhiteList());
+				CurrentlySelectedWhiteList = FleetToEdit->GetSelectedWhiteList();
 			}
 			else
 			{
 				WhiteListDropBox->SetSelectedIndex(0);
+				CurrentlySelectedWhiteList = FleetToEdit->GetFleetCompany()->GetWhiteLists()[0];
 			}
 		}
 	}
-
 	// We are in preview mode
 	else
 	{

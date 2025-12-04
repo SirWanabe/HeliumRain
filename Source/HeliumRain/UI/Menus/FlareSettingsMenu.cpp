@@ -181,13 +181,33 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 						]
 					]			
 						
-						// Options line 1
+					// Options line 1
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.Padding(Theme.ContentPadding)
 					[
 						SNew(SHorizontalBox)
-					
+						// Faction Colors
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SAssignNew(FactionColorsButton, SFlareButton)
+							.Text(LOCTEXT("FactionColors", "Faction Colors"))
+							.HelpText(LOCTEXT("FactionColorsInfo", "If enabled some interface elements will alter their colour to match the viewed faction. For example the name of a ship or station may change colour to the specific factions colors to make them easier to distinguish from others"))
+							.Toggle(true)
+							.OnClicked(this, &SFlareSettingsMenu::OnFactionColorsToggle)
+							.Width(6)
+						]
+					]
+
+					// Options line 2
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(Theme.ContentPadding)
+					[
+						SNew(SHorizontalBox)
+
 						// Invert vertical
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
@@ -208,14 +228,14 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 						[
 							SAssignNew(DisableMouseButton, SFlareButton)
 							.Text(LOCTEXT("DisableMouse", "Disable mouse"))
-							.HelpText(LOCTEXT("DisableMouseInfo", "Disable mouse input while flying to avoid unwanted input with a joystick or gamepad "))
+							.HelpText(LOCTEXT("DisableMouseInfo", "Disable mouse input while flying to avoid unwanted input with a joystick or gamepad"))
 							.Toggle(true)
 							.OnClicked(this, &SFlareSettingsMenu::OnDisableMouseToggle)
 							.Width(6)
 						]
 					]
 
-					// Options line 2
+					// Options line 1
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.Padding(Theme.ContentPadding)
@@ -1051,17 +1071,22 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 			]
 
 			// Controls form
-
-			+SVerticalBox::Slot()
+			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(Theme.ContentPadding)
 			.HAlign(HAlign_Left)
+			.Padding(Theme.ContentPadding)
 			[
-				SNew(SFlareButton)
-				.Width(3)
-				.Text(LOCTEXT("Default", "Set to Defaults"))
-				.HelpText(LOCTEXT("DefaultInfo", "Set all control mappings to their default values"))
-				.OnClicked(this, &SFlareSettingsMenu::SetDefaultControls)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(SFlareButton)
+					.Width(4)
+					.Text(LOCTEXT("Default", "Set controls to Defaults"))
+					.HelpText(LOCTEXT("DefaultInfo", "Set all control mappings to their default values"))
+					.OnClicked(this, &SFlareSettingsMenu::SetDefaultControls)
+				]
 			]
 
 			+ SVerticalBox::Slot()
@@ -1148,6 +1173,52 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 				]
 			]
 
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(Theme.ContentPadding)
+			.HAlign(HAlign_Left)
+			[
+				SNew(SHorizontalBox)
+				// Toggle pitch inversion
+				+SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(InvertGamepadPitchButton, SFlareButton)
+					.Text(LOCTEXT("InvertPitch", "Invert Pitch"))
+					.HelpText(LOCTEXT("InvertPitchInfo", "Invert Pitch for gamepads"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnInvertGamepadPitchClicked)
+					.Width(6)
+				]
+
+				// Toggle yaw inversion
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(InvertGamepadYawButton, SFlareButton)
+					.Text(LOCTEXT("InvertYaw", "Invert Yaw"))
+					.HelpText(LOCTEXT("InvertYawInfo", "Invert Yaw for gamepads"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnInvertGamepadYawClicked)
+					.Width(6)
+				]
+
+				// Disable mouse cursor gamepads
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(DisableGamepadCursorButton, SFlareButton)
+					.Text(LOCTEXT("DisableGamepadCursor", "Disable Mouse Cursor"))
+					.HelpText(LOCTEXT("DisableGamepadCursorGamepadInfo", "Disable gamepads ability to manipulate the mouse cursor"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnDisableGamepadCursorClicked)
+					.Width(6)
+				]
+			]
+
 			// Joystick
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -1187,8 +1258,58 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 					.Toggle(true)
 					.OnClicked(this, &SFlareSettingsMenu::OnForwardOnlyThrustToggle)
 				]
+
+				// Disable mouse cursor joysticks
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SAssignNew(DisableJoystickCursorButton, SFlareButton)
+					.Text(LOCTEXT("DisableGamepadCursor", "Disable Mouse Cursor"))
+					.HelpText(LOCTEXT("DisableGamepadCursorJoystickInfo", "Disable joysticks ability to manipulate the mouse cursor"))
+					.Toggle(true)
+					.OnClicked(this, &SFlareSettingsMenu::OnDisableJoystickCursorClicked)
+					.Width(6)
+				]
 			]
-			
+
+			// Joystick dead zone (mouse cursor)
+			+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				[
+					SNew(SBox)
+					.WidthOverride(Theme.ContentWidth)
+					.HAlign(HAlign_Fill)
+					[
+						SNew(SHorizontalBox)
+						// Text
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SBox)
+							.WidthOverride(LabelSize)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("JoystickMouseCursorDeadZone", "Mouse dead zone"))
+								.TextStyle(&Theme.TextFont)
+							]
+						]
+
+						// Slider
+						+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Center)
+						.Padding(Theme.ContentPadding)
+						[
+							SNew(SSlider)
+							.Value(MyGameSettings->MouseCursorDeadZone)
+							.Style(&Theme.SliderStyle)
+							.OnValueChanged(this, &SFlareSettingsMenu::OnMouseCursorDeadZoneSliderChanged)
+						]
+					]
+				]
+
 			// Joystick dead zone (rotation)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -1314,13 +1435,19 @@ void SFlareSettingsMenu::Construct(const FArguments& InArgs)
 	//	SupersamplingButton->SetActive(MyGameSettings->ScreenPercentage > 100);
 
 	// Gameplay defaults
+	FactionColorsButton->SetActive(MyGameSettings->ShowFactionColors);
 	InvertYButton->SetActive(MyGameSettings->InvertY);
+
+	InvertGamepadPitchButton->SetActive(MyGameSettings->GamepadInvertPitch);
+	InvertGamepadYawButton->SetActive(MyGameSettings->GamepadInvertYaw);
+	DisableGamepadCursorButton->SetActive(MyGameSettings->GamepadDisableCursor);
+	DisableJoystickCursorButton->SetActive(MyGameSettings->JoystickDisableCursor);
+
 	DisableMouseButton->SetActive(MyGameSettings->DisableMouse);
 #if !UE_BUILD_SHIPPING
 	CockpitButton->SetActive(MyGameSettings->UseCockpit);
 #endif
 	LateralVelocityButton->SetActive(MyGameSettings->ShowLateralVelocity);
-	AnticollisionButton->SetActive(MyGameSettings->UseAnticollision);
 
 	float MaxShipRatio = ((float) MyGameSettings->MaxShipsInSector - MIN_MAX_SHIPS) / ((float) MAX_MAX_SHIPS - MIN_MAX_SHIPS);
 	float ResolutionRatio = ((float)MyGameSettings->ScreenPercentage - MIN_RESOLUTIONSCALE) / ((float)MAX_RESOLUTIONSCALE - MIN_RESOLUTIONSCALE);
@@ -1514,6 +1641,8 @@ TSharedRef<SWidget> SFlareSettingsMenu::BuildJoystickBindingBox()
 	BuildJoystickBinding(LOCTEXT("JoyBindThrust",     "Thrust"),     "JoystickThrustInput",         JoystickBindingsBox);
 	BuildJoystickBinding(LOCTEXT("JoyBindHorizontal", "Horizontal"), "JoystickMoveHorizontalInput", JoystickBindingsBox);
 	BuildJoystickBinding(LOCTEXT("JoyBindVertical",   "Vertical"),   "JoystickMoveVerticalInput",   JoystickBindingsBox);
+	BuildJoystickBinding(LOCTEXT("JoyBindHorizontalCamera", "Horizontal Camera"), "JoystickMoveHorizontalCameraInput", JoystickBindingsBox);
+	BuildJoystickBinding(LOCTEXT("JoyBindVerticalCamera", "Vertical Camera"), "JoystickMoveVerticalCameraInput", JoystickBindingsBox);
 
 	return JoystickBox.ToSharedRef();
 }
@@ -1616,6 +1745,8 @@ void SFlareSettingsMenu::Setup()
 
 void SFlareSettingsMenu::Enter()
 {
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+
 	// Main
 	FLOG("SFlareSettingsMenu::Enter");
 	SetEnabled(true);
@@ -1652,7 +1783,8 @@ void SFlareSettingsMenu::Enter()
 		}
 	}
 
-	if (Game->IsLoadedOrCreated())
+	AnticollisionButton->SetActive(MyGameSettings->UseAnticollision);
+	if (Game->IsLoadedOrCreated() && !Game->IsSkirmish())
 	{
 		DifficultySelector->SetVisibility(EVisibility::Visible);
 		DifficultySelector->RefreshOptions();
@@ -2315,27 +2447,19 @@ void SFlareSettingsMenu::OnTemporalAAToggle()
 	MyGameSettings->SetUseTemporalAA(TemporalAAButton->IsActive());
 	MyGameSettings->ApplySettings(false);
 }
-/*
-void SFlareSettingsMenu::OnSupersamplingToggle()
-{
-	if (SupersamplingButton->IsActive())
-	{
-		FLOG("SFlareSettingsMenu::OnSupersamplingToggle : Enable supersampling")
-	}
-	else
-	{
-		FLOG("SFlareSettingsMenu::OnSupersamplingToggle : Disable supersampling")
-	}
 
-	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
-	MyGameSettings->SetScreenPercentage(SupersamplingButton->IsActive() ? 142 : 100);
-	MyGameSettings->ApplySettings(false);
-
-}
-*/
 void SFlareSettingsMenu::OnFullscreenToggle()
 {
 	UpdateResolution(true);
+}
+
+void SFlareSettingsMenu::OnFactionColorsToggle()
+{
+	bool New = FactionColorsButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->ShowFactionColors = New;
+	MyGameSettings->ApplySettings(false);
 }
 
 void SFlareSettingsMenu::OnInvertYToggle()
@@ -2396,6 +2520,7 @@ void SFlareSettingsMenu::OnMouseMenuAutoResetToggle()
 }
 
 
+
 void SFlareSettingsMenu::OnForwardOnlyThrustToggle()
 {
 	bool New = ForwardOnlyThrustButton->IsActive();
@@ -2437,6 +2562,57 @@ const FSlateBrush* SFlareSettingsMenu::GetGamepadDrawing() const
 			return FFlareStyleSet::GetImage("Pad");
 			break;
 	}
+}
+
+void SFlareSettingsMenu::OnInvertGamepadPitchClicked()
+{
+	bool New = InvertGamepadPitchButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->GamepadInvertPitch = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnInvertGamepadYawClicked()
+{
+	bool New = InvertGamepadYawButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->GamepadInvertYaw = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnDisableGamepadCursorClicked()
+{
+	bool New = DisableGamepadCursorButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->GamepadDisableCursor = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+void SFlareSettingsMenu::OnDisableJoystickCursorClicked()
+{
+	bool New = DisableJoystickCursorButton->IsActive();
+
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->JoystickDisableCursor = New;
+	MyGameSettings->ApplySettings(false);
+}
+
+bool SFlareSettingsMenu::IsAxisInverted(FName AxisName)
+{
+	UInputSettings* InputSettings = UInputSettings::StaticClass()->GetDefaultObject<UInputSettings>();
+	for (int i = 0; i < InputSettings->AxisMappings.Num(); i++)
+	{
+		if (InputSettings->AxisMappings[i].AxisName == AxisName && i != InputSettings->AxisMappings.Num() - 1)
+		{
+			FInputAxisKeyMapping Bind = InputSettings->AxisMappings[i];
+			return Bind.Scale == -1;
+		}
+	}
+
+	return false;
 }
 
 void SFlareSettingsMenu::OnInvertAxisClicked(FName AxisName)
@@ -2484,6 +2660,13 @@ bool SFlareSettingsMenu::IsAxisControlsDisabled(FName AxisName) const
 	}
 
 	return true;
+}
+
+void SFlareSettingsMenu::OnMouseCursorDeadZoneSliderChanged(float Value)
+{
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	MyGameSettings->MouseCursorDeadZone = Value;
+	MyGameSettings->ApplySettings(false);
 }
 
 void SFlareSettingsMenu::OnRotationDeadZoneSliderChanged(float Value)
@@ -2616,9 +2799,9 @@ void SFlareSettingsMenu::FillJoystickAxisList()
 	for (FKey Key : AllKeys)
 	{
 //		FLOGV("SFlareSettingsMenu::FillJoystickAxis KEY: %s", *Key.ToString());
+//		GameLog::GenericEvent(Key.ToString());
 
-		if (Key.GetFName().ToString().StartsWith("Joystick")
-		&& !Key.GetFName().ToString().Contains("Button"))
+		if (Key.GetFName().ToString().StartsWith("Joystick") && !Key.GetFName().ToString().Contains("Button"))
 		{
 //			FLOGV("SFlareSettingsMenu::FillJoystickAxis Valid Axis %s", *Key.ToString());
 			JoystickAxisKeys.Add(MakeShareable(new FKey(Key)));
@@ -2760,7 +2943,7 @@ void SFlareSettingsMenu::FillGameGamepadList()
 
 void SFlareSettingsMenu::CreateBinds()
 {
-	// Piloting
+	// FLYING SECTION
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Flying", "FLYING")))->MakeHeader()));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("MoveForward", "Move forward")))
 		->AddAxisMapping("NormalThrustInput", 1.0f)
@@ -2786,27 +2969,35 @@ void SFlareSettingsMenu::CreateBinds()
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("RollCW", "Roll right")))
 		->AddAxisMapping("NormalRollInput", 1.0f)
 		->AddDefaults(EKeys::E)));
-	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextTarget", "Next target")))
-		->AddActionMapping("AlternateNextTarget")
-		->AddDefaults(EKeys::MouseScrollDown)));
-	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousTarget", "Previous target")))
-		->AddActionMapping("AlternatePreviousTarget")
-		->AddDefaults(EKeys::MouseScrollUp)));
 
-Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick ship switch")))
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick ship switch")))
 		->AddActionMapping("QuickSwitch")
 		->AddDefaults(EKeys::N)));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toogle Camera", "Toggle camera")))
 		->AddActionMapping("ToggleCamera")
 		->AddDefaults(EKeys::C)));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toggle Camera Pan", "Toggle camera panning")))
+		->AddActionMapping("ToggleCameraPanning")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("CameraPan", "Camera Pan")))
+		->AddActionMapping("CameraPan")));
+
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("LockDirection", "Lock direction")))
 		->AddActionMapping("LockDirection")
 		->AddDefaults(EKeys::CapsLock)));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("LockDirectionToggle", "Toggle lock direction")))
+	->AddActionMapping("LockDirectionToggle")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("AntiCollisionToggle", "Toggle anti collision")))
+	->AddActionMapping("AntiCollisionToggle")));
+
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toogle HUD", "Toggle HUD")))
 		->AddActionMapping("ToggleHUD")
 		->AddDefaults(EKeys::H)));
 
-	// Auto pilot
+	// AUTO PILOT SECTION
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Autopilot", "AUTOPILOT")))->MakeHeader()));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("AlignPrograde", "Align to speed")))
 		->AddActionMapping("FaceForward")));
@@ -2823,7 +3014,52 @@ Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick shi
 		->AddActionMapping("DisengagePilot")
 		->AddDefaults(EKeys::M)));
 
-	// Weapons
+	// TARGETING SECTION
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Targetting", "TARGETTING")))->MakeHeader()));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("ClearTarget", "Clear target")))
+		->AddActionMapping("ClearTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("TargetDockedStation", "Target docked station")))
+		->AddActionMapping("TargetDockedStation")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousObjectiveTarget", "Previous Objective target")))
+		->AddActionMapping("PreviousObjectiveTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextObjectiveTarget", "Next Objective target")))
+		->AddActionMapping("NextObjectiveTarget")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousTarget", "Previous target")))
+		->AddActionMapping("AlternatePreviousTarget")
+		->AddDefaults(EKeys::MouseScrollUp)));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextTarget", "Next target")))
+		->AddActionMapping("AlternateNextTarget")
+		->AddDefaults(EKeys::MouseScrollDown)));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousShipTarget", "Previous Ship target")))
+	->AddActionMapping("PreviousShipTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextShipTarget", "Next Ship target")))
+	->AddActionMapping("NextShipTarget")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousStationTarget", "Previous Station target")))
+	->AddActionMapping("PreviousStationTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextStationTarget", "Next Station target")))
+	->AddActionMapping("NextStationTarget")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousEnemyTarget", "Previous Enemy target")))
+		->AddActionMapping("PreviousEnemyTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextEnemyTarget", "Next Enemy target")))
+		->AddActionMapping("NextEnemyTarget")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousEnemyShipTarget", "Previous Enemy Ship target")))
+		->AddActionMapping("PreviousEnemyShipTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextEnemyShipTarget", "Next Enemy Ship target")))
+		->AddActionMapping("NextEnemyShipTarget")));
+
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("PreviousEnemyStationTarget", "Previous Enemy Station target")))
+		->AddActionMapping("PreviousEnemyStationTarget")));
+	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("NextEnemyStationTarget", "Next Enemy Station target")))
+		->AddActionMapping("NextEnemyStationTarget")));
+
+
+	// WEAPON SECTION
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Weapons", "WEAPONS")))->MakeHeader()));
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Deactivate Weapons", "Menu 1 / Stand down")))
 		->AddActionMapping("SpacecraftKey1")
@@ -2860,7 +3096,8 @@ Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick shi
 	Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Launch Drones", "Launch / Retrieve Drones")))
 		->AddActionMapping("LaunchRetrieveDrones")
 		->AddDefaults(EKeys::G)));
-	// Menus
+
+	// MENU SECTION
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Menus", "MENUS")))->MakeHeader()));
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Toggle menus", "Open / close menus")))
 		->AddActionMapping("ToggleMenu")));
@@ -2909,11 +3146,14 @@ Binds.Add(MakeShareable((new FSimpleBind(LOCTEXT("Quick Ship Switch", "Quick shi
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Open settings menu", "Open settings menu")))
 		->AddActionMapping("SettingsMenu")
 		->AddDefaults(EKeys::F12)));
+	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Open help menu", "Open help menu")))
+		->AddActionMapping("HelpMenu")));
+
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Open trade menu", "Open trade menu")))
 		->AddActionMapping("TradeMenu")
 		->AddDefaults(EKeys::T)));
 
-	// Strategy
+	// STRATEGY SECTION
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Strategy", "STRATEGY")))->MakeHeader()));
 	Binds2.Add(MakeShareable((new FSimpleBind(LOCTEXT("Fast forward single", "Fast forward a day")))
 		->AddActionMapping("Simulate")

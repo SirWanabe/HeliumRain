@@ -53,4 +53,5 @@ public:
 	FVector Z;
 
 	float SpinLODCheck;
+	float PreviousTick;
 };

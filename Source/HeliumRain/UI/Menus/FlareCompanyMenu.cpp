@@ -663,7 +663,7 @@ void SFlareCompanyMenu::Setup()
 	SetVisibility(EVisibility::Collapsed);
 }
 
-void SFlareCompanyMenu::Enter(UFlareCompany* Target)
+void SFlareCompanyMenu::Enter(UFlareCompany* Target, UFlareSimulatedSpacecraft* TransactionSourceTarget)
 {
 	FLOG("SFlareCompanyMenu::Enter");
 	SetEnabled(true);
@@ -718,6 +718,7 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 	SourceList.Add(NULL);
 	SectorList.Add(NULL);
 	CompanyList.Add(NULL);
+
 	for (auto Entry : Target->GetTransactionLog())
 	{
 		UFlareCompany* Other = Entry.GetOtherCompany(Target->GetGame());
@@ -746,6 +747,14 @@ void SFlareCompanyMenu::Enter(UFlareCompany* Target)
 	ShipList->RefreshList();
 	ShipList->SetVisibility(EVisibility::Visible);
 	RegenerateWhiteListBox();
+
+	if (TransactionSourceTarget)
+	{
+		TabView->SetCurrentTabIndex(3);
+		CurrentSourceFilter = TransactionSourceTarget;
+		SourceSelector->SetSelectedItem(TransactionSourceTarget);
+		ShowCompanyLog(Company);
+	}
 }
 
 void SFlareCompanyMenu::Exit()
@@ -1625,7 +1634,6 @@ TSharedRef<SWidget> SFlareCompanyMenu::OnGenerateSourceComboLine(UFlareSimulated
 void SFlareCompanyMenu::OnSourceComboLineSelectionChanged(UFlareSimulatedSpacecraft* Item, ESelectInfo::Type SelectInfo)
 {
 	CurrentSourceFilter = Item;
-
 	ShowCompanyLog(Company);
 }
 

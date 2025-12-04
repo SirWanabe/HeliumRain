@@ -99,6 +99,7 @@ protected:
 	bool                                            WasAlive;
 	bool											WasDisarmed;
 	float											TimeSinceLastExternalDamage;
+	float											TimeSinceLastCollisionDamage;
 
 	DamageCause                                     LastDamageCause;
 	AFlarePlayerController*							PC;
@@ -115,6 +116,11 @@ public:
 	virtual float GetTimeSinceLastExternalDamage() const
 	{
 		return TimeSinceLastExternalDamage;
+	}
+
+	virtual float GetTimeSinceLastCollisionDamage() const
+	{
+		return TimeSinceLastCollisionDamage;
 	}
 
 	/** Force the ship to die*/

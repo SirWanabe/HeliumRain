@@ -10,6 +10,7 @@
 #include "../Data/FlareGlobalSettings.h"
 
 #include "../Game/FlareGame.h"
+#include "../Game/FlareGameUserSettings.h"
 
 #include "../Player/FlareMenuPawn.h"
 #include "../Player/FlarePlayerController.h"

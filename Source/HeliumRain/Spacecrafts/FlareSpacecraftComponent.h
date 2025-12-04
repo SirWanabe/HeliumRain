@@ -84,7 +84,7 @@ struct FFlareSpacecraftComponentBombCharacteristics
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** Is a gun  */
+	/** Is a bomb  */
 	UPROPERTY(EditAnywhere, Category = Content) bool IsBomb;
 
 	/** Bomb mesh */

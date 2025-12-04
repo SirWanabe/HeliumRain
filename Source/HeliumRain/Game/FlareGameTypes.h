@@ -228,7 +228,7 @@ USTRUCT()
 struct FFlareScannableDescription
 {
 	GENERATED_USTRUCT_BODY()
-		
+
 	UPROPERTY(EditAnywhere, Category = Content)
 	FName Identifier;
 
@@ -346,7 +346,7 @@ struct FFlareTransactionLogEntry
 	static FFlareTransactionLogEntry LogSellResource(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, FFlareResourceDescription* Resource, int32 GivenResources, UFlareTradeRoute* TradeRoute);
 	static FFlareTransactionLogEntry LogPayMaintenance(UFlareSimulatedSpacecraft* SellerSpacecraft, int32 TakenQuantity, bool ForRepair);
 	static FFlareTransactionLogEntry LogPaidForMaintenance(UFlareSimulatedSpacecraft* SellerSpacecraft, UFlareCompany* Company, int32 TakenQuantity, bool ForRepair);
-	static FFlareTransactionLogEntry LogPaidSectorStationBuildingLicense(UFlareSimulatedSector* Sector);	
+	static FFlareTransactionLogEntry LogPaidSectorStationBuildingLicense(UFlareSimulatedSector* Sector);
 	static FFlareTransactionLogEntry LogSendTribute(UFlareCompany* Company);
 	static FFlareTransactionLogEntry LogReceiveTribute(UFlareCompany* Company);
 	static FFlareTransactionLogEntry LogRecoveryFees();
@@ -823,6 +823,10 @@ struct FFlareCompanyDescription
 	UPROPERTY(EditAnywhere, Category = Save)
 	FLinearColor CustomizationLightColor;
 
+	/** Faction color in certain menus */
+	UPROPERTY(EditAnywhere, Category = Save)
+	FLinearColor PrimaryFactionColor;
+
 	/** Pattern index in the customization catalog */
 	UPROPERTY(EditAnywhere, Category = Save)
 	int32 CustomizationPatternIndex;
@@ -882,6 +886,7 @@ struct CompanyValue
 	int64 StockValue;
 	int64 ShipsValue;
 	int64 ArmyValue;
+	int64 LicenseValue;
 	int32 ArmyTotalCombatPoints;
 	int32 ArmyCurrentCombatPoints;
 

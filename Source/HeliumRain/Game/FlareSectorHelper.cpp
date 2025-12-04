@@ -50,13 +50,13 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 		case EFlareTradeRouteOperation::Load:
 			LoadQuantityScoreMultiplier = Request.LoadUnloadPriority;
 			BuyQuantityScoreMultiplier = Request.BuySellPriority;
-			FullRatioBonus = 0.1;
+			FullRatioBonus = 0.2;
 			NeedOutput = true;
 			break;
 		case EFlareTradeRouteOperation::Unload:
 			UnloadQuantityScoreMultiplier = Request.LoadUnloadPriority;
 			SellQuantityScoreMultiplier = Request.BuySellPriority;
-			EmptyRatioBonus = 0.1;
+			EmptyRatioBonus = 0.2;
 			NeedInput = true;
 			break;
 	}
@@ -129,7 +129,6 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 			//FLOG(" need quantity or resource");
 			continue;
 		}
-
 		float Score = 0;
 		float FullRatio =  (float) StationResourceQuantity / (float) (StationResourceQuantity + StationFreeSpace);
 		float EmptyRatio = 1 - FullRatio;
@@ -202,14 +201,15 @@ UFlareSimulatedSpacecraft*  SectorHelper::FindTradeStation(FlareTradeRequest Req
 
 		if(Station->IsUnderConstruction())
 		{
-			Score *= 10000;
-			/*FLOGV("Station %s is under construction. Score %f, BestScore %f",
-				  *Station->GetImmatriculation().ToString(),
-				  Score,
-				  BestScore)*/
+			Score *= 1000;
 		}
-		else if(Station->IsShipyard())
-			Score *= 2;
+		else if (Station->IsShipyard())
+		{
+			if (FMath::FRand() < 0.80f)
+			{
+				Score *= 2;
+			}
+		}
 		else if(Station->HasCapability(EFlareSpacecraftCapability::Storage))
 		{
 			Score *= 0.01;
@@ -420,12 +420,12 @@ int32 SectorHelper::Trade(UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSim
 		{
 			if (SourceSpacecraft->GetCurrentFleet() != PlayerFleet && !SourceSpacecraft->IsStation())
 			{
-				SourceSpacecraft->SetTrading(true, TradeReason);
+				SourceSpacecraft->SetTrading(true, TradeReason, DestinationSpacecraft);
 			}
 
 			if (DestinationSpacecraft->GetCurrentFleet() != PlayerFleet && !DestinationSpacecraft->IsStation())
 			{
-				DestinationSpacecraft->SetTrading(true, TradeReason);
+				DestinationSpacecraft->SetTrading(true, TradeReason, SourceSpacecraft);
 			}
 		}
 

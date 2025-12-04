@@ -75,6 +75,7 @@ void UFlareSpacecraftDamageSystem::TickSystem(float DeltaSeconds)
 	}
 
 	TimeSinceLastExternalDamage += DeltaSeconds;
+	TimeSinceLastCollisionDamage += DeltaSeconds;
 }
 
 void UFlareSpacecraftDamageSystem::UpdateCurrentHeatValue(float DeltaSeconds)
@@ -113,6 +114,7 @@ void UFlareSpacecraftDamageSystem::Start()
 	WasAlive = Parent->IsAlive();
 	WasDisarmed = Parent->IsDisarmed();
 	TimeSinceLastExternalDamage = 10000;
+	TimeSinceLastCollisionDamage = 10000;
 }
 
 void UFlareSpacecraftDamageSystem::SetLastDamageCause(DamageCause Cause)
@@ -676,7 +678,7 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 	}
 
 	// Signal the player he's hit something
-	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
+//	AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 	if (PC->GetShipPawn() && DamageSource == PC->GetShipPawn()->GetParent())
 	{
 		PC->SignalHit(Spacecraft, DamageType);
@@ -775,6 +777,8 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 			TimeSinceLastExternalDamage = 0;
 			break;
 		case EFlareDamage::DAM_Collision:
+			TimeSinceLastCollisionDamage = 0;
+			break;
 		case EFlareDamage::DAM_Overheat:
 		default:
 			// Don't reset timer
@@ -798,7 +802,6 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		{
 			if (Parent->IsUncontrollable())
 			{
-				AFlarePlayerController* PC = Spacecraft->GetGame()->GetPC();
 				MakeUncontrolableDestroyed = true;
 
 				if (Spacecraft->GetParent()->GetCurrentFleet())
@@ -888,10 +891,7 @@ void UFlareSpacecraftDamageSystem::ApplyDamage(float Energy, float Radius, FVect
 		}
 
 		// Check skirmish victory
-		if (Spacecraft->GetOwnerSector())
-		{
-			Spacecraft->GetOwnerSector()->CheckSkirmishEndCondition();
-		}
+		Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector()->CheckSkirmishEndCondition();
 
 		if (MakeUncontrolableDestroyed || HasBeenDisarmed)
 		{

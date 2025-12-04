@@ -817,14 +817,17 @@ void SFlareShipMenu::LoadTargetSpacecraft()
 				{
 					WhiteListOptions.Add(WhiteListEntry);
 				}
+
 				WhiteListDropBox->RefreshOptions();
 				if (TargetSpacecraft->GetSelectedWhiteList())
 				{
+					CurrentlySelectedWhiteList = TargetSpacecraft->GetSelectedWhiteList();
 					WhiteListDropBox->SetSelectedItem(TargetSpacecraft->GetSelectedWhiteList());
 				}
 				else
 				{
 					WhiteListDropBox->SetSelectedIndex(0);
+					CurrentlySelectedWhiteList = TargetSpacecraft->GetCompany()->GetWhiteLists()[0];
 				}
 			}
 			else

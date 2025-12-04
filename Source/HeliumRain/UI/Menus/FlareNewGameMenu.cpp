@@ -582,7 +582,7 @@ void SFlareNewGameMenu::UpdateStartingScenarioDescriptionText()
 	if (EconomyIndex == 1)
 	{
 
-		EconomyText = LOCTEXT("EconomyText", "\n\
+		EconomyText = LOCTEXT("EconomyText1", "\n\
 Company money + 20%\n\
 Population             + 15%\n\
 Station levels       + 1\n\
@@ -596,7 +596,7 @@ Companies gain additional stations.\n\
 	else if (EconomyIndex == 2)
 	{
 
-		EconomyText = LOCTEXT("EconomyText", "\n\
+		EconomyText = LOCTEXT("EconomyText2", "\n\
 Company money + 40%\n\
 Population             + 30%\n\
 Station levels       + 2\n\
@@ -610,7 +610,7 @@ Companies gain additional stations.\n\
 	else if (EconomyIndex == 3)
 	{
 
-		EconomyText = LOCTEXT("EconomyText", "\n\
+		EconomyText = LOCTEXT("EconomyText3", "\n\
 Company money + 60%\n\
 Population             + 45%\n\
 Station levels       + 3\n\
@@ -624,7 +624,7 @@ Companies gain additional stations. One additional Shipyard for Ghost Works Ship
 	else if (EconomyIndex == 4)
 	{
 
-		EconomyText = LOCTEXT("EconomyText", "\n\
+		EconomyText = LOCTEXT("EconomyText4", "\n\
 Company money + 100%\n\
 Population             + 60%\n\
 Station levels       + 4\n\
@@ -638,13 +638,13 @@ Companies gain additional stations. One additional Shipyard for Ghost Works Ship
 	int32 DifficultyIndex = DifficultyList.Find(DifficultySelector->GetSelectedItem());
 	if (DifficultyIndex == 0)
 	{
-		DifficultyText = LOCTEXT("DifficultyText", "Global War event against the player is disabled.\n\
+		DifficultyText = LOCTEXT("DifficultyText0", "Global War event against the player is disabled.\n\
 Reduced reputation losses.");
 	}
 	// Hard
 	else if (DifficultyIndex == 2)
 	{
-		DifficultyText = LOCTEXT("DifficultyText", "Pirates and Broken Moon gain additional Ghoul fighters.\n\
+		DifficultyText = LOCTEXT("DifficultyText2", "Pirates and Broken Moon gain additional Ghoul fighters.\n\
 \n\
 Reduced Global War event cooldown against the player.\n\
 Increased reputation losses. Further reputation losses if the player holds 80% of the money circulating among companies.\n\
@@ -653,7 +653,7 @@ Increased reputation losses. Further reputation losses if the player holds 80% o
 	// Very Hard
 	else if (DifficultyIndex == 3)
 	{
-		DifficultyText = LOCTEXT("DifficultyText", "Pirates and Broken Moon gain additional Ghoul and Orca fighters.\n\
+		DifficultyText = LOCTEXT("DifficultyText3", "Pirates and Broken Moon gain additional Ghoul and Orca fighters.\n\
 \n\
 Reduced Global War event cooldown against the player, slightly higher chance of occurance.\n\
 Increased reputation losses. Further reputation losses if the player holds 70% of the money circulating among companies.\n\
@@ -662,7 +662,7 @@ Increased reputation losses. Further reputation losses if the player holds 70% o
 	// Expert
 	else if (DifficultyIndex == 4)
 	{
-		DifficultyText = LOCTEXT("DifficultyText", "Pirates and Broken Moon gain additional Ghoul, Orca and Phalanx fighters.\n\
+		DifficultyText = LOCTEXT("DifficultyText4", "Pirates and Broken Moon gain additional Ghoul, Orca and Phalanx fighters.\n\
 \n\
 Reduced Global War event cooldown against the player, slightly higher chance of occurance.\n\
 Increased reputation losses. Further reputation losses if the player holds 60% of the money circulating among companies.\n\
@@ -671,10 +671,10 @@ Increased reputation losses. Further reputation losses if the player holds 60% o
 	// Unfair
 	else if (DifficultyIndex == 5)
 	{
-		DifficultyText = LOCTEXT("DifficultyText", "Pirates and Broken Moon gain additional Ghoul, Orca and Phalanx fighters.\n\
+		DifficultyText = LOCTEXT("DifficultyText5", "Pirates and Broken Moon gain additional Ghoul, Orca and Phalanx fighters.\n\
 Pirates gain an additional Kami.\n\
-Nema Heavy Works and Ghost Works Shipyards gain an Anubis cruiser.\n\
 Quantalium gain an Invader.\n\
+Nema Heavy Works and Ghost Works Shipyards gain an Anubis cruiser.\n\
 \n\
 Reduced Global War event cooldown against the player, higher chance of occurance.\n\
 Increased reputation losses. Further reputation losses if the player holds 50% of the money circulating with companies.\n\

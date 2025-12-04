@@ -309,6 +309,15 @@ void UFlareSector::SpaceCraftExplosionCheck(AFlareSpacecraft* Spacecraft)
 	}
 }
 
+void UFlareSector::ShipLeftSector(AFlareSpacecraft* Spacecraft)
+{
+	if (!Spacecraft)
+	{
+		return;
+	}
+	Spacecraft->SafeDestroy();
+}
+
 void UFlareSector::RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSectorSpacecrafts)
 {
 	if (Spacecraft)
@@ -479,7 +488,6 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 		ParentSpacecraft->GetDescription()->SpacecraftTemplate);
 	*/
 
-	bool ReusedSpacecraft = false;
 	// Create and configure the ship
 	AFlareSpacecraft* Spacecraft = ParentSpacecraft->GetActive();
 	if (!Spacecraft)
@@ -493,18 +501,10 @@ AFlareSpacecraft* UFlareSector::LoadSpacecraft(UFlareSimulatedSpacecraft* Parent
 			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 			Spacecraft = GetGame()->GetWorld()->SpawnActor<AFlareSpacecraft>(ParentSpacecraft->GetDescription()->SpacecraftTemplate,
-			ParentSpacecraft->GetData().Location,
-			ParentSpacecraft->GetData().Rotation,
-			Params);
+				ParentSpacecraft->GetData().Location,
+				ParentSpacecraft->GetData().Rotation,
+				Params);
 		}
-		else
-		{
-			ReusedSpacecraft = true;
-		}
-	}
-	else
-	{
-		ReusedSpacecraft = true;
 	}
 
 	if (Spacecraft)
@@ -606,7 +606,14 @@ void UFlareSector::SetSpacecraftSpawnPosition(UFlareSimulatedSpacecraft* ParentS
 		}
 		case EFlareSpawnMode::Spawn:
 		{
-			PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
+			if (ParentSpacecraft->GetDescription()->IsSubstation)
+			{
+				Spacecraft->SetActorLocationAndRotation(ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
+			}
+			else
+			{
+				PlaceSpacecraft(Spacecraft, ParentSpacecraft->GetData().Location, ParentSpacecraft->GetData().Rotation);
+			}
 
 #ifdef DEBUG_SPACESHIPPLACEMENT
 			FVector NewLocation = Spacecraft->GetActorLocation();
@@ -1113,7 +1120,6 @@ TArray<AFlareSpacecraft*> UFlareSector::GetCompanyShips(UFlareCompany* Company)
 	{
 		CompanyShips = CompanyShipsPerCompanyCache[Company];
 	}
-
 	else
 	{
 		for (int i = 0; i < SectorShips.Num(); i++)

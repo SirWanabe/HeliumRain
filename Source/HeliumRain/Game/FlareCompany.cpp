@@ -55,7 +55,6 @@ void UFlareCompany::Load(const FFlareCompanySave& Data)
 	ResearchBonus_Floats.Add("travel-bonus", 0.f);
 	ResearchBonus_Floats.Add("shipyard-fabrication-bonus", 0.f);
 
-
 	// Player description ID is -1
 	if (Data.CatalogIdentifier >= 0)
 	{
@@ -1792,6 +1791,24 @@ bool UFlareCompany::AtWar()
 	return false;
 }
 
+bool UFlareCompany::IsShipInTransactionSources(UFlareSimulatedSpacecraft* Ship)
+{
+	if (Ship)
+	{
+		for (auto Entry : GetTransactionLog())
+		{
+//			UFlareCompany* Other = Entry.GetOtherCompany(Game);
+//			UFlareSimulatedSector* Sector = Entry.GetSector(Game);
+			UFlareSimulatedSpacecraft* Source = Entry.GetSpacecraft(Game);
+			if (Source == Ship)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 int32 UFlareCompany::GetTransportCapacity()
 {
 	int32 CompanyCapacity = 0;
@@ -2335,6 +2352,7 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 			Identifier == "station-by-habitation" ||
 			Identifier == "station-nh-habitation" ||
 			Identifier == "station-tf-habitation" ||
+			Identifier == "station-tf-solar-plant" ||
 			Identifier == "station-outpost" ||
 			Identifier == "station-solar-plant")
 	{
@@ -2361,6 +2379,10 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	}
 	else if(Identifier == "station-steelworks" ||
 			Identifier == "station-tool-factory" ||
+			Identifier == "station-tf-arsenal" ||
+			Identifier == "station-nh-arsenal" ||
+			Identifier == "station-by-arsenal" ||
+			Identifier == "station-bh-arsenal" ||
 			Identifier == "station-arsenal")
 	{
 		return IsTechnologyUnlocked("metallurgy");
@@ -2374,6 +2396,9 @@ bool UFlareCompany::IsTechnologyUnlockedStation(const FFlareSpacecraftDescriptio
 	}
 	else if(Identifier == "station-tokamak" ||
 			Identifier == "station-hub" ||
+			Identifier == "station-tf-hub" ||
+			Identifier == "station-by-hub" ||
+			Identifier == "station-bh-hub" ||
 			Identifier == "station-complex" ||
 			Identifier == "station-foundry")
 	{
@@ -3042,7 +3067,7 @@ bool UFlareCompany::UnlockTechnology(FName Identifier, bool FromSave, bool Force
 ----------------------------------------------------*/
 
 
-const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* SectorFilter, bool IncludeIncoming) const
+const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* SectorFilter, bool IncludeIncoming)
 {
 	bool globalRequest = SectorFilter == nullptr;
 
@@ -3059,6 +3084,7 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	// - daily money requirements to keep stations running
 	CompanyValue CompanyValue;
 	CompanyValue.MoneyValue = GetMoney();
+	CompanyValue.LicenseValue = GetTotalStationLicenseValue();
 	CompanyValue.StockValue = 0;
 	CompanyValue.ShipsValue = 0;
 	CompanyValue.ArmyValue = 0;
@@ -3242,7 +3268,7 @@ const struct CompanyValue UFlareCompany::GetCompanyValue(UFlareSimulatedSector* 
 	}
 
 	CompanyValue.SpacecraftsValue = CompanyValue.ShipsValue + CompanyValue.StationsValue;
-	CompanyValue.TotalValue = CompanyValue.MoneyValue + CompanyValue.StockValue + CompanyValue.SpacecraftsValue;
+	CompanyValue.TotalValue = CompanyValue.MoneyValue + CompanyValue.StockValue + CompanyValue.SpacecraftsValue + CompanyValue.LicenseValue;
 
 	if(globalRequest)
 	{

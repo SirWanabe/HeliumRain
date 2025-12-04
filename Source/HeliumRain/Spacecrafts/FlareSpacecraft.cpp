@@ -159,17 +159,8 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 			SCOPE_CYCLE_COUNTER(STAT_FlareSpacecraft_Systems);
 
 			//Johnny 5 need input
-			bool IsNumberFiveAlive = GetParent()->GetDamageSystem()->IsAlive();
 
-			for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
-			{
-				UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
-				Component->TickForComponent(DeltaSeconds);
-				if (IsNumberFiveAlive)
-				{
-					Component->TickForComponentAlive(DeltaSeconds);
-				}
-			}
+			TickOwnedComponents(DeltaSeconds);
 
 			StateManager->Tick(DeltaSeconds);
 			if(!IsStation())
@@ -284,89 +275,130 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 					ScanningTimer = 0;
 				}
 			}
-			
+
 			// Detect manual docking
-			IsManualDocking = false;
-			IsAutoDocking = false;
-			float MaxDistance = (GetSize() == EFlarePartSize::S) ? 25000 : 50000;
-			float BestDistance = MaxDistance;
-			for (int SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
+			if (GetNavigationSystem()->IsManualPilot() && GetNavigationSystem()->GetTimeSinceUndocking() <= 0.f)
 			{
-				// Calculation data
-				AFlareSpacecraft* Spacecraft = GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
-				
-				// Required conditions for docking
-				if ((Spacecraft->GetActorLocation() - GetActorLocation()).Size() < MaxDistance
-				 && Spacecraft != this
-				 && Spacecraft->IsStation()
-				 && Spacecraft->GetParent()->GetDamageSystem()->IsAlive()
-				 && Spacecraft->GetDockingSystem()->GetDockCount() > 0
-				 && GetWeaponsSystem()->GetActiveWeaponGroupIndex() < 0)
+				IsManualDocking = false;
+				IsAutoDocking = false;
+				float MaxDistance = (GetSize() == EFlarePartSize::S) ? 25000 : 50000;
+				if (GetStateManager()->IsExternalCamera())
 				{
-					// Select closest dock
-					FVector CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
-					FFlareDockingInfo BestDockingPort;
-					for (int32 DockingPortIndex = 0; DockingPortIndex < Spacecraft->GetDockingSystem()->GetDockCount(); DockingPortIndex++)
+					MaxDistance *= 1.10;
+				}
+
+				float BestDistance = MaxDistance;
+				for (int SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetSpacecrafts().Num(); SpacecraftIndex++)
+				{
+					// Calculation data
+					AFlareSpacecraft* Spacecraft = GetGame()->GetActiveSector()->GetSpacecrafts()[SpacecraftIndex];
+
+					// Required conditions for docking
+					if (Spacecraft != this
+						&& (Spacecraft->GetActorLocation() - GetActorLocation()).Size() < MaxDistance
+						&& Spacecraft->IsStation()
+						&& Spacecraft->GetParent()->GetDamageSystem()->IsAlive()
+						&& Spacecraft->GetDockingSystem()->GetDockCount() > 0
+						&& GetWeaponsSystem()->GetActiveWeaponGroupIndex() < 0)
 					{
-						float AutoDockDistance = (GetSize() == EFlarePartSize::S ? 250 : 500);
-						FFlareDockingInfo DockingPort = Spacecraft->GetDockingSystem()->GetDockInfo(DockingPortIndex);
-						FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, CameraLocation);
+						// Select closest dock
+						FVector CameraLocation;
 
-						// When under this distance, we're going to be docking
-						if (DockingPort.DockSize == GetSize() && DockingParameters.DockToDockDistance < 2 * AutoDockDistance)
+//						if (!GetStateManager()->IsExternalCamera())
+						CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
+
+//						FFlareDockingInfo BestDockingPort;
+						for (int32 DockingPortIndex = 0; DockingPortIndex < Spacecraft->GetDockingSystem()->GetDockCount(); DockingPortIndex++)
 						{
-							IsAutoDocking = true;
-						}
-						
-						// Check if we should draw it
-						if (DockingPort.DockSize == GetSize()
-						 && GetNavigationSystem()->IsManualPilot()
-						 && !GetStateManager()->IsExternalCamera()
-						 && DockingParameters.DockingPhase != EFlareDockingPhase::Docked
-						 && DockingParameters.DockingPhase != EFlareDockingPhase::Distant)
-						{
-							// Get distance
-							FVector DockVector = DockingParameters.StationDockLocation - DockingParameters.ShipDockLocation;
-							if (DockVector.Size() < BestDistance && FVector::DotProduct(DockVector, GetActorRotation().Vector()) > 0)
+							float AutoDockDistance = (GetSize() == EFlarePartSize::S ? 250 : 500);
+							if (GetStateManager()->IsExternalCamera())
 							{
-								// Set parameters
-								IsManualDocking = true;
-								BestDistance = DockVector.Size();
-								BestDockingPort = DockingPort;
-								ManualDockingTarget = Spacecraft;
-								ManualDockingStatus = DockingParameters;
-								ManualDockingInfo = DockingPort;
+								AutoDockDistance *= 2;
+							}
 
-								// Auto-dock when ready
-								if (!Spacecraft->IsPlayerHostile()
-									&& (DockingParameters.DockingPhase == EFlareDockingPhase::Dockable
-									 || DockingParameters.DockingPhase == EFlareDockingPhase::FinalApproach
-									 || DockingParameters.DockingPhase == EFlareDockingPhase::Approach)
-								 && DockingParameters.DockToDockDistance < AutoDockDistance)
+							FFlareDockingInfo DockingPort = Spacecraft->GetDockingSystem()->GetDockInfo(DockingPortIndex);
+							FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, CameraLocation);
+
+							// When under this distance, we're going to be docking
+							if (DockingPort.DockSize == GetSize() && DockingParameters.DockToDockDistance < 2 * AutoDockDistance)
+							{
+								IsAutoDocking = true;
+							}
+
+							// Check if we should draw it
+							if (DockingPort.DockSize == GetSize()
+								&& (!GetStateManager()->IsExternalCamera() || (GetStateManager()->IsExternalCamera() && !GetStateManager()->IsExternalCameraPanning()))
+								&& DockingParameters.DockingPhase != EFlareDockingPhase::Docked
+								&& DockingParameters.DockingPhase != EFlareDockingPhase::Distant)
+							{
+								// Get distance
+								FVector DockVector = DockingParameters.StationDockLocation - DockingParameters.ShipDockLocation;
+								if (DockVector.Size() < BestDistance && FVector::DotProduct(DockVector, GetActorRotation().Vector()) > 0)
 								{
-									GetNavigationSystem()->DockAt(Spacecraft);
-									PC->SetAchievementProgression("ACHIEVEMENT_MANUAL_DOCK", 1);
+									// Set parameters
+									IsManualDocking = true;
+									BestDistance = DockVector.Size();
+//									BestDockingPort = DockingPort;
+									ManualDockingTarget = Spacecraft;
+									ManualDockingStatus = DockingParameters;
+									ManualDockingInfo = DockingPort;
+
+									// Auto-dock when ready
+									if (!Spacecraft->IsPlayerHostile()
+										&& (DockingParameters.DockingPhase == EFlareDockingPhase::Dockable
+											|| DockingParameters.DockingPhase == EFlareDockingPhase::FinalApproach
+											|| DockingParameters.DockingPhase == EFlareDockingPhase::Approach)
+										&& DockingParameters.DockToDockDistance < AutoDockDistance)
+									{
+										GetNavigationSystem()->DockAt(Spacecraft);
+										PC->SetAchievementProgression("ACHIEVEMENT_MANUAL_DOCK", 1);
+									}
 								}
 							}
 						}
 					}
 				}
+				// The FlareSpacecraftPawn do the camera effective update in its Tick so call it after camera order update
+				// UpdateCameraPositions(DeltaSeconds);
 			}
-
-			// Set a default target if there is current target
-			if (CurrentTarget.IsEmpty())
+			else
 			{
-				TArray<FFlareScreenTarget>& ScreenTargets = GetCurrentTargets();
-				if (ScreenTargets.Num())
-				{
-					int32 ActualIndex = TargetIndex % ScreenTargets.Num();
-					SetCurrentTarget(ScreenTargets[ActualIndex].Spacecraft);
-				}
-			}
+				IsManualDocking = false;
+				ManualDockingTarget = nullptr;
 
+				//Show/Update automatic docking port
+				//TODO: The autodock doesn't check if the reserved slot is literally for the ship doing the docking, and the ship doesn't set its roll to match the docking requirements
+/*
+				int32 DockingPortIndex;
+				AFlareSpacecraft* NavigationDockingStation = GetNavigationSystem()->GetNavigationDockingTarget(&DockingPortIndex);
+				if (NavigationDockingStation)
+				{
+					FVector CameraLocation;
+					if (!GetStateManager()->IsExternalCamera())
+					{
+						CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
+					}
+					else
+					{
+						CameraLocation = Airframe->GetSocketLocation(FName("Camera"));
+					}
+
+					FFlareDockingInfo DockingPort = NavigationDockingStation->GetDockingSystem()->GetDockInfo(DockingPortIndex);
+					FFlareDockingParameters DockingParameters = GetNavigationSystem()->GetDockingParameters(DockingPort, CameraLocation);
+
+					ManualDockingTarget = NavigationDockingStation;
+					ManualDockingStatus = DockingParameters;
+					ManualDockingInfo = DockingPort;
+				}
+
+				else
+				{
+					IsManualDocking = false;
+					ManualDockingTarget = nullptr;
+				}
+				*/
+			}
 			TimeSinceSelection += DeltaSeconds;
-			// The FlareSpacecraftPawn do the camera effective update in its Tick so call it after camera order update
-			// UpdateCameraPositions(DeltaSeconds);
 		}
 
 		// Make ship bounce lost ships if they are outside 1.5 * limit
@@ -377,9 +409,26 @@ void AFlareSpacecraft::TickSpacecraft(float DeltaSeconds)
 			Airframe->SetPhysicsLinearVelocity(-Airframe->GetPhysicsLinearVelocity() / 2.f);
 		}
 
-
 		float SmoothedVelocityChangeSpeed = FMath::Clamp(DeltaSeconds * 8, 0.f, 1.f);
 		SmoothedVelocity = SmoothedVelocity * (1 - SmoothedVelocityChangeSpeed) + GetLinearVelocity() * SmoothedVelocityChangeSpeed;
+	}
+}
+
+void AFlareSpacecraft::TickOwnedComponents(float DeltaSeconds)
+{
+	bool IsNumberFiveAlive = GetParent()->GetDamageSystem()->IsAlive();
+
+	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
+	{
+		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
+		if (Component)
+		{
+			Component->TickForComponent(DeltaSeconds);
+			if (IsNumberFiveAlive)
+			{
+				Component->TickForComponentAlive(DeltaSeconds);
+			}
+		}
 	}
 }
 
@@ -460,10 +509,9 @@ void AFlareSpacecraft::SetCurrentTarget(PilotHelper::PilotTarget const& Target)
 	{
 		CurrentTarget = Target;
 
-		FName TargetName = Target.SpacecraftTarget ? Target.SpacecraftTarget->GetImmatriculation() : NAME_None;
-
-		if (GetGame()->GetQuestManager())
+		if (GetGame()->GetQuestManager() && GetParent() == GetGame()->GetPC()->GetPlayerShip())
 		{
+			FName TargetName = Target.SpacecraftTarget ? Target.SpacecraftTarget->GetImmatriculation() : NAME_None;
 			GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("target-changed").PutName("target", TargetName));
 		}
 	}
@@ -474,13 +522,15 @@ inline static bool IsCloserToCenter(const FFlareScreenTarget& TargetA, const FFl
 	return (TargetA.DistanceFromScreenCenter < TargetB.DistanceFromScreenCenter);
 }
 
-TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets()
+TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets(bool FilterOutStations, bool FilterOutShips, bool FilterEnemiesOnly, bool FilterObjectivesOnly)
 {
 	Targets.Empty();
 
 	FVector CameraLocation = GetCamera()->GetComponentLocation();
 	FVector CameraAimDirection = GetCamera()->GetComponentRotation().Vector();
 	CameraAimDirection.Normalize();
+
+	AFlarePlayerController* PC = GetGame()->GetPC();
 
 	for (AFlareSpacecraft* Spacecraft: GetGame()->GetActiveSector()->GetSpacecrafts())
 	{
@@ -504,6 +554,26 @@ TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets()
 			continue;
 		}
 
+		if (FilterOutStations && Spacecraft->GetParent()->IsStation() == true)
+		{
+			continue;
+		}
+
+		if (FilterOutShips && Spacecraft->GetParent()->IsStation() == false)
+		{
+			continue;
+		}
+
+		if (FilterEnemiesOnly && !Spacecraft->IsPlayerHostile())
+		{
+			continue;
+		}
+
+		if (FilterObjectivesOnly && PC->GetCurrentObjective() && PC->GetCurrentObjective()->TargetSpacecrafts.Find(Spacecraft->GetParent()) == INDEX_NONE)
+		{
+			continue;
+		}
+
 		FVector LocationOffset = Spacecraft->GetActorLocation() - CameraLocation;
 		FVector SpacecraftDirection = LocationOffset.GetUnsafeNormal();
 
@@ -511,7 +581,6 @@ TArray<FFlareScreenTarget>& AFlareSpacecraft::GetCurrentTargets()
 		FFlareScreenTarget Target;
 		Target.Spacecraft = Spacecraft;
 		Target.DistanceFromScreenCenter = 1.f-Dot;
-
 		Targets.Add(Target);
 	}
 
@@ -1274,11 +1343,8 @@ void AFlareSpacecraft::ClearInvalidTarget(PilotHelper::PilotTarget InvalidTarget
 
 	GetPilot()->ClearInvalidTarget(InvalidTarget);
 
-
 	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
-
 		UFlareTurret* Turret = Cast<UFlareTurret>(ActiveSpacecraftComponents[ComponentIndex]);
 		if (Turret)
 		{
@@ -1614,7 +1680,7 @@ void AFlareSpacecraft::Load(UFlareSimulatedSpacecraft* ParentSpacecraft)
 		StateManager = NewObject<UFlareSpacecraftStateManager>(this, UFlareSpacecraftStateManager::StaticClass());
 	}
 
-	StateManager->Initialize(this);
+	StateManager->InitializeStateManager(this);
 	
 	// Subsystems
 	DamageSystem->Start();
@@ -1667,6 +1733,7 @@ void AFlareSpacecraft::FinishLoadandReady()
 		Airframe->SetSimulatePhysics(true);
 		Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
+
 	SetLoadedAndReady();
 
 	AFlarePlayerController* PC = GetGame()->GetPC();
@@ -1683,7 +1750,7 @@ void AFlareSpacecraft::Redock()
 	if (GetData().DockedTo != NAME_None && !IsPresentationMode()
 		&& (GetGame()->GetActiveSector() && !GetGame()->GetActiveSector()->GetIsDestroyingSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == GetParent()->GetCurrentSector()))
 	{
-		FLOGV("AFlareSpacecraft::Redock : Looking for station '%s'", *GetData().DockedTo.ToString());
+//		FLOGV("AFlareSpacecraft::Redock : Looking for station '%s'", *GetData().DockedTo.ToString());
 
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < GetGame()->GetActiveSector()->GetStations().Num(); SpacecraftIndex++)
 		{
@@ -1691,7 +1758,7 @@ void AFlareSpacecraft::Redock()
 
 			if (Station->GetImmatriculation() == GetData().DockedTo)
 			{
-				FLOGV("AFlareSpacecraft::Redock : Found dock station '%s'", *Station->GetImmatriculation().ToString());
+//				FLOGV("AFlareSpacecraft::Redock : Found dock station '%s'", *Station->GetImmatriculation().ToString());
 
 				if (Station->GetDockingSystem()->GetDockCount() <= GetData().DockedAt)
 				{
@@ -1699,10 +1766,11 @@ void AFlareSpacecraft::Redock()
 					break;
 				}
 				// Replace ship at docking port
-				RedockTo(Station);
-
 				Airframe->SetSimulatePhysics(true);
 				Airframe->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+				RedockTo(Station);
+
 				NavigationSystem->ConfirmDock(Station, GetData().DockedAt, true);
 				break;
 			}
@@ -1771,7 +1839,10 @@ void AFlareSpacecraft::Save()
 	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
 		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
-		Component->Save();
+		if (Component)
+		{
+			Component->Save();
+		}
 	}
 }
 
@@ -1929,7 +2000,7 @@ UFlareSimulatedSector* AFlareSpacecraft::GetOwnerSector()
 			UFlareSimulatedSector* CandidateSector = Sectors[Index];
 			for (int32 ShipIndex = 0; ShipIndex < CandidateSector->GetSectorSpacecrafts().Num(); ShipIndex++)
 			{
-				if (CandidateSector->GetSectorSpacecrafts()[ShipIndex]->Save()->Identifier == GetData().Identifier)
+				if (CandidateSector->GetSectorSpacecrafts()[ShipIndex]->GetImmatriculation() == GetImmatriculation())
 				{
 					return CandidateSector;
 				}
@@ -2097,6 +2168,11 @@ void AFlareSpacecraft::UpdateComponents(bool UpdateCosmetics)
 	for (int32 ComponentIndex = 0; ComponentIndex < SpacecraftComponents.Num(); ComponentIndex++)
 	{
 		UFlareSpacecraftComponent* Component = Cast<UFlareSpacecraftComponent>(SpacecraftComponents[ComponentIndex]);
+		if (!Component)
+		{
+			continue;
+		}
+
 		FFlareSpacecraftComponentSave* ComponentData = NULL;
 
 		// Find component the corresponding component data comparing the slot id
@@ -2111,7 +2187,9 @@ void AFlareSpacecraft::UpdateComponents(bool UpdateCosmetics)
 			}
 		}
 
-		// If no data, this is a cosmetic component and it don't need to be initialized
+		ActiveSpacecraftComponents.Add(Component);
+
+// If no data, this is a cosmetic component and it don't need to be initialized
 		if (!Found)
 		{
 			if (UpdateCosmetics)
@@ -2124,8 +2202,7 @@ void AFlareSpacecraft::UpdateComponents(bool UpdateCosmetics)
 
 		// Reload the component
 		ReloadPart(Component, ComponentData);
-
-		ActiveSpacecraftComponents.Add(Component);
+//		ActiveSpacecraftComponents.Add(Component);
 
 		UFlareSpacecraftComponent* ComponentEngine = Cast<UFlareEngine>(SpacecraftComponents[ComponentIndex]);
 		if (ComponentEngine)
@@ -2264,7 +2341,10 @@ void AFlareSpacecraft::OnRepaired()
 	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
 		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
-		Component->OnRepaired();
+		if (Component)
+		{
+			Component->OnRepaired();
+		}
 	}
 }
 
@@ -2273,8 +2353,8 @@ void AFlareSpacecraft::OnRefilled()
 	// Reload and repair
 	for (int32 ComponentIndex = 0; ComponentIndex < ActiveSpacecraftComponents.Num(); ComponentIndex++)
 	{
-		UFlareSpacecraftComponent* Component = ActiveSpacecraftComponents[ComponentIndex];
 		UFlareWeapon* Weapon = Cast<UFlareWeapon>(ActiveSpacecraftComponents[ComponentIndex]);
+		
 		if (Weapon)
 		{
 			Weapon->OnRefilled();
@@ -2282,7 +2362,7 @@ void AFlareSpacecraft::OnRefilled()
 	}
 }
 
-void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation, FFlareSpacecraftComponentDescription* TransactionNewPartDesc, int32 TransactionNewPartWeaponGroupIndex)
+void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation, bool TransactionPlayerInitiated, FFlareSpacecraftComponentDescription* TransactionNewPartDesc, int32 TransactionNewPartWeaponGroupIndex)
 {
 	// Signal the PC
 	AFlarePlayerController* PC = GetPC();
@@ -2359,12 +2439,13 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		UFlareSimulatedSpacecraft* ShipSimmed = GetParent();
 		UFlareSimulatedSpacecraft* StationSimmed = DockStation->GetParent();
 
+		int64 TransactionPrice;
 		int32 Quantity = SectorHelper::Trade(
 			SourceSpacecraft,
 			DestinationSpacecraft,
 			TransactionResource,
 			TransactionQuantity,
-			NULL, NULL, TransactionDonation);
+			&TransactionPrice, NULL, TransactionDonation);
 
 		if (GetParent()->GetCompany() == PC->GetCompany())
 		{
@@ -2416,6 +2497,48 @@ void AFlareSpacecraft::OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FF
 		}
 
 		AFlareMenuManager* PlayerMenu = PC->GetMenuManager();
+
+		if (!TransactionPlayerInitiated)
+		{
+			if (GetParent()->GetCurrentFleet()->IsAutoTrading())
+			{
+				if (SourceSpacecraft == GetParent())
+				{
+					GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsUnloadResources += Quantity;
+					GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsMoneySell += TransactionPrice;
+				}
+				else
+				{
+					GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsLoadResources += Quantity;
+					GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsMoneyBuy += TransactionPrice;
+				}
+			}
+			else
+			{
+				UFlareTradeRoute* ShipTradeRoute = GetParent()->GetCurrentFleet()->GetCurrentTradeRoute();
+				if (ShipTradeRoute)
+				{
+					FFlareTradeRouteSave* TradeRouteData = ShipTradeRoute->GetData();
+					FFlareTradeRouteSectorOperationSave* CurrentTradeOperation = ShipTradeRoute->GetActiveOperation();
+
+					TradeRouteData->CurrentOperationProgress += Quantity;
+
+					if (SourceSpacecraft == GetParent())
+					{
+						TradeRouteData->StatsUnloadResources += Quantity;
+						if (CurrentTradeOperation && !CurrentTradeOperation->CanDonate)
+						{
+							TradeRouteData->StatsMoneySell += TransactionPrice;
+						}
+					}
+					else
+					{
+						TradeRouteData->StatsMoneyBuy += TransactionPrice;
+						TradeRouteData->StatsLoadResources += Quantity;
+					}
+				}
+			}
+		}
 
 		if (PlayerMenu && PlayerMenu->IsMenuOpen() && PlayerMenu->GetCurrentMenu() == EFlareMenu::MENU_Trade)
 		{
@@ -2485,19 +2608,44 @@ void AFlareSpacecraft::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	PlayerInputComponent->BindAction("FaceForward", EInputEvent::IE_Released, this, &AFlareSpacecraft::FaceForward);
 	PlayerInputComponent->BindAction("FaceBackward", EInputEvent::IE_Released, this, &AFlareSpacecraft::FaceBackward);
 	PlayerInputComponent->BindAction("Brake", EInputEvent::IE_Released, this, &AFlareSpacecraft::Brake);
+
 	PlayerInputComponent->BindAction("LockDirection", EInputEvent::IE_Pressed, this, &AFlareSpacecraft::LockDirectionOn);
 	PlayerInputComponent->BindAction("LockDirection", EInputEvent::IE_Released, this, &AFlareSpacecraft::LockDirectionOff);
+
+	PlayerInputComponent->BindAction("LockDirectionToggle", EInputEvent::IE_Pressed, this, &AFlareSpacecraft::LockDirectionToggle);
 
 	PlayerInputComponent->BindAction("FindTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::FindTarget);
 
 	PlayerInputComponent->BindAction("NextWeapon", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextWeapon);
 	PlayerInputComponent->BindAction("PreviousWeapon", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousWeapon);
 
-	PlayerInputComponent->BindAction("NextTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextTarget);
-	PlayerInputComponent->BindAction("PreviousTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousTarget);
+	//Targetting
+	PlayerInputComponent->BindAction("ClearTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::ClearTarget);
+	PlayerInputComponent->BindAction("TargetDockedStation", EInputEvent::IE_Released, this, &AFlareSpacecraft::TargetDockedStation);
+	
+	PlayerInputComponent->BindAction("PreviousObjectiveTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousObjectiveTarget);
+	PlayerInputComponent->BindAction("NextObjectiveTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextObjectiveTarget);
 
-	PlayerInputComponent->BindAction("AlternateNextTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::AlternateNextTarget);
+	PlayerInputComponent->BindAction("PreviousTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::AlternatePreviousTarget);
+	PlayerInputComponent->BindAction("NextTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::AlternateNextTarget);
+
 	PlayerInputComponent->BindAction("AlternatePreviousTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::AlternatePreviousTarget);
+	PlayerInputComponent->BindAction("AlternateNextTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::AlternateNextTarget);
+
+	PlayerInputComponent->BindAction("PreviousShipTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousShipTarget);
+	PlayerInputComponent->BindAction("NextShipTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextShipTarget);
+
+	PlayerInputComponent->BindAction("PreviousStationTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousStationTarget);
+	PlayerInputComponent->BindAction("NextStationTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextStationTarget);
+
+	PlayerInputComponent->BindAction("PreviousEnemyTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousEnemyTarget);
+	PlayerInputComponent->BindAction("NextEnemyTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextEnemyTarget);
+
+	PlayerInputComponent->BindAction("PreviousEnemyShipTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousEnemyShipTarget);
+	PlayerInputComponent->BindAction("NextEnemyShipTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextEnemyShipTarget);
+
+	PlayerInputComponent->BindAction("PreviousEnemyStationTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::PreviousEnemyStationTarget);
+	PlayerInputComponent->BindAction("NextEnemyStationTarget", EInputEvent::IE_Released, this, &AFlareSpacecraft::NextEnemyStationTarget);
 }
 
 void AFlareSpacecraft::StartFire()
@@ -2520,6 +2668,16 @@ void AFlareSpacecraft::LeftMouseRelease()
 	StateManager->SetPlayerLeftMouse(false);
 }
 
+void AFlareSpacecraft::RightMousePress()
+{
+	StateManager->SetPlayerRightMouse(true);
+}
+
+void AFlareSpacecraft::RightMouseRelease()
+{
+	StateManager->SetPlayerRightMouse(false);
+}
+
 void AFlareSpacecraft::DeactivateWeapon()
 {
 	if (IsMilitaryArmed())
@@ -2538,7 +2696,7 @@ void AFlareSpacecraft::DeactivateWeapon()
 					GetPC()->ClientPlaySound(WeaponUnloadedSound);
 				}
 			}
-			if (GetGame()->GetQuestManager())
+			if (GetGame()->GetQuestManager() && GetParent() == GetGame()->GetPC()->GetPlayerShip())
 			{
 				GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("deactivate-weapon"));
 			}
@@ -2609,9 +2767,14 @@ void AFlareSpacecraft::ActivateWeaponGroupByIndex(int32 Index)
 
 		// Change group
 		GetWeaponsSystem()->ActivateWeaponGroup(Index);
-		if (GetWeaponsSystem()->GetActiveWeaponType() != EFlareWeaponGroupType::WG_NONE)
+
+		if (GetWeaponsSystem()->GetActiveWeaponType() != EFlareWeaponGroupType::WG_NONE && StateManager->IsExternalCamera() && StateManager->IsExternalCameraPanning())
 		{
 			StateManager->SetExternalCamera(false,false);
+			if (GetPC()->GetNavHUD())
+			{
+				GetPC()->GetMenuManager()->UpdateNavHudVisibility();
+			}
 		}
 
 		if (GetGame()->GetQuestManager() && GetParent() == GetGame()->GetPC()->GetPlayerShip())
@@ -2659,61 +2822,113 @@ void AFlareSpacecraft::PreviousWeapon()
 	}
 }
 
-void AFlareSpacecraft::NextTarget()
+void AFlareSpacecraft::PreviousTarget(bool FilterOutStations, bool FilterOutShips, bool FilterEnemiesOnly, bool FilterObjectivesOnly)
 {
 	// Data
-	TArray<FFlareScreenTarget>& ScreenTargets = GetCurrentTargets();
+	TArray<FFlareScreenTarget>& ScreenTargets = GetCurrentTargets(FilterOutStations, FilterOutShips, FilterEnemiesOnly, FilterObjectivesOnly);
+/*
 	auto FindCurrentTarget = [=](const FFlareScreenTarget& Candidate)
 	{
 		return Candidate.Spacecraft == CurrentTarget.SpacecraftTarget;
 	};
-
+*/
 	// Is visible on screen
-	if (TimeSinceSelection < MaxTimeBeforeSelectionReset && ScreenTargets.FindByPredicate(FindCurrentTarget))
-	{
-		TargetIndex++;
-		TargetIndex = FMath::Min(TargetIndex, ScreenTargets.Num() - 1);
-		SetCurrentTarget(ScreenTargets[TargetIndex].Spacecraft);
-		FLOGV("AFlareSpacecraft::NextTarget : %d", TargetIndex);
-	}
-
-	// Else reset
-	else
-	{
-		TargetIndex = 0;
-		SetCurrentTarget(PilotHelper::PilotTarget());
-		FLOG("AFlareSpacecraft::NextTarget : reset to center");
-	}
-
-	TimeSinceSelection = 0;
-}
-
-void AFlareSpacecraft::PreviousTarget()
-{
-	// Data
-	TArray<FFlareScreenTarget>& ScreenTargets = GetCurrentTargets();
-	auto FindCurrentTarget = [=](const FFlareScreenTarget& Candidate)
-	{
-		return Candidate.Spacecraft == CurrentTarget.SpacecraftTarget;
-	};
-
-	// Is visible on screen
-	if (TimeSinceSelection < MaxTimeBeforeSelectionReset && ScreenTargets.FindByPredicate(FindCurrentTarget))
+	if (TimeSinceSelection < MaxTimeBeforeSelectionReset && ScreenTargets.Num() > 0)// && ScreenTargets.FindByPredicate(FindCurrentTarget))
 	{
 		TargetIndex--;
 		TargetIndex = FMath::Max(TargetIndex, 0);
+		TargetIndex = FMath::Min(TargetIndex, ScreenTargets.Num() - 1);
+
 		SetCurrentTarget(ScreenTargets[TargetIndex].Spacecraft);
+
 		FLOGV("AFlareSpacecraft::PreviousTarget : %d", TargetIndex);
 	}
 
 	// Else reset
 	else
 	{
-		TargetIndex = 0;
 		FLOG("AFlareSpacecraft::PreviousTarget : reset to center");
+		ClearTarget();
 	}
 
 	TimeSinceSelection = 0;
+}
+
+void AFlareSpacecraft::NextTarget(bool FilterOutStations, bool FilterOutShips, bool FilterEnemiesOnly, bool FilterObjectivesOnly)
+{
+	// Data
+	TArray<FFlareScreenTarget>& ScreenTargets = GetCurrentTargets(FilterOutStations, FilterOutShips, FilterEnemiesOnly, FilterObjectivesOnly);
+/*
+	auto FindCurrentTarget = [=](const FFlareScreenTarget& Candidate)
+	{
+		return Candidate.Spacecraft == CurrentTarget.SpacecraftTarget;
+	};
+*/
+	// Is visible on screen
+	if (TimeSinceSelection < MaxTimeBeforeSelectionReset && ScreenTargets.Num() > 0)// && ScreenTargets.FindByPredicate(FindCurrentTarget))
+	{
+		TargetIndex++;
+		TargetIndex = FMath::Min(TargetIndex, ScreenTargets.Num() - 1);
+
+		SetCurrentTarget(ScreenTargets[TargetIndex].Spacecraft);
+
+		FLOGV("AFlareSpacecraft::NextTarget : %d", TargetIndex);
+	}
+
+	// Else reset
+	else
+	{
+		FLOG("AFlareSpacecraft::NextTarget : reset to center");
+		ClearTarget();
+	}
+
+	TimeSinceSelection = 0;
+}
+
+void AFlareSpacecraft::ClearTarget()
+{
+	TargetIndex = 0;
+	SetCurrentTarget(PilotHelper::PilotTarget());
+}
+
+void AFlareSpacecraft::TargetDockedStation()
+{
+	if (GetNavigationSystem()->IsDocked())
+	{
+		AFlareSpacecraft* DockedStation = GetNavigationSystem()->GetDockStation();
+		if (DockedStation)
+		{
+			FVector CameraLocation = GetCamera()->GetComponentLocation();
+			FVector CameraAimDirection = GetCamera()->GetComponentRotation().Vector();
+			CameraAimDirection.Normalize();
+
+			FVector LocationOffset = DockedStation->GetActorLocation() - CameraLocation;
+			FVector SpacecraftDirection = LocationOffset.GetUnsafeNormal();
+
+			float Dot = FVector::DotProduct(CameraAimDirection, SpacecraftDirection);
+			FFlareScreenTarget Target;
+			Target.Spacecraft = DockedStation;
+			Target.DistanceFromScreenCenter = 1.f - Dot;
+
+			TargetIndex = 0;
+			SetCurrentTarget(DockedStation);
+		}
+	}
+}
+
+void AFlareSpacecraft::PreviousObjectiveTarget()
+{
+	PreviousTarget(false, false, false, true);
+}
+
+void AFlareSpacecraft::NextObjectiveTarget()
+{
+	NextTarget(false, false, false, true);
+}
+
+void AFlareSpacecraft::AlternatePreviousTarget()
+{
+	PreviousTarget();
 }
 
 void AFlareSpacecraft::AlternateNextTarget()
@@ -2721,9 +2936,54 @@ void AFlareSpacecraft::AlternateNextTarget()
 	NextTarget();
 }
 
-void AFlareSpacecraft::AlternatePreviousTarget()
+void AFlareSpacecraft::PreviousShipTarget()
 {
-	PreviousTarget();
+	PreviousTarget(true,false);
+}
+
+void AFlareSpacecraft::NextShipTarget()
+{
+	NextTarget(true,false);
+}
+
+void AFlareSpacecraft::PreviousStationTarget()
+{
+	PreviousTarget(false, true);
+}
+
+void AFlareSpacecraft::NextStationTarget()
+{
+	NextTarget(false, true);
+}
+
+void AFlareSpacecraft::PreviousEnemyTarget()
+{
+	PreviousTarget(false, false, true);
+}
+
+void AFlareSpacecraft::NextEnemyTarget()
+{
+	NextTarget(false, false, true);
+}
+
+void AFlareSpacecraft::PreviousEnemyShipTarget()
+{
+	PreviousTarget(true, false, true);
+}
+
+void AFlareSpacecraft::NextEnemyShipTarget()
+{
+	NextTarget(true, false, true);
+}
+
+void AFlareSpacecraft::PreviousEnemyStationTarget()
+{
+	PreviousTarget(false, true, true);
+}
+
+void AFlareSpacecraft::NextEnemyStationTarget()
+{
+	NextTarget(false, true, true);
 }
 
 
@@ -2845,11 +3105,11 @@ void AFlareSpacecraft::JoystickRollInput(float Val)
 
 void AFlareSpacecraft::JoystickThrustInput(float Val)
 {
-		float TargetSpeed = 0;
-		float Exponent = 2;
-		float ZeroSpeed = 0.1f;
-		float MinSpeed = -0.5f * NavigationSystem->GetLinearMaxVelocity();
-		float MaxSpeed = 2.0f * NavigationSystem->GetLinearMaxVelocity();
+	float TargetSpeed = 0;
+	float Exponent = 2;
+	float ZeroSpeed = 0.1f;
+	float MinSpeed = -0.5f * NavigationSystem->GetLinearMaxVelocity();
+	float MaxSpeed = 2.0f * NavigationSystem->GetLinearMaxVelocity();
 	float JoystickThrottleThreshold = 0.005f;
 
 	if (NavigationSystem)
@@ -2963,6 +3223,13 @@ void AFlareSpacecraft::BrakeToVelocity(const FVector& VelocityTarget)
 	{
 		NavigationSystem->PushCommandLinearBrake(VelocityTarget);
 	}
+}
+
+
+
+void AFlareSpacecraft::LockDirectionToggle()
+{
+	StateManager->SetPlayerLockDirection(!StateManager->GetPlayerManualLockDirection());
 }
 
 void AFlareSpacecraft::LockDirectionOn()
@@ -3079,9 +3346,10 @@ FText AFlareSpacecraft::GetShipStatus() const
 	{
 		ActionInfo = LOCTEXT("AutoPilotModeInfo", "Auto-piloted");
 	}
-	else if (Command.Type == EFlareCommandDataType::CDT_Location && Command.ActionTarget)
+//	else if (Command.Type == EFlareCommandDataType::CDT_Location && Command.ActionTarget)
+	else if (!Command.CommandHUDDisplay.IsEmpty())
 	{
-		ActionInfo = LOCTEXT("UndockingFrom", "Undocking");
+		ActionInfo = Command.CommandHUDDisplay;
 	}
 	else
 	{
@@ -3092,13 +3360,15 @@ FText AFlareSpacecraft::GetShipStatus() const
 	if (Nav->IsDocked())
 	{
 		ModeText = FText::Format(LOCTEXT("DockedFormat", "Docked in {0}"),
-			CurrentSector->GetSimulatedSector()->GetSectorName());
+		CurrentSector->GetSimulatedSector()->GetSectorName());
 	}
+
 	else if (Parent->GetCurrentFleet() && Parent->GetCurrentFleet()->IsTraveling())
 	{
 		ModeText = FText::Format(LOCTEXT("TravelingAtFormat", "Traveling to {0}"),
 			Parent->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector()->GetSectorName());
 	}
+
 	else if (Command.Type == EFlareCommandDataType::CDT_Dock)
 	{
 		AFlareSpacecraft* Target = Command.ActionTarget;
@@ -3125,12 +3395,20 @@ FText AFlareSpacecraft::GetShipStatus() const
 */
 	else if (!Paused)
 	{
+		FText Pretext;
+		if (GetStateManager()->GetPlayerManualLockDirection())
+		{
+			Pretext = LOCTEXT("DirectionLocked", "(DL) ");
+		}
+
 		int32 Speed = GetLinearVelocity().Size();
 		Speed = IsMovingForward() ? Speed : -Speed;
-		ModeText = FText::Format(LOCTEXT("SpeedNotPausedFormat", "{0} m/s - {1} in {2}"),
-			FText::AsNumber(FMath::RoundToInt(Speed)),
-			ActionInfo,
-			CurrentSector->GetSimulatedSector()->GetSectorName());
+		ModeText = FText::Format(LOCTEXT("SpeedNotPausedFormat", "{0}{1} m/s - {2} in {3}"),
+		Pretext,
+		FText::AsNumber(FMath::RoundToInt(Speed)),
+		ActionInfo,
+		CurrentSector->GetSimulatedSector()->GetSectorName());
+
 	}
 	else
 	{

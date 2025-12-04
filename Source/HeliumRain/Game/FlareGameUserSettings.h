@@ -77,6 +77,11 @@ public:
 	UPROPERTY(Config)
 	float                                    Gamma;
 		
+
+	/** Whether to show faction colours in menus*/
+	UPROPERTY(Config)
+	bool                                     ShowFactionColors;
+
 	/** Whether to use the 3D cockpit */
 	UPROPERTY(Config)
 	bool                                     UseCockpit;
@@ -113,9 +118,29 @@ public:
 	UPROPERTY(Config)
 	int                                      GamepadProfileLayout;
 
+	/** Whether to invert pitch for gamepads*/
+	UPROPERTY(Config)
+	bool                                     GamepadInvertPitch;
+
+	/** Whether to invert yaw for gamepads*/
+	UPROPERTY(Config)
+	bool                                     GamepadInvertYaw;
+
+	/** Whether to disable mouse emulation for gamepads*/
+	UPROPERTY(Config)
+	bool                                     GamepadDisableCursor;
+
 	/** Whether to restrict thrust to forward */
 	UPROPERTY(Config)
 	bool                                     ForwardOnlyThrust;
+
+	/** Whether to disable mouse emulation for joysticks*/
+	UPROPERTY(Config)
+	bool                                     JoystickDisableCursor;
+
+	/** Dead zone */
+	UPROPERTY(Config)
+	float                                    MouseCursorDeadZone;
 
 	/** Dead zone */
 	UPROPERTY(Config)

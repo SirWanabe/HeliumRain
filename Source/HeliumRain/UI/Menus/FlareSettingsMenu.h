@@ -118,11 +118,17 @@ protected:
 	void OnJoystickComboLineSelectionChanged(TSharedPtr<FKey> KeyItem, ESelectInfo::Type SelectInfo, FName AxisName);
 
 	// Joystick actions
+	bool IsAxisInverted(FName AxisName);
 	void OnInvertAxisClicked(FName AxisName);
 	void OnUnbindAxisClicked(FName AxisName);
 	bool IsAxisControlsDisabled(FName AxisName) const;
+	void OnDisableJoystickCursorClicked();
 
 	// Gamepad profile list
+	void OnInvertGamepadPitchClicked();
+	void OnInvertGamepadYawClicked();
+	void OnDisableGamepadCursorClicked();
+
 	FText OnGetCurrentGamepadComboLine() const;
 	TSharedRef<SWidget> OnGenerateGamepadComboLine(TSharedPtr<FText> Item);
 	void OnGamepadComboLineSelectionChanged(TSharedPtr<FText> KeyItem, ESelectInfo::Type SelectInfo);
@@ -188,7 +194,7 @@ protected:
 	void OnVSyncToggle();
 	void OnMotionBlurToggle();
 	void OnTemporalAAToggle();
-//	void OnSupersamplingToggle();	
+	void OnFactionColorsToggle();
 	void OnInvertYToggle();
 	void OnDisableMouseToggle();
 	void OnAnticollisionToggle();
@@ -200,6 +206,7 @@ protected:
 	void OnForwardOnlyThrustToggle();
 
 	// Dead zone sliders
+	void OnMouseCursorDeadZoneSliderChanged(float Value);
 	void OnRotationDeadZoneSliderChanged(float Value);
 	void OnRollDeadZoneSliderChanged(float Value);
 	void OnTranslationDeadZoneSliderChanged(float Value);
@@ -245,7 +252,7 @@ protected:
 	TSharedPtr<SFlareButton>                    VSyncButton;
 	TSharedPtr<SFlareButton>                    MotionBlurButton;
 	TSharedPtr<SFlareButton>                    TemporalAAButton;
-//	TSharedPtr<SFlareButton>                    SupersamplingButton;
+
 	TSharedPtr<SSlider>                         FOVSlider;
 	TSharedPtr<SSlider>                         GammaSlider;
 	TSharedPtr<SSlider>                         SensitivitySlider;
@@ -271,6 +278,7 @@ protected:
 	
 
 	// Gameplay
+	TSharedPtr<SFlareButton>                    FactionColorsButton;
 	TSharedPtr<SFlareButton>                    InvertYButton;
 	TSharedPtr<SFlareButton>                    DisableMouseButton;
 #if !UE_BUILD_SHIPPING
@@ -292,6 +300,7 @@ protected:
 	
 	// Controls
 	TSharedPtr<SFlareButton>                    ForwardOnlyThrustButton;
+	TSharedPtr<SFlareButton>                    DisableJoystickCursorButton;
 	TSharedPtr<SVerticalBox>                    ControlListLeft;
 	TSharedPtr<SVerticalBox>                    ControlListRight;
 	TArray<TSharedPtr<FSimpleBind> >            Binds;
@@ -316,4 +325,7 @@ protected:
 	TSharedPtr<SFlareDropList<TSharedPtr<FText>>>    GamepadSelector;
 	TArray<TSharedPtr<FText>>					     GamepadList;
 
+	TSharedPtr<SFlareButton>						 InvertGamepadPitchButton;
+	TSharedPtr<SFlareButton>						 InvertGamepadYawButton;
+	TSharedPtr<SFlareButton>						 DisableGamepadCursorButton;
 };

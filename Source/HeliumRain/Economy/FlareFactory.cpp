@@ -549,9 +549,12 @@ void UFlareFactory::BeginProduction()
 	bool AllowDepts = !IsShipyard()
 			|| (GetTargetShipCompany() != NAME_None && GetTargetShipCompany() != Parent->GetCompany()->GetIdentifier());
 
-	if(!Parent->GetCompany()->TakeMoney(GetProductionCost(), AllowDepts, FFlareTransactionLogEntry::LogFactoryWages(this)))
+	if (GetProductionCost() > 0)
 	{
-		return;
+		if(!Parent->GetCompany()->TakeMoney(GetProductionCost(), AllowDepts, FFlareTransactionLogEntry::LogFactoryWages(this)))
+		{
+			return;
+		}
 	}
 
 	float TotalResourceMargin = GetResourceInputMultiplier();
@@ -1470,18 +1473,18 @@ bool UFlareFactory::ShouldShowFactoryEfficiencyPercentage()
 		switch (FactoryAction->Action)
 		{
 			// Ship production
-		case EFlareFactoryAction::CreateShip:
-			return false;
+			case EFlareFactoryAction::CreateShip:
+				return false;
 			break;
 
 			// Sector discovery
-		case EFlareFactoryAction::DiscoverSector:
-			return false;
+			case EFlareFactoryAction::DiscoverSector:
+				return false;
 			break;
 
 			// Build station
-		case EFlareFactoryAction::BuildStation:
-			return false;
+			case EFlareFactoryAction::BuildStation:
+				return false;
 			break;
 		}
 	}

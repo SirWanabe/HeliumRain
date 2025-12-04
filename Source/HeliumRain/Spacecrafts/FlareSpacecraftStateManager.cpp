@@ -34,7 +34,7 @@ UFlareSpacecraftStateManager::UFlareSpacecraftStateManager(const class FObjectIn
 	PilotForced = false;
 }
 
-void UFlareSpacecraftStateManager::Initialize(AFlareSpacecraft* ParentSpacecraft)
+void UFlareSpacecraftStateManager::InitializeStateManager(AFlareSpacecraft* ParentSpacecraft)
 {
 	Spacecraft = ParentSpacecraft;
 
@@ -49,6 +49,7 @@ void UFlareSpacecraftStateManager::Initialize(AFlareSpacecraft* ParentSpacecraft
 	CombatZoomDuration = 0.3f;
 
 	ExternalCamera = true;
+	ExternalCameraPanning = true;
 	LinearVelocitySource = EFlareInputSource::Keyboard;
 	PlayerManualVelocityCommandActive = true;
 
@@ -57,6 +58,11 @@ void UFlareSpacecraftStateManager::Initialize(AFlareSpacecraft* ParentSpacecraft
 	LastPlayerLinearVelocityGamepad = FVector::ZeroVector;
 	LastPlayerAngularRollKeyboard = 0;
 	LastPlayerAngularRollJoystick = 0;
+
+	PlayerLeftMousePressed = false;
+	PlayerRightMousePressed = false;
+	PlayerCameraPanHold = false;
+	PlayerManualLockDirection = false;
 
 	PlayerManualLinearVelocity = FVector::ZeroVector;
 	PlayerManualAngularVelocity = FVector::ZeroVector;
@@ -276,7 +282,6 @@ void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)
 		float YawRotation = FireDirectorAngularVelocity.Z * DeltaSeconds;
 		float PitchRotation = FireDirectorAngularVelocity.Y * DeltaSeconds;
 
-
 		if (!IsFireDirectorInit)
 		{
 			FireDirectorLookRotation =  Spacecraft->Airframe-> GetComponentTransform().GetRotation();
@@ -290,66 +295,13 @@ void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)
 		FireDirectorLookRotation *= Pitch;
 		FireDirectorLookRotation.Normalize();
 
-
 		Spacecraft->ConfigureImmersiveCamera(FireDirectorLookRotation);
 	}
-	else if (ExternalCamera)
-	{
-		float ManualAcc = 600; //°/s-2
-		float Resistance = 1 / 360.f;
-		float Brake = 4.f;
-		float Brake2 = 2.f;
 
-		{
-			float Acc = FMath::Sign(ExternalCameraYawTarget) * ManualAcc;
-			float Res = FMath::Sign(ExternalCameraYawSpeed) * (Resistance * FMath::Square(ExternalCameraYawSpeed) + (Acc == 0 ? Brake2 + Brake * FMath::Abs(ExternalCameraYawSpeed) : 0));
-
-			float MaxResDeltaSpeed = ExternalCameraYawSpeed;
-
-
-			float AccDeltaYawSpeed = Acc * DeltaSeconds;
-			float ResDeltaYawSpeed = - (FMath::Abs(Res * DeltaSeconds) > FMath::Abs(MaxResDeltaSpeed) ? MaxResDeltaSpeed : Res * DeltaSeconds);
-			ExternalCameraYawTarget = 0; // Consume
-			ExternalCameraYawSpeed += AccDeltaYawSpeed + ResDeltaYawSpeed;
-			ExternalCameraYaw += ExternalCameraYawSpeed * DeltaSeconds;
-			ExternalCameraYaw = FMath::UnwindDegrees(ExternalCameraYaw);
-		}
-
-		{
-			float Acc = FMath::Sign(ExternalCameraPitchTarget) * ManualAcc;
-			float Res = FMath::Sign(ExternalCameraPitchSpeed) * (Resistance * FMath::Square(ExternalCameraPitchSpeed) + (Acc == 0 ? Brake2 + Brake * FMath::Abs(ExternalCameraPitchSpeed) : 0));
-
-			float MaxResDeltaSpeed = ExternalCameraPitchSpeed;
-
-			float AccDeltaPitchSpeed = Acc * DeltaSeconds;
-			float ResDeltaPitchSpeed = - (FMath::Abs(Res * DeltaSeconds) > FMath::Abs(MaxResDeltaSpeed) ? MaxResDeltaSpeed : Res * DeltaSeconds);
-			ExternalCameraPitchTarget = 0; // Consume
-			ExternalCameraPitchSpeed += AccDeltaPitchSpeed + ResDeltaPitchSpeed;
-			ExternalCameraPitch += ExternalCameraPitchSpeed * DeltaSeconds;
-			ExternalCameraPitch = FMath::UnwindDegrees(ExternalCameraPitch);
-			float ExternalCameraPitchClamped = FMath::Clamp(ExternalCameraPitch, -Spacecraft->GetCameraMaxPitch(), Spacecraft->GetCameraMaxPitch());
-			if(ExternalCameraPitchClamped != ExternalCameraPitch)
-			{
-				ExternalCameraPitchSpeed = -ExternalCameraPitchSpeed/2;
-			}
-			ExternalCameraPitch = ExternalCameraPitchClamped;
-		}
-
-		float Speed = FMath::Clamp(DeltaSeconds * 12, 0.f, 1.f);
-		ExternalCameraDistance = ExternalCameraDistance * (1 - Speed) + ExternalCameraDistanceTarget * Speed;
-
-		Spacecraft->ConfigureInternalFixedCamera();
-		Spacecraft->SetCameraPitch(ExternalCameraPitch);
-		Spacecraft->SetCameraYaw(ExternalCameraYaw);
-		Spacecraft->SetCameraDistance(ExternalCameraDistance);
-
-		IsFireDirectorInit = false;
-	}
 	else if (Spacecraft->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_TURRET)
 	{
 		float YawRotation = FireDirectorAngularVelocity.Z * DeltaSeconds;
 		float PitchRotation = FireDirectorAngularVelocity.Y * DeltaSeconds;
-
 
 		if (!IsFireDirectorInit)
 		{
@@ -376,7 +328,6 @@ void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)
 
 		FireDirectorLookRotation *= Roll;
 
-
 		// Clamp max distance to front
 		FVector CameraFront = FireDirectorLookRotation.GetAxisX();
 		FVector LocalCameraFront = Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(CameraFront);
@@ -394,8 +345,60 @@ void UFlareSpacecraftStateManager::UpdateCamera(float DeltaSeconds)
 
 		FireDirectorLookRotation.Normalize();
 
-
 		Spacecraft->ConfigureInternalRotatingCamera(FireDirectorLookRotation);
+	}
+
+	else if (ExternalCamera)
+	{
+		float ManualAcc = 600; //°/s-2
+		float Resistance = 1 / 360.f;
+		float Brake = 4.f;
+		float Brake2 = 2.f;
+
+		{
+			float Acc = FMath::Sign(ExternalCameraYawTarget) * ManualAcc;
+			float Res = FMath::Sign(ExternalCameraYawSpeed) * (Resistance * FMath::Square(ExternalCameraYawSpeed) + (Acc == 0 ? Brake2 + Brake * FMath::Abs(ExternalCameraYawSpeed) : 0));
+
+			float MaxResDeltaSpeed = ExternalCameraYawSpeed;
+
+
+			float AccDeltaYawSpeed = Acc * DeltaSeconds;
+			float ResDeltaYawSpeed = -(FMath::Abs(Res * DeltaSeconds) > FMath::Abs(MaxResDeltaSpeed) ? MaxResDeltaSpeed : Res * DeltaSeconds);
+			ExternalCameraYawTarget = 0; // Consume
+			ExternalCameraYawSpeed += AccDeltaYawSpeed + ResDeltaYawSpeed;
+			ExternalCameraYaw += ExternalCameraYawSpeed * DeltaSeconds;
+			ExternalCameraYaw = FMath::UnwindDegrees(ExternalCameraYaw);
+		}
+
+		{
+			float Acc = FMath::Sign(ExternalCameraPitchTarget) * ManualAcc;
+			float Res = FMath::Sign(ExternalCameraPitchSpeed) * (Resistance * FMath::Square(ExternalCameraPitchSpeed) + (Acc == 0 ? Brake2 + Brake * FMath::Abs(ExternalCameraPitchSpeed) : 0));
+
+			float MaxResDeltaSpeed = ExternalCameraPitchSpeed;
+
+			float AccDeltaPitchSpeed = Acc * DeltaSeconds;
+			float ResDeltaPitchSpeed = -(FMath::Abs(Res * DeltaSeconds) > FMath::Abs(MaxResDeltaSpeed) ? MaxResDeltaSpeed : Res * DeltaSeconds);
+			ExternalCameraPitchTarget = 0; // Consume
+			ExternalCameraPitchSpeed += AccDeltaPitchSpeed + ResDeltaPitchSpeed;
+			ExternalCameraPitch += ExternalCameraPitchSpeed * DeltaSeconds;
+			ExternalCameraPitch = FMath::UnwindDegrees(ExternalCameraPitch);
+			float ExternalCameraPitchClamped = FMath::Clamp(ExternalCameraPitch, -Spacecraft->GetCameraMaxPitch(), Spacecraft->GetCameraMaxPitch());
+			if (ExternalCameraPitchClamped != ExternalCameraPitch)
+			{
+				ExternalCameraPitchSpeed = -ExternalCameraPitchSpeed / 2;
+			}
+			ExternalCameraPitch = ExternalCameraPitchClamped;
+		}
+
+		float Speed = FMath::Clamp(DeltaSeconds * 12, 0.f, 1.f);
+		ExternalCameraDistance = ExternalCameraDistance * (1 - Speed) + ExternalCameraDistanceTarget * Speed;
+
+		Spacecraft->ConfigureInternalFixedCamera();
+		Spacecraft->SetCameraPitch(ExternalCameraPitch);
+		Spacecraft->SetCameraYaw(ExternalCameraYaw);
+		Spacecraft->SetCameraDistance(ExternalCameraDistance);
+
+		IsFireDirectorInit = false;
 	}
 	else
 	{
@@ -423,6 +426,18 @@ void UFlareSpacecraftStateManager::EnablePilot(bool PilotEnabled)
 {
 	IsPiloted = PilotEnabled;
 }
+
+void UFlareSpacecraftStateManager::SetExternalCameraPanning(bool NewState)
+{
+	// If nothing changed...
+	if (ExternalCameraPanning == NewState)
+	{
+		return;
+	}
+
+	ExternalCameraPanning = NewState;
+}
+
 
 void UFlareSpacecraftStateManager::SetExternalCamera(bool NewState, bool DeactivateWeapons)
 {
@@ -470,28 +485,36 @@ void UFlareSpacecraftStateManager::SetPlayerMousePosition(FVector2D Val)
 	PlayerMousePosition = Val;
 }
 
-void UFlareSpacecraftStateManager::SetPlayerAimMouse(FVector2D Val)
+void UFlareSpacecraftStateManager::UpdateCameraControls(bool IgnoreInit)
 {
 	auto& App = FSlateApplication::Get();
+	FVector2D CursorPos = App.GetCursorPos();
+
+	if (IgnoreInit || (IsExternalCameraMouseOffsetInit && CursorPos != LastExternalCameraMouseOffset))
+	{
+		FVector2D MoveDirection = (CursorPos - LastExternalCameraMouseOffset).GetSafeNormal();
+		ExternalCameraYawTarget += MoveDirection.X;
+		ExternalCameraPitchTarget += -MoveDirection.Y;
+	}
+
+	LastExternalCameraMouseOffset = CursorPos;
+	IsExternalCameraMouseOffsetInit = true;
+	PlayerAim = FVector2D::ZeroVector;
+}
+
+void UFlareSpacecraftStateManager::SetPlayerAimMouse(FVector2D Val)
+{
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(Spacecraft->GetWorld()->GetFirstPlayerController());
 
 	// External camera : panning with mouse clicks
-	if (ExternalCamera && !PlayerManualLockDirection && GEngine->GameViewport->GetGameViewportWidget()->HasMouseCapture() && !PC->GetNavHUD()->IsWheelMenuOpen())
+	// Autopilot active and not controlling guns
+	// Docked, can't directly control ship
+
+	if (((ExternalCamera && (ExternalCameraPanning || PlayerCameraPanHold)) || (ExternalCamera && Spacecraft->GetNavigationSystem()->IsAutoPilot() && LastWeaponType == EFlareWeaponGroupType::WG_NONE) || (PlayerLeftMousePressed && Spacecraft->GetNavigationSystem()->IsDocked())) && GEngine->GameViewport->GetGameViewportWidget()->HasMouseCapture() && !PC->GetNavHUD()->IsWheelMenuOpen())
 	{
-		FVector2D CursorPos = App.GetCursorPos();
-
-		if (IsExternalCameraMouseOffsetInit && CursorPos != LastExternalCameraMouseOffset)
-		{
-			FVector2D MoveDirection = (CursorPos - LastExternalCameraMouseOffset).GetSafeNormal();
-			ExternalCameraYawTarget += MoveDirection.X;
-			ExternalCameraPitchTarget += -MoveDirection.Y;
-		}
-
-		LastExternalCameraMouseOffset = CursorPos;
-		IsExternalCameraMouseOffsetInit = true;
-		PlayerAim = FVector2D::ZeroVector;
+		UpdateCameraControls();
 	}
-		
+
 	// FP view
 	else
 	{
@@ -558,6 +581,11 @@ void UFlareSpacecraftStateManager::SetPlayerLeftMouse(bool Val)
 	PlayerLeftMousePressed = Val;
 }
 
+void UFlareSpacecraftStateManager::SetPlayerRightMouse(bool Val)
+{
+	PlayerRightMousePressed = Val;
+}
+
 void UFlareSpacecraftStateManager::SetPlayerFiring(bool Val)
 {
 	PlayerFiring = Val;
@@ -594,6 +622,11 @@ void UFlareSpacecraftStateManager::SetCombatZoom(bool ZoomIn)
 void UFlareSpacecraftStateManager::SetPlayerLockDirection(bool Val)
 {
 	PlayerManualLockDirection = Val;
+}
+
+void UFlareSpacecraftStateManager::SetPlayerCameraPan(bool Val)
+{
+	PlayerCameraPanHold = Val;
 }
 
 void UFlareSpacecraftStateManager::SetPlayerXLinearVelocity(float Val)
@@ -728,7 +761,7 @@ FFlareEngineTarget UFlareSpacecraftStateManager::GetLinearEngineTarget() const
 	{
 		FVector PlayerForwardVelocity;
 
-		if ((PlayerManualLockDirection && !ExternalCamera) && ! Spacecraft->GetLinearVelocity().IsNearlyZero())
+		if (PlayerManualLockDirection && (!ExternalCamera || (ExternalCamera && !ExternalCameraPanning)) && ! Spacecraft->GetLinearVelocity().IsNearlyZero())
 		{
 			PlayerForwardVelocity =  PlayerManualLockDirectionVector * FMath::Abs(PlayerManualVelocityCommand) * Spacecraft->GetNavigationSystem()->GetLinearMaxVelocity();
 		}
@@ -766,7 +799,9 @@ FFlareEngineTarget UFlareSpacecraftStateManager::GetLinearEngineTarget() const
 					}
 				}
 
-				FinalLinearVelocity = PilotHelper::AnticollisionCorrection(Spacecraft, FinalLinearVelocity, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f);
+				AActor* MostDangerousCandidateActor = NULL;
+				bool IsIntersecting = false;
+				FinalLinearVelocity = PilotHelper::AnticollisionCorrection(Spacecraft, FinalLinearVelocity, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f, IsIntersecting, MostDangerousCandidateActor);
 			}
 		}
 
@@ -856,7 +891,7 @@ bool UFlareSpacecraftStateManager::IsWantFire() const
 	}
 	else
 	{
-		if (ExternalCamera)
+		if (ExternalCamera && ExternalCameraPanning)
 		{
 			return false;
 		}
@@ -871,9 +906,10 @@ bool UFlareSpacecraftStateManager::IsWantFire() const
 	}
 }
 
+//IsWantCursor checked in AFlarePlayerController::PlayerTick to determin if mouse cursor input is available
 bool UFlareSpacecraftStateManager::IsWantCursor() const
 {
-	if (ExternalCamera)
+	if (ExternalCamera && ExternalCameraPanning)
 	{
 		return true;
 	}

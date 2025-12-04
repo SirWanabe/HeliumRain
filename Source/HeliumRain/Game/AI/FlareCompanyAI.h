@@ -79,8 +79,9 @@ public:
 
 	/** Used to give commands for the active sector */
 	virtual void SimulateActiveAI();
-	virtual void SimulateActiveTradeShip(AFlareSpacecraft* Ship);
-	virtual void SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship);
+	virtual bool SimulateActiveTradeShip(AFlareSpacecraft* Ship);
+	virtual bool SimulateActiveTradeShipBuyOrSell(AFlareSpacecraft* Ship, FFlareResourceDescription* Resource);
+	virtual bool SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship);
 
 	/** Simulate a day */
 	virtual void Simulate(bool GlobalWar, int32 TotalReservedResources);

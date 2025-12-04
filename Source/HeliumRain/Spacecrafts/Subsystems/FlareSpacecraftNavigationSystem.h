@@ -40,7 +40,7 @@ namespace EFlareCommandDataType
 		CDT_Rotation,
 		CDT_BrakeLocation,
 		CDT_BrakeRotation,
-		CDT_Dock
+		CDT_Dock,
 	};
 }
 namespace EFlareCommandDataType
@@ -58,6 +58,7 @@ struct FFlareShipCommandData
 {
 	TEnumAsByte <EFlareCommandDataType::Type> Type;
 
+	bool VelocitySlowRequired;
 	bool PreciseApproach;
 	FVector LocationTarget;
 	FVector VelocityTarget;
@@ -67,9 +68,8 @@ struct FFlareShipCommandData
 	AFlareSpacecraft* ActionTarget;
 
 	int32 ActionTargetParam;
-
+	FText CommandHUDDisplay;
 };
-
 
 /** Docking phase */
 UENUM()
@@ -175,11 +175,11 @@ public:
 	/** Check if the colliding spacecraft is not the station we want to dock to */
 	virtual void CheckCollisionDocking(AFlareSpacecraft* DockingCandidate);
 
-	virtual bool Undock();
+	virtual bool Undock(bool ForcedUndock = false);
 
 	virtual void BreakDock();
 
-	virtual AFlareSpacecraft* GetDockStation();
+	virtual AFlareSpacecraft* GetDockStation(bool SkipDockedCheck = false);
 
 	/** Get a friendly text for the current phase */
 	static FText GetDockingPhaseName(EFlareDockingPhase::Type Phase);
@@ -199,7 +199,7 @@ public:
 	void PushCommandAngularBrake();
 
 	/** Go there */
-	void PushCommandLocation(const FVector& Location, bool Precise = false, AFlareSpacecraft* NewActionTarget = nullptr);
+	void PushCommandLocation(const FVector& Location, bool Precise = false, AFlareSpacecraft* NewActionTarget = nullptr, bool VelocitySlowRequired = true, FText HUDDisplay = FText());
 
 	/** Turn this way */
 	void PushCommandRotation(const FVector& RotationTarget, const FVector& LocalShipAxis);
@@ -217,7 +217,7 @@ public:
 	FFlareShipCommandData GetCurrentCommand();
 
 	/** Abort all the current pushed autopilot commands */
-	void AbortAllCommands(bool AttemptUndock = true, bool ClearTransactionInfo = true);
+	void AbortAllCommands(bool ClearTransactionInfo = true, bool ShouldUndock = true);
 
 	/** Get the dock offset from the origin of the ship in local space */
 	virtual FVector GetDockOffset();
@@ -237,7 +237,7 @@ public:
 	----------------------------------------------------*/
 
 	/** Automatically update the current linear attitude */
-	bool UpdateLinearAttitudeAuto(float DeltaSeconds, FVector TargetLocation, FVector TargetVelocity, float MaxVelocity, float SecurityRatio);
+	bool UpdateLinearAttitudeAuto(float DeltaSeconds, FVector TargetLocation, FVector TargetVelocity, float MaxVelocity, float SecurityRatio, bool VelocitySlowRequired = true);
 
 	/** Brake */
 	bool UpdateLinearBraking(FFlareShipCommandData& Command, float DeltaSeconds, FVector TargetVelocity);
@@ -315,15 +315,31 @@ protected:
 	UFlareSimulatedSpacecraft*			     TransactionDestination;
 	UFlareSimulatedSpacecraft*			     TransactionDestinationDock;
 	bool								     TransactionDonation;
+	bool	  								 TransactionPlayerInitiated;
 
 	TMap<FVector, TMap<bool, float>>		 MaxTorqueCache;
 	float									 MaxTorqueCacheClearTime;
 
-public:
+	AFlareSpacecraft*						 LastDockedStation;
 
-	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = 0);
+	float									 TimeSinceUndocking;
+	float								     TimeUntilAvoidanceAttempt;
+	float								     FailureTimeUntilAvoidanceAttempt;
+	float									 TimeUntilLineTraceAttempt;
+	bool									 PreviousLineTraceHadHit;
+
+	FCollisionQueryParams					 TraceParams;
+	int32									 RecentEscapeAttempts;
+
+public:
+	AFlareSpacecraft* GetNavigationDockingTarget(int32 *DockingPort);
+
+	virtual bool DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation = false, bool PlayerInitiated = false);
 	virtual bool DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex);
 	virtual bool DockAtAndUpgrade(FFlareSpacecraftComponentDescription* NewPartDesc, int32 CurrentWeaponGroupIndex, AFlareSpacecraft* TargetStation);
+
+	bool ConductSafetyLineTrace(FVector LocationTarget, bool ForceTrace = false);
+	void BackAwayFromTarget(AActor* MostDangerousCandidateActor);
 
 	/*----------------------------------------------------
 		Getters (Attitude)
@@ -358,6 +374,11 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	inline float GetTimeSinceUndocking() const
+	{
+		return TimeSinceUndocking;
+	}
 
 	inline float GetAngularAccelerationRate() const
 	{

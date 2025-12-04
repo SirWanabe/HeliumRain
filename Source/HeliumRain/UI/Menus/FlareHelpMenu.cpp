@@ -1652,7 +1652,7 @@ Higher tier research projects will cause a higher research inflation than lower 
 AI Companies now recalculate their spending budgets once a year to address any budget drifts\n\
 AI Companies can now build and maintain their own station complexes\n\
 AI Companies will not initiate an upgrade on a station being captured\n\
-AI Trader logic can now alter the priority of which resources are most important to trade more dynamically than previously.AI Traders are also significantly better at fulfulling the needs for high priority stations sooner.\n\
+AI Trader logic can now alter the priority of which resources are most important to trade more dynamically than previously. AI Traders are also significantly better at fulfulling the needs for high priority stations sooner.\n\
 \n\
 (UI) Economy Stations menu has a filter for station complexes\n\
 \n\
@@ -1714,7 +1714,7 @@ AI Companies during joint wars will have slightly more control of their own flee
 (Performance) ResetCapture() in FlareSimulatedSpacecraft will only do certain operations if Capturepoints TMap contains something.\n\
 (Performance) StopCapture() in FlareCompany uses RemoveSwap instead of Remove.\n\
 \n\
-(Modding) Added CapturePointContribution to FFlareSpacecraftDescription. Tells the game how many capture points this ship generates when capturing a station / ship.\n\
+(Modding) Added CapturePointContribution to FFlareSpacecraftDescription. Tells the game how many capture points this ship generates when capturing a station/ship.\n\
 \n\
 Fixed(HRFanMod) Accepting a combat contract will update the locally active sector war state\n\
 Fixed(HRFanMod) Ending a combat contract will update the locally active sector war state\n\
@@ -1763,7 +1763,7 @@ AI Companies can now launch attacks from multiple sectors and coordinate the tra
 (UI) Mouse menu - Added in 2 new fleet stances \"Destroy Military / Civilian\"\n\
 (UI) Mouse menu - Added Repair/Rearm button in mouse menu Fleet sub menu.\n\
 (UI) Mouse menu - Added Travel sub-menu to initiate travel for player fleet.\n\
-(UI) Mouse menu- Added Contracts sub-menu.\n\
+(UI) Mouse menu - Added Contracts sub-menu.\n\
 (UI) Trade / Upgrade options will appear in the mouse-menu if auto-docking is unlocked.\n\
 (UI) During GlobalWar event individual messages of declaring war or peace will not be sent.\n\
 (UI) Moved \"Gamma\" setting to Graphics section\n\
@@ -1773,7 +1773,7 @@ AI Companies can now launch attacks from multiple sectors and coordinate the tra
 \n\
 (Other) Added in basic timeout to docking anti-collision path-finding. If a ship gets stuck it can sometimes slowly move itself away.\n\
 (Other) During day simulation ships will simulate some heat change.\n\
-(Other) Increased allowable active ships from 20 / 100 to 25 / 125.\n\
+(Other) Increased allowable active ships from 20/100 to 25/125.\n\
 (Other) Game will now remember last manually set camera mode for player, when un-docking or changing ship camera mode will be set to the last mode the player set.\n\
 (Other) The end of game day \"FinishAutoPilots\" will look through all queued autopilot orders rather than the current one. Enabling ships which are still in the undocking process to finish their dock/trade when the day simulation is run.\n\
 (Other) Ships will follow their \"leader\" ship as long as their combat tactics is set to \"ProtectMe\". Other settings will cause the ships to break off on their own.\n\
@@ -1795,7 +1795,7 @@ Fixed(Vanilla) : Can no longer take manual control of weapon fire-groups if dock
 Fixed(Vanilla) : Can now manually fire weapons while on an autopilot course.\n\
 Fixed(Vanilla) : Activating weapons while in third person camera mode would immediately deactivate them.\n\
 Fixed(Vanilla) : Docking message and HUD will now properly account for a station being attached to a complex.\n\
-Fixed (Vanilla): The buttons for building or destroying stations in a station Complex will no longer appear if it's owned by another company.\n\
+Fixed(Vanilla): The buttons for building or destroying stations in a station Complex will no longer appear if it's owned by another company.\n\
 Fixed(Vanilla) : Fixed several other issues with station complexes, including other companies not being able to properly initiate ship orders.\n\
 "))
 				]
@@ -1813,14 +1813,14 @@ Fixed(Vanilla) : Fixed several other issues with station complexes, including ot
 (UI - Trade Route) When Goto Operation begins the Trade Route will move their current Operation to one selected by the Goto Operation\n\
 (UI - Trade Route) When Maintenance Operation begins the fleet will attempt to Repair and /or Rearm, depending on the Operations settings\n\
 (UI - Trade Route) Increased total amount of sectors for a Trade Route by 1. (4 to 5)\n\
-(UI - Trade Route) Added in conditions for operations. \"Percent of Times\", \"Load Percentage\", \"Requires Maintenance\", \"At War\".All conditions must be met to proceed with the operation.Use in combination with \"Wait Days\" to give them a timeout.\n\
-(UI - Trade Route) For Load and Unload operations, added in sliders \"Trade Self Priority\" and \"Trade Others Priority\".This sets the likely - hood of the operation interacting with owned or non - owned assets.\n\
+(UI - Trade Route) Added in conditions for operations. \"Percent of Times\", \"Load Percentage\", \"Requires Maintenance\", \"At War\". All conditions must be met to proceed with the operation. Use in combination with \"Wait Days\" to give them a timeout.\n\
+(UI - Trade Route) For Load and Unload operations, added in sliders \"Trade Self Priority\" and \"Trade Others Priority\". This sets the likely-hood of the operation interacting with owned or non-owned assets.\n\
 (UI - Trade Menu) Now has a \"Change Source\" button to allow the player to quickly go through their available ships for sector trading with lower amount of total clicks.\n\
 (UI - Trade Menu) Will now report when there are no docks available.\n\
 (UI - Trade Menu) It's now possible to use the \"Trade\" option directly from other stations to pre-select them in the trade window.\n\
 \n\
 (Feature) New feature : Company Whitelists.\n\
-(UI - Company Whitelist) Menu is accessed from the Company screen. Whitelists can be set as the overall default for the Company and also set for fleets or individual ships / stations.\n\
+(UI - Company Whitelist) Menu is accessed from the Company screen. Whitelists can be set as the overall default for the Company and also set for fleets or individual ships/stations.\n\
 Whitelists are used to enable or disable trade from other companies or to specify which resources you want to be able to trade. Order of preference for which Whitelist to use is Ship->Fleet->Company.\n\
 \n\
 (UI) Increased size of resource cargo icon in UI by 5 % to improve readability.\n\
@@ -1830,8 +1830,8 @@ Whitelists are used to enable or disable trade from other companies or to specif
 (UI) Sector Buttons with Fleets display is now much more stable, no unnecessary jittering button positions\n\
 (UI) Fleets with ships that are trading will not appear in the Orbital Maps fleet list as it is not available for travel\n\
 (UI) Changing trade routes on the orbital menu will update the fleets list. Showing or hiding any fleets from the available list\n\
-(UI) Economy menu Sub - menu Stations / Ships now displays total quantity of stations / ships\n\
-(UI) Economy menu Sub - menu Population now displays total average and also totals of each value\n\
+(UI) Economy menu Sub-menu Stations/Ships now displays total quantity of stations/ships\n\
+(UI) Economy menu Sub-menu Population now displays total average and also totals of each value\n\
 (UI) Upgrade station button now has a tool - tip if it's not available\n\
 (UI) Trade button is disabled while travelling\n\
 (UI) Resources subcategory in help - file now moved under \"Statistical Information\". Information regarding resources is now generated from game data\n\
@@ -1840,7 +1840,7 @@ Whitelists are used to enable or disable trade from other companies or to specif
 (Modding) Added IsNotMilitary bool to FFlareSpacecraftDescription. Enable to treat a weaponized ship as non-military. IE: Have defensive turrets on a freighter but want to disable military behaviours such as engaging enemy ships or AI Companies using specifically for attacking\n\
 (Modding) Added SaveVersion int32 to FFlareSpacecraftDescription. Increment value to trigger game checking internal components and attempt to fix them to prevent crash issues from updating mods\n\
 \n\
-(Balance) Removed the 5 % money generation boost compared to vanilla from population birth\n\
+(Balance) Removed the 5% money generation boost compared to vanilla from population birth\n\
 (Balance) Reduced the effect difficulty has on the pre-requisites of offered contracts(more frequent contract offers on higher difficulties)\n\
 (Balance) Reduced the effect difficulty has on AI chance to declare war on other AI companies(more frequent AI vs AI war declarations on higher difficulties)\n\
 (Balance) Reduced the effect difficulty has on Artefact discovery research reward. AI Companies who know about the sector may now gain research when artefacts are discovered, heavily dependant upon the selected difficulty settings.\n\
@@ -1848,7 +1848,7 @@ Whitelists are used to enable or disable trade from other companies or to specif
 (Balance) Stations being captured or without their technology unlocked will now have a reduction in their production efficiency\n\
 (Balance) Tweaks to some aspects of AI Budget handling\n\
 (Balance) It is no longer possible to upgrade stations without the local sector license and required technology\n\
-(Balance) Universe starting condition altered, every non - player faction begins with 4 Solens(Old: 33, New 48).Lowered effect of starting Economy Level on some stations.Increased starting Steel factory by 2, Hydrogen Pumps by 2 and Iron Mines by 2\n\
+(Balance) Universe starting condition altered, every non - player faction begins with 4 Solens(Old: 33, New 48). Lowered effect of starting Economy Level on some stations. Increased starting Steel factory by 2, Hydrogen Pumps by 2 and Iron Mines by 2\n\
 \n\
 (Performance): FlareSectorButton no longer recalculates its display name and text every tick\n\
 \n\
@@ -1875,26 +1875,26 @@ Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
 								.TextStyle(&Theme.TextFont)
 								.Text(LOCTEXT("VersionHistoryHRFM1.3.9", "1.3.9\n\n\
 (Active Simulation) Companies can now initiate refill and repairs for their ships in the actively simulated sector\n\
-(Active Simulation) Companies can now periodically tell a local trade - ship to buy or sell resources within the sector\n\
+(Active Simulation) Companies can now periodically tell a local trade-ship to buy or sell resources within the sector\n\
 (Active Simulation) Ships which are repairing or rearming will dock to a station and stay docked unless combat occurs\n\
-(Active Simulation) Re-Enabled Flak detonation(I had disabled it sometime ago.Probably due to their heavy FPS cost)\n\
+(Active Simulation) Re-Enabled Flak detonation(I had disabled it sometime ago. Probably due to their heavy FPS cost)\n\
 (Active Simulation) Improved in sector explosion effect\n\
 (Active Simulation) Small debris can sometimes break off ship components when components are destroyed\n\
 \n\
-(UI) Orbital Sectors menu now has toggles to turn on / off events / trade routes / fleets information\n\
-(UI) Orbital Sectors menu can now show a list of fleets fit for travel.Click a fleet and then click a sector to send them.\n\
+(UI) Orbital Sectors menu now has toggles to turn on/off events/trade routes/fleets information\n\
+(UI) Orbital Sectors menu can now show a list of fleets fit for travel. Click a fleet and then click a sector to send them.\n\
 (UI) Fleets now have a new toggle option to hide them from the travel lists.\n\
-(UI) Fleets assigned to un - paused trade routes and Fleets which are travelling but can't change their destination are hidden from sector travel lists.\n\
+(UI) Fleets assigned to un-paused trade routes and Fleets which are travelling but can't change their destination are hidden from sector travel lists.\n\
 (UI) Selected Shipyards in station menu lists will show the quantity of ships in production and queued for production\n\
 (UI) Viable trade filter will now filter out stations which have full cargo for a particular resource when assessing sell stations\n\
 (UI) The move up / down buttons in the Trade Route screen become disabled if they aren't useful\n\
 (UI) Fleet menu Remove&Add button can now remove the last ship of a fleet\n\
 (UI) Skirmish components helptext now shows the description of the component\n\
 \n\
-(New Game Menu) Added in Starting Scenarios to the New Game screen.By default there are two basic ones included, the Trader start and the Fighter start.Helium Rain workshop mods can expand further with their own game start options.\n\
-(New Game Menu) Added in 'AI Cheats' toggle to new game menu.Used to enable / disable some artificial cheats the AI can receive on difficulties above or equal to Hard\n\
+(New Game Menu) Added in Starting Scenarios to the New Game screen. By default there are two basic ones included, the Trader start and the Fighter start. Helium Rain workshop mods can expand further with their own game start options.\n\
+(New Game Menu) Added in 'AI Cheats' toggle to new game menu. Used to enable / disable some artificial cheats the AI can receive on difficulties above or equal to Hard\n\
 \n\
-(Performance) Moved sector Shell cache to a more generic cache system.Added in Bomb, Debris and Asteroid cache.\n\
+(Performance) Moved sector Shell cache to a more generic cache system. Added in Bomb, Debris and Asteroid cache.\n\
 (Performance) Shells, Bomb, Asteroid, ShipPilot, TurretAI tick speeds have been reduced. Optimisations to some of their processes\n\
 (Performance) Set EPSCPoolMethod::AutoRelease for various types of particles, enabling UE to automatically pool / fetch them\n\
 (Performance) FlareSectorButtons no longer have a tick override\n\
@@ -1906,17 +1906,17 @@ Fixed(Vanilla?): rare crash bug when viewing certain previous contracts\n\
 (Performance) Added Shadow quality setting in graphics options.\n\
 (Performance) Replaced 2X Supersampling toggle with a resolution render slider which ranges from 30%-200%.\n\
 \n\
-(Modding) Technology, Resource, Ships / Stations with duplicate identifiers can have 'newer' versions remove the older one from the game.This means modifications packed as a DLC can be used to override default entities without duplicates.\n\
-(Modding) Added in UnlockItems to FFlareTechnologyDescription.Array of what this technology unlocks when researched.Hooks into the already existing RequiredTechnologies arrays for Ships / Stations and ship components.\n\
+(Modding) Technology, Resource, Ships/Stations with duplicate identifiers can have 'newer' versions remove the older one from the game. This means modifications packed as a DLC can be used to override default entities without duplicates.\n\
+(Modding) Added in UnlockItems to FFlareTechnologyDescription. Array of what this technology unlocks when researched. Hooks into the already existing RequiredTechnologies arrays for Ships / Stations and ship components.\n\
 (Modding) The game now detects what the maximum technology level is rather than setting it to a fixed value of 5.\n\
-(Modding) Added Data / FlareCompanyCataLogEntry, giving a method of properly adding new companies.However, if using this method all the original companies will be completely ignored\n\
-(Modding) Added IsDisabledOverrideStats to FFlareSpacecraftDescription.If enabled along with IsDisabled will copy certain stats over to the original version of the description.Useful for overriding some stats of an existing ship if you don't have the model data etc to go along with it. Also doubles as an useful method of improving mod compatibility\n\
-(Modding) Added ShipyardFabBonus to TechnologyDesc.Acts as a multiplier which lowers the resource costs of building ships.Half of the bonus is utilised by external companies when considering the cost, effectively increasing the profit margin\n\
-(Modding) Added RestrictedWeapons to FFlareSpacecraftSlotGroupDescription.An array of names to limit the allowable choices of weapons for that specific slot.Also RestrictedEngines and RestrictedRCS\n\
-(Modding) Added DefaultWeapon, DefaultRCS and DefaultEngine.If defined this ship will use those respective items as their defaults.\n\
+(Modding) Added Data / FlareCompanyCataLogEntry, giving a method of properly adding new companies. However, if using this method all the original companies will be completely ignored\n\
+(Modding) Added IsDisabledOverrideStats to FFlareSpacecraftDescription. If enabled along with IsDisabled will copy certain stats over to the original version of the description. Useful for overriding some stats of an existing ship if you don't have the model data etc to go along with it. Also doubles as an useful method of improving mod compatibility\n\
+(Modding) Added ShipyardFabBonus to TechnologyDesc. Acts as a multiplier which lowers the resource costs of building ships.Half of the bonus is utilised by external companies when considering the cost, effectively increasing the profit margin\n\
+(Modding) Added RestrictedWeapons to FFlareSpacecraftSlotGroupDescription. An array of names to limit the allowable choices of weapons for that specific slot. Also RestrictedEngines and RestrictedRCS\n\
+(Modding) Added DefaultWeapon, DefaultRCS and DefaultEngine. If defined this ship will use those respective items as their defaults.\n\
 (Modding) A variety of changes to improve how Drones and their Carriers work\n\
 (Modding) Added SectorLimits variable to sectorDesc\n\
-(Modding / Other) Added Launch / Retrieve Drone keybind and an option in the mousewheel menu\n\
+(Modding/Other) Added Launch/Retrieve Drone keybind and an option in the mousewheel menu\n\
 \n\
 Fixed(HRFanMod): Stations were running the CargoAI and could sometimes try to dock with each other which would lead to(hilarious) immersion breaking physics interactions\n\
 Fixed(HRFanMod): Fixed simulation crash in UpdateReserveShips() routine\n\
@@ -1926,7 +1926,7 @@ Fixed(HRFanMod): If reentering a sector quickly(such as skipping a single day) S
 Fixed(HRFanMod): Sometimes the auto-docking system would fail.\n\
 Fixed(Vanilla): Station menu 'Docked Ships' section can now see the ships docked within attached complex elements\n\
 Fixed(Vanilla): sudden frame rate drop in situations when turrets are trying to target during a battle where bombs are involved\n\
-Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry.Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\
+Fixed(Vanilla): sudden frame rate drop in situations involving Flak - weaponry. Also spread the flak damage process across multiple ticks, averaging out the fps impact in heavy situations.\n\
 Fixed(Vanilla): AI cargo ships trying to dock in sector could not find a friendly station to dock at\n\
 Fixed(Vanilla): Damaged stations constantly heat up over time, and as such their temperature could increase to multiple thousands of Kelvin which caused them to emit extremely bright, blinding lights.As a work around the maximum temperature value for the visual effect now has an upper limit.\n\
 Fixed(Vanilla): contracts / quests can now see station complex children for completion conditions\n\
@@ -2335,7 +2335,7 @@ Early Access 03/09/17\n\n\
 Early Access 27/08/17\n\n\
 	Gameplay changes\n\
 		\u2022Complete overhaul of shipyards to add a production queue. Spacecrafts are now built in the order they arrive so that expensive ships can be built.\n\
-		\u2022Prevent end - game alliances against the player.Building up a large military force is still subject to slow loss of reputation, but AIs are no longer compelled to attack the player with no provocation.AI companies can still ally against another AI company that places itself in a dominant position.\n\
+		\u2022Prevent end-game alliances against the player.Building up a large military force is still subject to slow loss of reputation, but AIs are no longer compelled to attack the player with no provocation.AI companies can still ally against another AI company that places itself in a dominant position.\n\
 		\u2022Manual docking has much more speed control, more accurate docking computer, lower grabbing threshold on L ships\n\
 		\u2022Trade route deals will now only offer actual deals that make some amount of sense\n\
 		\u2022Prevent generation of trade quests if the player has zero cargo space\n\

@@ -1726,49 +1726,71 @@ bool UFlareQuestConditionDockAt::IsCompleted()
 		return true;
 	}
 
-	if (!TargetStation->GetActive())
+	bool InActiveSector = GetGame()->GetActiveSector() && GetGame()->GetActiveSector()->GetSimulatedSector() == TargetStation->GetCurrentSector();
+	if (InActiveSector)
 	{
-		return false;
+		for (AFlareSpacecraft* Ship : TargetStation->GetActive()->GetDockingSystem()->GetDockedShips())
+		{
+			if (Ship->GetCompany() != GetGame()->GetPC()->GetCompany())
+			{
+				continue;
+			}
+
+			// 2 cases:
+			// - no ship restriction
+			// - restricted to a given ship id
+			if (CheckShipMeetsCondition(Ship->GetParent()))
+			{
+				return true;
+			}
+		}
+	}
+	else
+	{
+		UFlareFleet* PlayerFleet = GetGame()->GetPC()->GetPlayerFleet();
+		if (PlayerFleet->GetCurrentSector() != TargetStation->GetCurrentSector())
+		{
+			for (UFlareSimulatedSpacecraft* Ship : TargetStation->GetCurrentSector()->GetSectorShips())
+			{
+				if (Ship->GetCompany() != GetGame()->GetPC()->GetCompany())
+				{
+					continue;
+				}
+
+				if (CheckShipMeetsCondition(Ship))
+				{
+					return true;
+				}
+			}
+		}
 	}
 
-	for (AFlareSpacecraft* Ship : TargetStation->GetActive()->GetDockingSystem()->GetDockedShips())
-	{
-		if (Ship->GetCompany() != GetGame()->GetPC()->GetCompany())
-		{
-			continue;
-		}
+	return false;
+}
 
-		// 2 cases:
-		// - no ship restriction
-		// - restricted to a given ship id
-		bool ValidShip = false;
-		if (TargetShipMatchId == NAME_None)
+bool UFlareQuestConditionDockAt::CheckShipMeetsCondition(UFlareSimulatedSpacecraft* Ship)
+{
+	bool ValidShip = false;
+	if (TargetShipMatchId != NAME_None)
+	{
+		FName ShipName = Quest->GetSaveBundle().GetName(TargetShipMatchId);
+		UFlareSimulatedSpacecraft* TargetShip = GetGame()->GetGameWorld()->FindSpacecraft(ShipName);
+		if (TargetShip == Ship)
 		{
-			// No restriction
 			ValidShip = true;
 		}
-		else
-		{
-			FName ShipName = Quest->GetSaveBundle().GetName(TargetShipMatchId);
-			UFlareSimulatedSpacecraft* TargetShip = GetGame()->GetGameWorld()->FindSpacecraft(ShipName);
-			if(TargetShip == Ship->GetParent())
-			{
-				ValidShip = true;
-			}
-		}
-
-		if(ValidShip)
-		{
-			Completed = true;
-			if (TargetShipSaveId != NAME_None)
-			{
-				// Save docked ship
-				Quest->GetSaveBundle().PutName(TargetShipSaveId, Ship->GetImmatriculation());
-			}
-			return true;
-		}
 	}
 
+	if (ValidShip)
+	{
+		Completed = true;
+		if (TargetShipSaveId != NAME_None)
+		{
+			// Save docked ship
+			Quest->GetSaveBundle().PutName(TargetShipSaveId, Ship->GetImmatriculation());
+		}
+		return true;
+	}
 	return false;
 }
 

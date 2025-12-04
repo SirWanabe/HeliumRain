@@ -51,7 +51,7 @@ void UFlareResourceCatalog::InitialSetup(AFlareGame* GameMode)
 		bool RemovedResource = false;
 		if (OldEntry)
 		{
-			//			ReplaceOldEntrySettings(OldEntry, Resource);
+//			ReplaceOldEntrySettings(OldEntry, Resource);
 
 			if (Resources.Remove(OldEntry))
 			{
@@ -206,25 +206,6 @@ void UFlareResourceCatalog::ReplaceOldEntrySettings(UFlareResourceCatalogEntry* 
 	OldResourceEntry->Data.MaxPrice = NewResource->Data.MaxPrice;
 	OldResourceEntry->Data.MinPrice = NewResource->Data.MinPrice;
 	OldResourceEntry->Data.TransportFee = NewResource->Data.TransportFee;
-}
-
-FFlareResourceDescription UFlareResourceCatalog::GetDirect(FName Identifier)
-{
-	auto FindByName = [=](const UFlareResourceCatalogEntry* Candidate)
-	{
-		return Candidate->Data.Identifier == Identifier;
-	};
-
-	FFlareResourceDescription ReturnValue;
-/*
-	UFlareResourceCatalogEntry* const* Entry = Resources.FindByPredicate(FindByName);
-	if (Entry *Entry)
-	{
-//		ReturnValue = Entry->Data;
-//		return Entry->Data;
-	}
-*/
-	return ReturnValue;
 }
 
 FFlareResourceDescription* UFlareResourceCatalog::Get(FName Identifier) const

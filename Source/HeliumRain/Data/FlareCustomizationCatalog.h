@@ -90,6 +90,4 @@ public:
 	UTexture2D* GetPattern(int32 Index) const;
 
 	const FSlateBrush* GetPatternBrush(int32 Index) const;
-
-
 };

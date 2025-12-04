@@ -51,7 +51,6 @@ public:
 
 	/** Get a resource from identifier */
 	FFlareResourceDescription* Get(FName Identifier) const;
-	FFlareResourceDescription GetDirect(FName Identifier);
 
 	/** Get a resource from identifier */
 	UFlareResourceCatalogEntry* GetEntry(FFlareResourceDescription*) const;

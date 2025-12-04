@@ -849,12 +849,6 @@ void SFlareOrbitalMenu::OnStartSelectedFleetTravelConfirmed()
 			if (Travel)
 			{
 				FleetsBegunTravel(TravelingFrom, PreviouslySelectedSector, OldTravel);
-				if (TargetFleet == MenuManager->GetPC()->GetPlayerFleet())
-				{
-					FFlareMenuParameterData Data;
-					Data.Travel = Travel;
-					MenuManager->OpenMenu(EFlareMenu::MENU_Travel, Data);
-				}
 			}
 		}
 	}

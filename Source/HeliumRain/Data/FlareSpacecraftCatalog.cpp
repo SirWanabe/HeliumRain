@@ -87,7 +87,7 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 				bool FoundMod = false;
 				for (FString MenuModStrings : GameMode->GetModStrings())
 				{
-					if (Spacecraft->Data.IsDisabledIfModsNotLoaded.Find(MenuModStrings))
+					if (Spacecraft->Data.IsDisabledIfModsNotLoaded.Contains(MenuModStrings))
 					{
 						FoundMod = true;
 						break;
@@ -110,7 +110,7 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 			{
 				for (FString MenuModStrings : GameMode->GetModStrings())
 				{
-					if (Spacecraft->Data.IsEnabledIfModsNotLoaded.Find(MenuModStrings))
+					if (Spacecraft->Data.IsEnabledIfModsNotLoaded.Contains(MenuModStrings))
 					{
 						AddToCatalog = false;
 						break;
@@ -184,6 +184,7 @@ void UFlareSpacecraftCatalog::InitialSetup(AFlareGame* GameMode)
 				break;
 			}
 		}
+
 		if (OldEntry)
 		{
 			if (Spacecraft->Data.IsDisabledOverrideStats)

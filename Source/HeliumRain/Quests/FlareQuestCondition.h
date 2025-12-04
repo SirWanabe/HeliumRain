@@ -581,6 +581,7 @@ public:
 	virtual bool IsCompleted();
 	virtual void AddConditionObjectives(FFlarePlayerObjectiveData* ObjectiveData);
 	virtual FText GetInitialLabel();
+	bool CheckShipMeetsCondition(UFlareSimulatedSpacecraft* Ship);
 
 	FName TargetShipMatchId;
 	FName TargetShipSaveId;

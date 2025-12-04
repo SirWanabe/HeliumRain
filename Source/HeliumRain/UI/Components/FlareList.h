@@ -6,6 +6,7 @@
 #include "../Components/FlareFleetInfo.h"
 
 DECLARE_DELEGATE_OneParam(FFlareListItemSelected, TSharedPtr<FInterfaceContainer>)
+DECLARE_DELEGATE(FFlareListFilterClicked)
 
 class SFlareList : public SCompoundWidget
 {
@@ -34,6 +35,7 @@ class SFlareList : public SCompoundWidget
 	SLATE_ARGUMENT(TEnumAsByte<ESelectionMode::Type>, ArrayMode)
 
 	SLATE_ARGUMENT(TWeakObjectPtr<class AFlareMenuManager>, MenuManager)
+	SLATE_EVENT(FFlareListFilterClicked, OnListFilterClicked)
 	SLATE_EVENT(FFlareListItemSelected, OnItemSelected)
 	SLATE_EVENT(FFlareListItemSelected, OnItemUnSelected)
 	SLATE_ARGUMENT(FText, Title)
@@ -89,6 +91,18 @@ public:
 	TArray< TSharedPtr<FInterfaceContainer> > GetObjectList() const
 	{
 		return ObjectList;
+	}
+
+	/** Get the number of items */
+	int32 GetFilteredItemCount() const
+	{
+		return FilteredObjectList.Num();
+	}
+
+	/** Get the filtered object list */
+	TArray< TSharedPtr<FInterfaceContainer> > GetFilteredObjectList() const
+	{
+		return FilteredObjectList;
 	}
 
 	void RefreshPreviousWidget();
@@ -163,6 +177,8 @@ protected:
 	// State data
 	FFlareListItemSelected                                       OnItemUnSelected;
 	FFlareListItemSelected                                       OnItemSelected;
+	FFlareListFilterClicked										 OnListFilterClicked;
+
 	bool                                                         UseCompactDisplay;
 	bool														 UseSmallFont;
 	bool                                                         HasShips;

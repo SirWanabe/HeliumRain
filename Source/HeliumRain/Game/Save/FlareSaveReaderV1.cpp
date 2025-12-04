@@ -501,6 +501,7 @@ void UFlareSaveReaderV1::LoadSpacecraft(const TSharedPtr<FJsonObject> Object, FF
 
 	LoadInt32(Object, "TradingReason", &Data->TradingReason);
 	Object->TryGetBoolField(TEXT("IsTrading"), Data->IsTrading);
+	LoadFName(Object, "IsTradingWith", &Data->IsTradingWith);
 	Object->TryGetBoolField(TEXT("IsIntercepted"), Data->IsIntercepted);
 	LoadFloat(Object, "RefillStock", &Data->RefillStock);
 	LoadFloat(Object, "RepairStock", &Data->RepairStock);

@@ -71,24 +71,6 @@ void UFlareSimulatedSpacecraftWeaponsSystem::Initialize(UFlareSimulatedSpacecraf
 		
 		AvailableWeaponDamageTypes.AddUnique(ComponentDescription->WeaponCharacteristics.DamageType);
 
-			/*
-				TArray<TEnumAsByte<EFlareShellDamageType::Type>> AvailableWeaponDamageTypes;
-	UENUM()
-		namespace EFlareShellDamageType
-	{
-		enum Type
-		{
-			HighExplosive, // Explosion send shell pieces around at hight velocity.
-			ArmorPiercing, // Not explosive shell, The damage are done by kinetic energy. Classique bullets.
-			HEAT,          // Heat Explosive Anti Tank. The explosion is focalized in a hot beam of metal melting armor.
-			LightSalvage,  // No actual damage, enable retrieval of light ships
-			HeavySalvage,  // No actual damage, enable retrieval of heavy ships
-		};
-	}
-	TArray<TEnumAsByte<EFlareShellDamageType::Type>> AvailableWeaponDamageTypes;
-
-			*/
-
 		if (GroupIndex < 0)
 		{
 			// No existing group yet

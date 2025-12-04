@@ -160,6 +160,8 @@ protected:
 	/** Update filters */
 	void OnToggleShowFlags();
 
+	void OnListFilterSelected();
+
 	/** Change station/ship button */
 	void OnStationShip();
 

@@ -89,21 +89,21 @@ TSharedRef< FSlateStyleSet > FFlareStyleSet::Create()
 FLinearColor FFlareStyleSet::GetHealthColor(float Health, bool WithAlpha)
 {
 	const FFlareStyleCatalog& Theme = GetDefaultTheme();
-	FLinearColor NormalColor = Theme.NeutralColor;
-	FLinearColor MidColor = Theme.MidDamageColor;
-	FLinearColor DamageColor = Theme.DamageColor;
+	FLinearColor NormalColour = Theme.NeutralColor;
+	FLinearColor MidColour = Theme.MidDamageColor;
+	FLinearColor DamageColour = Theme.DamageColor;
 	FLinearColor Color;
 
 	// Interpolate the damage color
 	if (Health > 0.5)
 	{
 		float HealthHigh = 2 * (Health - 0.5);
-		Color = FMath::Lerp(MidColor, NormalColor, HealthHigh);
+		Color = FMath::Lerp(MidColour, NormalColour, HealthHigh);
 	}
 	else
 	{
 		float HealthLow = 2 * Health;
-		Color = FMath::Lerp(DamageColor, MidColor, HealthLow);
+		Color = FMath::Lerp(DamageColour, MidColour, HealthLow);
 	}
 
 	// Add alpha if asked for
@@ -112,4 +112,34 @@ FLinearColor FFlareStyleSet::GetHealthColor(float Health, bool WithAlpha)
 		Color.A *= Theme.DefaultAlpha;
 	}
 	return Color;
+}
+
+FLinearColor FFlareStyleSet::GetRatioColour(float Ratio, bool WithAlpha)
+{
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	FLinearColor Colour;
+
+	FLinearColor NormalColour = FLinearColor(0, 255, 0);
+	FLinearColor MidColour = Theme.MidDamageColor;
+	FLinearColor DamageColour = Theme.DamageColor;
+
+	// Interpolate the color
+	if (Ratio > 0.5)
+	{
+		float High = 2 * (Ratio - 0.5);
+		Colour = FMath::Lerp(MidColour, NormalColour, High);
+	}
+	else
+	{
+		float Low = 2 * Ratio;
+		Colour = FMath::Lerp(DamageColour, MidColour, Low);
+	}
+
+	// Add alpha if asked for
+	if (WithAlpha)
+	{
+		Colour.A *= Theme.DefaultAlpha;
+	}
+
+	return Colour;
 }

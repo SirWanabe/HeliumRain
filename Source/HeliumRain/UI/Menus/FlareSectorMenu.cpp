@@ -24,7 +24,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
 
-	int32 PanelWidth = 0.7 * Theme.ContentWidth - Theme.ContentPadding.Left - Theme.ContentPadding.Right;
+	int32 PanelWidth = 0.65 * Theme.ContentWidth - Theme.ContentPadding.Left - Theme.ContentPadding.Right;
 
 	// Build structure
 	ChildSlot
@@ -40,7 +40,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 		.VAlign(VAlign_Top)
 		[
 			SNew(SBox)
-			.WidthOverride(0.7 * Theme.ContentWidth)
+			.WidthOverride(0.65 * Theme.ContentWidth)
 			[
 				SNew(SVerticalBox)
 
@@ -368,6 +368,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 				SAssignNew(OwnedShipList, SFlareList)
 				.MenuManager(MenuManager)
 				.Title(LOCTEXT("OwnedSpacecraftsSector", "Owned spacecraft in sector"))
+				.OnListFilterClicked(this, &SFlareSectorMenu::OnOwnedSpacecraftFilterSelected)
 				.OnItemSelected(this, &SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft)
 			]
 
@@ -395,6 +396,7 @@ void SFlareSectorMenu::Construct(const FArguments& InArgs)
 				SAssignNew(OtherShipList, SFlareList)
 				.MenuManager(MenuManager)
 				.Title(LOCTEXT("OtherSpacecraftsSector", "Other spacecraft in sector"))
+				.OnListFilterClicked(this, &SFlareSectorMenu::OnOtherSpacecraftFilterSelected)
 			]
 
 			+ SScrollBox::Slot()
@@ -599,6 +601,9 @@ void SFlareSectorMenu::UpdateShipLists()//(UFlareFleet* TargetOwnedFleet, UFlare
 	OtherShipList->RefreshList();
 	OwnedReserveShipList->RefreshList();
 	OtherReserveShipList->RefreshList();
+
+	OnOwnedSpacecraftFilterSelected();
+	OnOtherSpacecraftFilterSelected();
 }
 
 void SFlareSectorMenu::Exit()
@@ -611,6 +616,22 @@ void SFlareSectorMenu::Exit()
 	OwnedReserveShipList->Reset();
 	OtherReserveShipList->Reset();
 	SetVisibility(EVisibility::Collapsed);
+}
+
+void SFlareSectorMenu::OnOwnedSpacecraftFilterSelected()
+{
+	FString FormattedNumber = FString::FormatAsNumber(OwnedShipList->GetFilteredItemCount());
+
+	OwnedShipList->SetTitle(FText::Format(LOCTEXT("OwnedSpacecraftsSectorFormat", "Owned spacecraft ({0})"),
+	FText::FromString(FormattedNumber)));
+}
+
+void SFlareSectorMenu::OnOtherSpacecraftFilterSelected()
+{
+	FString FormattedNumber = FString::FormatAsNumber(OtherShipList->GetFilteredItemCount());
+
+	OtherShipList->SetTitle(FText::Format(LOCTEXT("OtherSpacecraftsSectorFormat", "Other spacecraft ({0})"),
+	FText::FromString(FormattedNumber)));
 }
 
 void SFlareSectorMenu::OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer)
@@ -1566,6 +1587,7 @@ void SFlareSectorMenu::OnStartTravelConfirmed(UFlareFleet* SelectedFleet)
 				Data.Travel = Travel;
 				MenuManager->OpenMenu(EFlareMenu::MENU_Travel, Data);
 				FleetSelector->SetSelectedItem(MenuManager->GetPC()->GetPlayerFleet());
+
 			}
 			else
 			{
@@ -1622,9 +1644,7 @@ void SFlareSectorMenu::OnBuildStationSelected(FFlareSpacecraftDescription* NewSt
 			// Other sector
 			else
 			{
-				FFlareMenuParameterData MenuParameters;
-				MenuParameters.Sector = TargetSector;
-				MenuManager->OpenMenu(EFlareMenu::MENU_Sector, MenuParameters);
+				UpdateShipLists();
 			}
 
 			// Notify

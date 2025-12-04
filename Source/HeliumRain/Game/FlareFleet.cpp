@@ -622,10 +622,17 @@ void UFlareFleet::SetCurrentSector(UFlareSimulatedSector* Sector)
 	{
 		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
 	}
+
+	if (this == Game->GetPC()->GetPlayerFleet())
+	{
+		Game->ReactivateSector();
+	}
 }
 
 void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 {
+	UFlareSimulatedSector* DepartingSector = CurrentSector;
+
 	CurrentSector = Travel->GetTravelSector();
 	CurrentTravel = Travel;
 	InitShipList();
@@ -651,6 +658,27 @@ void UFlareFleet::SetCurrentTravel(UFlareTravel* Travel)
 	if (FleetCompany == GetGame()->GetPC()->GetCompany() && IsVisibleForOrbitalFleetList())
 	{
 		GetGame()->GetPC()->UpdateOrbitMenuFleets(false);
+	}
+
+	UFlareSector* ActiveSector = Game->GetActiveSector();
+	if (ActiveSector && DepartingSector == ActiveSector->GetSimulatedSector())
+	{
+		//for player ReactivateSector gets called once the new sector is set
+		if (this != Game->GetPC()->GetPlayerFleet())
+		{	
+			for (int ShipIndex = 0; ShipIndex < FleetShips.Num(); ShipIndex++)
+			{
+				UFlareSimulatedSpacecraft* FleetShip = FleetShips[ShipIndex];
+				if (FleetShip)
+				{
+					AFlareSpacecraft* ActiveShip = FleetShip->GetActive();
+					if (ActiveShip)
+					{
+						ActiveSector->ShipLeftSector(ActiveShip);
+					}
+				}
+			}
+		}
 	}
 }
 

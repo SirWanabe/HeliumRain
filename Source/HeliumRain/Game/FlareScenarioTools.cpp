@@ -475,11 +475,6 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 			{
 				FName CurrentTech = StartingTechnology[KnowIndex];
 				Company->UnlockTechnology(CurrentTech, false, true, true, false);
-
-				
-
-
-
 			}
 		}
 
@@ -763,17 +758,18 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		CreateStations(StationPlasticsRefinery, NemaHeavyWorks, BlueShores, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationPlasticsRefinery, UnitedFarmsChemicals, BlueHeart, 1, 1 + (StationLevelBonus - 1), SpawnParameters, RandomizeStationLocations);
 
-		CreateShips(ShipSolen, GhostWorksShipyards, NightsHome, 4);
-		CreateShips(ShipSolen, IonLane, Lighthouse, 4);
-		CreateShips(ShipSolen, MiningSyndicate, MinersHome, 2);
-		CreateShips(ShipSolen, NemaHeavyWorks, MinersHome, 2);
-		CreateShips(ShipSolen, UnitedFarmsChemicals, TheSpire, 4);
-		CreateShips(ShipSolen, Sunwatch, Lighthouse, 5);
-		CreateShips(ShipSolen, HelixFoundries, TheForge, 4);
-		CreateShips(ShipSolen, Pirates, Boneyard, 2);
-		CreateShips(ShipSolen, Quantalium, Crossroads, 3);
-		CreateShips(ShipSolen, InfiniteOrbit, Tranquility, 3);
-		CreateShips(ShipSolen, BrokenMoon, Colossus, 1);
+		CreateShips(ShipSolen, AxisSupplies, BlueHeart, 1 * EconomyIndex);
+		CreateShips(ShipSolen, BrokenMoon, Colossus, 1 * EconomyIndex);
+		CreateShips(ShipSolen, GhostWorksShipyards, NightsHome, 1 * EconomyIndex);
+		CreateShips(ShipSolen, HelixFoundries, TheForge, 1 * EconomyIndex);
+		CreateShips(ShipSolen, InfiniteOrbit, Tranquility, 1 * EconomyIndex);
+		CreateShips(ShipSolen, IonLane, Lighthouse, 1 * EconomyIndex);
+		CreateShips(ShipSolen, MiningSyndicate, MinersHome, 1 * EconomyIndex);
+		CreateShips(ShipSolen, NemaHeavyWorks, MinersHome, 1 * EconomyIndex);
+		CreateShips(ShipSolen, Pirates, Boneyard, 1 * EconomyIndex);
+		CreateShips(ShipSolen, Quantalium, Crossroads, 1 * EconomyIndex);
+		CreateShips(ShipSolen, Sunwatch, Lighthouse, 1 * EconomyIndex);
+		CreateShips(ShipSolen, UnitedFarmsChemicals, TheSpire, 1 * EconomyIndex);
 	}
 
 	if (EconomyIndex >= 2) // Prospering
@@ -782,14 +778,18 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		CreateStations(StationFoundry, Quantalium, TheSpire, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheDepths, 1, 1 + (StationLevelBonus - 2), SpawnParameters, RandomizeStationLocations);
 
-		CreateShips(ShipSolen, AxisSupplies, BlueHeart, 2);
-		CreateShips(ShipSolen, Quantalium, Crossroads, 2);
-		CreateShips(ShipSolen, BrokenMoon, Colossus, 1);
-
-		CreateShips(ShipOmen, IonLane, FrozenRealm, 4);
-		CreateShips(ShipOmen, UnitedFarmsChemicals, TheSpire, 2);
-		CreateShips(ShipOmen, HelixFoundries, TheForge, 2);
-		CreateShips(ShipOmen, InfiniteOrbit, Tranquility, 4);
+		CreateShips(ShipOmen, AxisSupplies, BlueHeart, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, BrokenMoon, Colossus, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, GhostWorksShipyards, NightsHome, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, HelixFoundries, TheForge, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, InfiniteOrbit, Tranquility, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, IonLane, FrozenRealm, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, MiningSyndicate, MinersHome, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, NemaHeavyWorks, MinersHome, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, Pirates, Boneyard, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, Quantalium, Crossroads, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, Sunwatch, Lighthouse, 1 * (EconomyIndex - 1));
+		CreateShips(ShipOmen, UnitedFarmsChemicals, TheSpire, 1 * (EconomyIndex - 1));
 	}
 
 	if (EconomyIndex >= 3) // Maturing
@@ -797,18 +797,15 @@ void UFlareScenarioTools::SetupWorld(bool RandomizeStationLocations, int32 Econo
 		CreateStations(StationHabitation, InfiniteOrbit, TheForge, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
 		CreateStations(StationFusion, Sunwatch, TheSpire, 1, 1 + (StationLevelBonus - 3), SpawnParameters, RandomizeStationLocations);
 		CreateStations("station-shipyard", GhostWorksShipyards, TheForge, 1, 1, SpawnParameters, RandomizeStationLocations,0.50,1.0,0.50,1);
-		CreateShips(ShipOmen, AxisSupplies, BlueHeart, 1);
-		CreateShips(ShipOmen, Quantalium, Crossroads, 2);
-		CreateShips(ShipOmen, BrokenMoon, Colossus, 2);
-		CreateShips(ShipSphinx, IonLane, Tranquility, 1);
+
+		CreateShips(ShipSphinx, AxisSupplies, BlueHeart, 1);
 		CreateShips(ShipSphinx, InfiniteOrbit, Tranquility, 1);
+		CreateShips(ShipSphinx, IonLane, Tranquility, 1);
 	}
 	if (EconomyIndex >= 4) // Accomplished
 	{
 		CreateStations(StationHabitation, InfiniteOrbit, MinersHome, 1, 1 + (StationLevelBonus - 4), SpawnParameters, RandomizeStationLocations);
-		CreateShips(ShipOmen, Pirates, Boneyard, 1);
 		CreateShips(ShipSphinx, Quantalium, Tranquility, 1);
-		CreateShips(ShipSphinx, BrokenMoon, Tranquility, 1);
 		CreateShips(ShipSphinx, GhostWorksShipyards, BlueHeart, 1);
 	}
 

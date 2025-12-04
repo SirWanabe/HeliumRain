@@ -345,6 +345,12 @@ void AFlareGame::Logout(AController* Player)
 	Super::Logout(Player);
 }
 
+void AFlareGame::ReactivateSector()
+{
+	DeactivateSector();
+	ActivateCurrentSector();
+}
+
 void AFlareGame::ActivateSector(UFlareSimulatedSector* Sector)
 {
 #ifdef DEBUG_ACTIVATESECTORTIME

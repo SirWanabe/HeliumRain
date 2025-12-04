@@ -5,6 +5,7 @@
 #include "../Economy/FlareCargoBay.h"
 #include "../Economy/FlareResource.h"
 #include "Subsystems/FlareSpacecraftDockingSystem.h"
+#include "Subsystems/FlareSpacecraftNavigationSystem.h"
 #include "FlareSimulatedSpacecraft.generated.h"
 
 
@@ -136,7 +137,7 @@ public:
 
 	void ForceUndock();
 
-	void SetTrading(bool Trading, int32 TradeReason = 0);
+	void SetTrading(bool Trading, int32 TradeReason = 0, UFlareSimulatedSpacecraft* TradingWith = nullptr);
 
 	void SetIntercepted(bool Intercept);
 
@@ -306,7 +307,6 @@ public:
 		SpacecraftData.NickName = NewName;
 	}
 
-
 protected:
     /*----------------------------------------------------
         Protected data
@@ -361,6 +361,8 @@ protected:
 	float													EngineAccelerationPower = 0.f;
 
 	bool													CreatedInitialFactories;
+
+	bool													HasCompanyTransactionSource;
 
 public:
 
@@ -481,12 +483,15 @@ public:
 		return SpacecraftData.IsTrading;
 	}
 
+	inline bool IsTradingWith(UFlareSimulatedSpacecraft* TradingCandidate) const
+	{
+		return TradingCandidate->GetImmatriculation() == SpacecraftData.IsTradingWith;
+	}
+
 	inline int32 GetTradingReason() const
 	{
 		return SpacecraftData.TradingReason;
 	}
-
-	
 
 	inline bool IsIntercepted() const
 	{
@@ -533,7 +538,7 @@ public:
 
 	int32 GetCapturePointThreshold() const;
 
-	float GetStationEfficiency();
+	float GetStationEfficiency(UFlareSimulatedSpacecraft* InitiatedStation = nullptr);
 
 	float GetDamageRatio();
 
@@ -550,6 +555,7 @@ public:
 	}
 
 	bool IsUnderConstruction(bool local = false) const;
+	bool IsInCompanyTransactionSource();
 
 	bool IsPlayerShip();
 

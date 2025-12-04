@@ -119,8 +119,8 @@ bool UFlareTravel::Load(const FFlareTravelSave& Data, UFlareFleet* NewFleet)
 
 	UpdateTravelParameters();
 
-	Fleet->SetCurrentSector(TravelSector);
 	TravelSector->AddFleet(Fleet);
+	Fleet->SetCurrentSector(TravelSector);
 
 	NeedNotification = true;
 
@@ -183,7 +183,7 @@ void UFlareTravel::Simulate()
 		}
 	}
 
-	// Trael is done
+	// Travel is done
 	else if (RemainingTime <= 0)
 	{
 		EndTravel();
@@ -357,57 +357,62 @@ void UFlareTravel::EndTravel()
 	}
 	
 	// Notify travel ended
-	if (Fleet->GetFleetCompany() == Game->GetPC()->GetCompany()
-		&& (Fleet->GetCurrentTradeRoute() == NULL || Fleet->GetCurrentTradeRoute()->IsPaused())
-		&& !Fleet->IsAutoTrading())
+	if (Fleet->GetFleetCompany() == Game->GetPC()->GetCompany())
 	{
-		FFlareMenuParameterData Data;
-		Data.Sector = DestinationSector;
-		Game->GetPC()->Notify(LOCTEXT("TravelEnded", "Travel ended"),
-			FText::Format(LOCTEXT("TravelEndedFormat", "{0} arrived at {1}"),
-				Fleet->GetFleetName(),
-				DestinationSector->GetSectorName()),
-			FName("travel-end"),
-			EFlareNotification::NT_Info,
-			NOTIFY_DEFAULT_TIMER,
-			EFlareMenu::MENU_Sector,
-			Data);
-
-		Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("travel-end").PutName("sector", DestinationSector->GetIdentifier()).PutName("fleet", Fleet->GetIdentifier()));
-	}
-
-	if (Fleet == Game->GetPC()->GetPlayerFleet())
-	{
-
-		bool HasLMilitaryShip = false;
-		for (UFlareSimulatedSpacecraft* Ship :Fleet->GetShips())
+		if ((Fleet->GetCurrentTradeRoute() == NULL || Fleet->GetCurrentTradeRoute()->IsPaused())
+			&& !Fleet->IsAutoTrading())
 		{
-			if (Ship->IsMilitary() && Ship->GetSize() == EFlarePartSize::L)
+			FFlareMenuParameterData Data;
+			Data.Sector = DestinationSector;
+			Game->GetPC()->Notify(LOCTEXT("TravelEnded", "Travel ended"),
+				FText::Format(LOCTEXT("TravelEndedFormat", "{0} arrived at {1}"),
+					Fleet->GetFleetName(),
+					DestinationSector->GetSectorName()),
+				FName("travel-end"),
+				EFlareNotification::NT_Info,
+				NOTIFY_DEFAULT_TIMER,
+				EFlareMenu::MENU_Sector,
+				Data);
+
+			Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("travel-end").PutName("sector", DestinationSector->GetIdentifier()).PutName("fleet", Fleet->GetIdentifier()));	}
+
+		if (Fleet == Game->GetPC()->GetPlayerFleet())
+		{
+			bool HasLMilitaryShip = false;
+			for (UFlareSimulatedSpacecraft* Ship : Fleet->GetShips())
 			{
-				HasLMilitaryShip = true;
-				break;
+				if (Ship->IsMilitary() && Ship->GetSize() == EFlarePartSize::L)
+				{
+					HasLMilitaryShip = true;
+					break;
+				}
+			}
+
+			if (HasLMilitaryShip)
+			{
+				CompanyValue Value = Game->GetPC()->GetCompany()->GetCompanyValue(DestinationSector, false);
+				int32 CurrentHostilePoints = SectorHelper::GetHostileArmyCombatPoints(DestinationSector, Game->GetPC()->GetCompany(), true);
+
+				if (CurrentHostilePoints > Value.ArmyCurrentCombatPoints * 2)
+				{
+					Game->GetPC()->SetAchievementProgression("ACHIEVEMENT_TRAP", 1);
+				}
+			}
+
+			if (Game->GetQuestManager())
+			{
+				Game->GetQuestManager()->OnTravelEnded(Fleet);
 			}
 		}
-
-		if(HasLMilitaryShip)
+		else
 		{
-			CompanyValue Value = Game->GetPC()->GetCompany()->GetCompanyValue(DestinationSector, false);
-			int32 CurrentHostilePoints = SectorHelper::GetHostileArmyCombatPoints(DestinationSector, Game->GetPC()->GetCompany(), true);
-
-
-			if(CurrentHostilePoints > Value.ArmyCurrentCombatPoints * 2)
-			{
-				Game->GetPC()->SetAchievementProgression("ACHIEVEMENT_TRAP", 1);
-			}
+			Game->GetQuestManager()->OnCallbackEvent(EFlareQuestCallback::SHIP_DOCKED);
 		}
 	}
 
 	// Update game
 	Game->GetGameWorld()->DeleteTravel(this);
-	if (Game->GetQuestManager())
-	{
-		Game->GetQuestManager()->OnTravelEnded(Fleet);
-	}
+
 }
 
 int64 UFlareTravel::GetElapsedTime()

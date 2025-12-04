@@ -89,8 +89,9 @@ void SFlareCargoInfo::Construct(const FArguments& InArgs)
 						.VAlign(VAlign_Bottom)
 						.HAlign(HAlign_Center)
 						[
-							SAssignNew(ResourceMode,STextBlock)
+							SNew(STextBlock)
 							.TextStyle(&Theme.SmallFont)
+							.Text(this, &SFlareCargoInfo::GetResourceMode)
 						]
 
 						// Resource quantity
@@ -226,6 +227,36 @@ FText SFlareCargoInfo::GetResourceAcronym() const
 	}
 }
 
+FText SFlareCargoInfo::GetResourceMode() const
+{
+	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
+	{
+		return FText();
+	}
+
+	FFlareCargo* Cargo = TargetSpacecraft->GetActiveCargoBay()->GetSlot(CargoIndex);
+	FCHECK(Cargo);
+
+	FText LockText;
+	if (Cargo->Lock == EFlareResourceLock::Output)
+	{
+		return LOCTEXT("OutputCargoFormat", "(Output)");
+	}
+	else if (Cargo->Lock == EFlareResourceLock::Input)
+	{
+		return LOCTEXT("InputCargoFormat", "(Input)");
+	}
+	else if (Cargo->Lock == EFlareResourceLock::Trade)
+	{
+		return LOCTEXT("TradeCargoFormat", "(Trade)");
+	}
+	else if (Cargo->Lock == EFlareResourceLock::Hidden)
+	{
+		return LOCTEXT("HiddenCargoFormat", "(Overflow)");
+	}
+	return FText();
+}
+
 FText SFlareCargoInfo::GetResourceQuantity() const
 {
 	if (TargetSpacecraft->GetActiveCargoBay()->GetSlotCount() <= CargoIndex)
@@ -239,33 +270,23 @@ FText SFlareCargoInfo::GetResourceQuantity() const
 	int32 Capacity = TargetSpacecraft->GetActiveCargoBay()->GetSlotCapacity();
 
 	// Print IO text if any
-	FText LockText;
-	if (Cargo->Lock == EFlareResourceLock::Output)
-	{
-		LockText = LOCTEXT("OutputCargoFormat", "(Output)");
-	}
-	else if (Cargo->Lock == EFlareResourceLock::Input)
-	{
-		LockText = LOCTEXT("InputCargoFormat", "(Input)");
-	}
-	else if (Cargo->Lock == EFlareResourceLock::Trade)
-	{
-		LockText = LOCTEXT("TradeCargoFormat", "(Trade)");
-	}
-	else if (Cargo->Lock == EFlareResourceLock::Hidden)
-	{
-		LockText = LOCTEXT("HiddenCargoFormat", "(Overflow)");
-	}
-
-	ResourceMode->SetText(LockText);
 
 	if (Capacity > 999)
 	{
 		FNumberFormattingOptions CargoFormat;
 		CargoFormat.MaximumFractionalDigits = 1;
-		return FText::Format(FText::FromString("{0}/{1}k"),
-		FText::AsNumber(Cargo->Quantity, &CargoFormat),
-		FText::AsNumber(Capacity / 1000.0f, &CargoFormat));
+		if (Cargo->Quantity >= 9999)
+		{
+			return FText::Format(FText::FromString("{0}k/{1}k"),
+			FText::AsNumber(Cargo->Quantity / 1000.0f, &CargoFormat),
+			FText::AsNumber(Capacity / 1000.0f, &CargoFormat));
+		}
+		else
+		{
+			return FText::Format(FText::FromString("{0}/{1}k"),
+			FText::AsNumber(Cargo->Quantity, &CargoFormat),
+			FText::AsNumber(Capacity / 1000.0f, &CargoFormat));
+		}
 	}
 	else
 	{

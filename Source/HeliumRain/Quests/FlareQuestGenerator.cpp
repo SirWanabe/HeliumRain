@@ -1047,7 +1047,6 @@ bool UFlareQuestGeneratedVipTransport::Load(UFlareQuestGenerator* Parent, const 
 	QuestDescription = FText::Format(LOCTEXT("GeneratedVipTransportDescriptionFormat","Transport {0} from {1} to {2}."), VIPName, Sector1->GetSectorName(), Sector2->GetSectorName());
 	QuestCategory = EFlareQuestCategory::SECONDARY;
 
-
 	FName PickUpShipId = "pick-up-ship-id";
 
 	{

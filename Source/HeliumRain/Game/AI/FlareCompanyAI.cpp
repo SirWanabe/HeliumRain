@@ -37,8 +37,9 @@
 //#define DEBUG_AI_WAR_MILITARY_MOVEMENT
 //#define DEBUG_AI_BATTLE_STATES
 //#define DEBUG_AI_BUDGET
-#define DEBUG_AI_BUDGET_PROCESSSTATION
+//#define DEBUG_AI_BUDGET_PROCESSSTATION
 //#define DEBUG_AI_SHIP_ORDER
+//#define DEBUG_AI_ACTIVESECTOR
 
 #define LOCTEXT_NAMESPACE "FlareCompanyAI"
 
@@ -106,11 +107,11 @@ void UFlareCompanyAI::TrackStationConstructionStatus(UFlareSimulatedSpacecraft* 
 		else if (Station->IsComplex())
 		{
 			bool UnderConstructionUpgrade = false;
-			for (UFlareSimulatedSpacecraft* Substation : Station->GetComplexChildren())
+			for (UFlareSimulatedSpacecraft* ComplexChild : Station->GetComplexChildren())
 			{
-				if (Substation->IsUnderConstruction(true))
+				if (ComplexChild->IsUnderConstruction(true))
 				{
-					if (Substation->GetLevel() > 1)
+					if (ComplexChild->GetLevel() > 1)
 					{
 						{
 							UnderConstructionUpgradeStations.Add(Station);
@@ -176,92 +177,121 @@ void UFlareCompanyAI::SimulateActiveAI()
 		return;
 	}
 
-	if (Company != Game->GetPC()->GetCompany())
+	UFlareSector* ActiveSector = Game->GetActiveSector();
+	if (ActiveSector&&!ActiveSector->GetIsDestroyingSector())
 	{
-		UFlareSector* ActiveSector = Game->GetActiveSector();
-		if (ActiveSector&&!ActiveSector->GetIsDestroyingSector())
+		UFlareSimulatedSector* SimulatedSector = ActiveSector->GetSimulatedSector();
+		if (SimulatedSector)
 		{
-			UFlareSimulatedSector* SimulatedSector = ActiveSector->GetSimulatedSector();
-			if (SimulatedSector)
+			if (!SimulatedSector->IsInDangerousBattle(Company))
 			{
-				if (!SimulatedSector->IsInDangerousBattle(Company))
+				TArray<AFlareSpacecraft*> CompanyShips = ActiveSector->GetCompanyShips(Company);
+
+				int32 GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
+
+				int ActivityAttempts = 1;
+				if (Company != Game->GetPC()->GetCompany())
 				{
-					TArray<AFlareSpacecraft*> CompanyShips = ActiveSector->GetCompanyShips(Company);
-					int32 GameDifficulty = Game->GetPC()->GetPlayerData()->DifficultyId;
-					int ActivityAttempts = 1;
-					switch (GameDifficulty)
-					{
-						case -1: // Easy
-							ActivityAttempts = 1;
-							break;
-						case 0: // Normal
-							ActivityAttempts = 1;
-							break;
-						case 1: // Hard
-							ActivityAttempts = 2;
-							break;
-						case 2: // Very Hard
-							ActivityAttempts = 3;
-							break;
-						case 3: // Expert
-							ActivityAttempts = 4;
-							break;
-						case 4: // Unfair
-							ActivityAttempts = 5;
-							break;
-					}
+					ActivityAttempts = FMath::Max(1, GameDifficulty + 1);
+				}
 
-					for (AFlareSpacecraft* Ship : CompanyShips)
+				for (int32 ShipIndex = 0; ShipIndex < CompanyShips.Num(); ShipIndex++)
+				{
+					AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
+					if (Ship)
 					{
-						if (Ship)
+						if (!Ship->GetParent()->GetActiveCargoBay()->GetCapacity())
 						{
-							if (!Ship->GetParent()->GetActiveCargoBay()->GetCapacity())
+							if (CompanyShips.RemoveSwap(Ship))
 							{
-								CompanyShips.RemoveSwap(Ship);
+								ShipIndex = FMath::Min(0, ShipIndex - 1);
 							}
-/*
-							else if(Ship->IsMilitary)
-							{
-								Addship to military array
-								"do military stuff"?
-							}
-*/
-						}
-					}
-
-					while (ActivityAttempts > 0 && CompanyShips.Num() > 0)
-					{
-						ActivityAttempts--;
-						int32 ShipIndex = FMath::RandRange(0, CompanyShips.Num() - 1);
-						AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
-						CompanyShips.RemoveSwap(Ship);
-
-						if (Ship && (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable()))
-						{
-							continue;
 						}
 
-						if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
+						if (Company == Game->GetPC()->GetCompany())
 						{
-							bool TryTradeOrUpgrade = FMath::FRand() < 0.80;
-							if (TryTradeOrUpgrade)
+							if (Game->GetPC()->GetPlayerShip() == Ship->GetParent())
 							{
-								SimulateActiveTradeShip(Ship);
+								if (CompanyShips.RemoveSwap(Ship))
+								{
+									ShipIndex = FMath::Min(0, ShipIndex - 1);
+								}
 							}
-							else
+
+							if (Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute())
 							{
-								SimulateActiveShipAttemptUpgrades(Ship);
+								if (Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute()->IsPaused() || Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute()->GetTargetSector() != Ship->GetParent()->GetCurrentSector())
+								{
+#ifdef DEBUG_AI_ACTIVESECTOR
+									FLOGV("UFlareCompanyAI::SimulateActiveAI Removed Ship %s from trading. Target sector is %s", *Ship->GetParent()->GetNickName().ToString(), *Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute()->GetTargetSector()->GetSectorName().ToString());
+#endif
+									if (CompanyShips.RemoveSwap(Ship))
+									{
+										ShipIndex = FMath::Min(0, ShipIndex - 1);
+									}
+								}
 							}
-							break;
+
+							else if (!Ship->GetParent()->GetCurrentFleet()->IsAutoTrading())
+							{
+								if (CompanyShips.RemoveSwap(Ship))
+								{
+									ShipIndex = FMath::Min(0, ShipIndex - 1);
+								}
+							}
 						}
+						
+						/*
+						else if(Ship->IsMilitary)
+						{
+							Addship to military array
+							"do military stuff"?
+						}
+						*/
+					}
+				}
+
+				while (ActivityAttempts > 0 && CompanyShips.Num() > 0)
+				{
+					ActivityAttempts--;
+					int32 ShipIndex = FMath::RandRange(0, CompanyShips.Num() - 1);
+					AFlareSpacecraft* Ship = CompanyShips[ShipIndex];
+					CompanyShips.RemoveSwap(Ship);
+					if (!Ship)
+					{
+						continue;
 					}
 
-					if (ActiveAIDesireRepairs)
+					if (Ship->GetNavigationSystem()->IsAutoPilot() || Ship->GetParent()->GetDamageSystem()->IsUncontrollable())
 					{
-						SectorHelper::RepairFleets(SimulatedSector, Company);
-						SectorHelper::RefillFleets(SimulatedSector, Company);
-						ActiveAIDesireRepairs = false;
+						continue;
 					}
+
+					if (!Ship->GetParent()->GetDescription()->IsDroneCarrier)
+					{
+						bool TryTradeOrUpgrade = FMath::FRand() < 0.80;
+						if (TryTradeOrUpgrade || Company == Game->GetPC()->GetCompany())
+						{
+							if (SimulateActiveTradeShip(Ship))
+							{
+								break;
+							}
+						}
+						else
+						{
+							if (SimulateActiveShipAttemptUpgrades(Ship))
+							{
+								break;
+							}
+						}
+					}
+				}
+
+				if (ActiveAIDesireRepairs && Company != Game->GetPC()->GetCompany())
+				{
+					SectorHelper::RepairFleets(SimulatedSector, Company);
+					SectorHelper::RefillFleets(SimulatedSector, Company);
+					ActiveAIDesireRepairs = false;
 				}
 			}
 		}
@@ -269,63 +299,67 @@ void UFlareCompanyAI::SimulateActiveAI()
 }
 
 //Select a single random ship, if it's viable try to find resources to buy/sell. Random searches rather than looking for good profits.
-//It's probably not fun for players trying to do their own trades having too much competition for the local sector trade. hence all the possible fail conditions where a company may not send a ship to trade for that minute.
-void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
+//It's probably not fun for players trying to do their own trades having too much competition for the local sector trade. Hence all the possible fail conditions where a company may not send a ship to trade for that minute.
+bool UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 {
 	UFlareSector* ActiveSector = Game->GetActiveSector();
 	if (!ActiveSector)
 	{
-		return;
+		return true;
 	}
+
 	UFlareSimulatedSector* SimulatedSector = ActiveSector->GetSimulatedSector();
 	if (!SimulatedSector)
 	{
-		return;
+		return true;
 	}
 
-	bool BreakOutOfLoop = false;
+#ifdef DEBUG_AI_ACTIVESECTOR
+	FLOGV("UFlareCompanyAI::SimulateActiveAI %s running", *Ship->GetParent()->GetNickName().ToString());
+#endif
 
-	TArray<UFlareResourceCatalogEntry*> ResourceCatalog = Game->GetResourceCatalog()->Resources;
-	bool FoundSomething = false;
-	while (ResourceCatalog.Num())
+	UFlareTradeRoute* ShipTradeRoute = Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute();
+	if (ShipTradeRoute)
 	{
-		if (ActiveSector)
+		FFlareTradeRouteSectorOperationSave* CurrentTradeOperation = ShipTradeRoute->GetActiveOperation();
+
+#ifdef DEBUG_AI_ACTIVESECTOR
+//		FLOG("UFlareCompanyAI::SimulateActiveAI Has Traderoute")
+#endif
+
+		if (!CurrentTradeOperation)
 		{
-			if (ActiveSector->GetIsDestroyingSector())
+			return false;
+		}
+
+#ifdef DEBUG_AI_ACTIVESECTOR
+		FLOG("UFlareCompanyAI::SimulateActiveAI Has Trade Operation")
+#endif
+
+		if (CurrentTradeOperation->Type == EFlareTradeRouteOperation::Load || CurrentTradeOperation->Type == EFlareTradeRouteOperation::Unload)
+		{
+			FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(CurrentTradeOperation->ResourceIdentifier);
+
+			if (Resource)
 			{
-				break;
+
+#ifdef DEBUG_AI_ACTIVESECTOR
+				FLOGV("UFlareCompanyAI::SimulateActiveAI Found resource %s", *Resource->Name.ToString());
+#endif
+				return SimulateActiveTradeShipBuyOrSell(Ship, Resource);
 			}
 		}
-		else
-		{
-			break;
-		}
+	}
 
-		if (BreakOutOfLoop)
-		{
-			break;
-		}
-
-		int32 ResourceIndex = FMath::RandRange(0, ResourceCatalog.Num() - 1);
-		FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
-		ResourceCatalog.RemoveAtSwap(ResourceIndex);
-		if (!Resource)
-		{
-			continue;
-		}
-
-		int32 InitialQuantity = Ship->GetParent()->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
-		int32 FreeSpace = Ship->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
-		TArray<AFlareSpacecraft*> LocalStations = ActiveSector->GetStations();
-		FText Unused;
-
-		while (LocalStations.Num())
+	else
+	{
+		TArray<UFlareResourceCatalogEntry*> ResourceCatalog = Game->GetResourceCatalog()->Resources;
+		while (ResourceCatalog.Num())
 		{
 			if (ActiveSector)
 			{
 				if (ActiveSector->GetIsDestroyingSector())
 				{
-					BreakOutOfLoop = true;
 					break;
 				}
 			}
@@ -334,114 +368,194 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 				break;
 			}
 
-			int32 StationIndex = FMath::RandRange(0, LocalStations.Num() - 1);
-			AFlareSpacecraft* Station = LocalStations[StationIndex];
-			LocalStations.RemoveAtSwap(StationIndex);
-			if (!Station)
+			int32 ResourceIndex = FMath::RandRange(0, ResourceCatalog.Num() - 1);
+			FFlareResourceDescription* Resource = &Game->GetResourceCatalog()->Resources[ResourceIndex]->Data;
+			ResourceCatalog.RemoveAtSwap(ResourceIndex);
+			if (!Resource)
 			{
 				continue;
 			}
 
-			//station wants to buy this resource, so we could potentially sell what the ship has
-			if (Station->GetParent()->GetActiveCargoBay()->WantBuy(Resource, Ship->GetCompany()))
+			if (SimulateActiveTradeShipBuyOrSell(Ship, Resource))
 			{
-				if (!Ship->GetParent()->CanTradeWith(Station->GetParent(), Unused, Resource))
-				{
-					continue;
-				}
-
-				//we already have cargo
-				if (InitialQuantity > 0)
-				{
-					int32 StationFreeSpace = Station->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
-					if (StationFreeSpace > 0)
-					{
-						int32 StationMaxAffordableQuantity = 0;
-
-						if (Station->GetCompany() == Ship->GetCompany())
-						{
-							StationMaxAffordableQuantity = INT_MAX;
-						}
-						else
-						{
-							int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Station->GetParent(), Ship->GetParent(), Resource);
-							StationMaxAffordableQuantity = FMath::Max(int64(0), Station->GetCompany()->GetMoney()) / ResourcePrice;
-						}
-
-						StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, InitialQuantity);
-						StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, StationMaxAffordableQuantity);
-
-						// found a station willing to buy, we'll sell!
-						if (StationMaxAffordableQuantity > 0)
-						{
-							//chance has it we're already docked, sell immediately
-							if (Station->GetDockingSystem()->IsDockedShip(Ship))
-							{
-								SectorHelper::Trade(Ship->GetParent(),
-									Station->GetParent(),
-									Resource,
-									StationMaxAffordableQuantity);
-								BreakOutOfLoop = true;
-							}
-							else
-							{
-								bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, StationMaxAffordableQuantity, Ship->GetParent(), Station->GetParent(), false);
-								if (DockingConfirmed)
-								{
-									BreakOutOfLoop = true;
-									FoundSomething = true;
-								}
-							}
-							break;
-						}
-					}
-				}
+				return true;
+				break;
 			}
-			//station wants to sell this resource, so we could potentially buy what the station has
-			if (FreeSpace > 0 && Station->GetParent()->GetActiveCargoBay()->WantSell(Resource, Ship->GetCompany()))
-			{
-				if (!Station->GetParent()->CanTradeWith(Ship->GetParent(), Unused, Resource))
-				{
-					continue;
-				}
+		}
+	}
+	return false;
+}
 
-				int32 StationQuantity = Station->GetParent()->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
-				if (StationQuantity > 0)
+bool UFlareCompanyAI::SimulateActiveTradeShipBuyOrSell(AFlareSpacecraft* Ship, FFlareResourceDescription* Resource)
+{
+	UFlareSector* ActiveSector = Game->GetActiveSector();
+	if (!ActiveSector)
+	{
+		return false;
+	}
+
+	int32 InitialQuantity = Ship->GetParent()->GetActiveCargoBay()->GetResourceQuantity(Resource, Ship->GetCompany());
+	int32 FreeSpace = Ship->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
+	TArray<AFlareSpacecraft*> LocalStations = ActiveSector->GetStations();
+	FText Unused;
+
+	bool AllowedToBuyFromStation = true;
+	bool ALlowedToSellToStation = true;
+	bool CanTradeWithStorages = true;
+	bool Donation = false;
+	int32 InventoryLimit = -1;
+	float LoadUnloadPriority = 10.f;
+	float BuySellPriority = 1.f;
+
+	UFlareTradeRoute* ShipTradeRoute = Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute();
+	if (ShipTradeRoute)
+	{
+		FFlareTradeRouteSectorOperationSave* CurrentTradeOperation = ShipTradeRoute->GetActiveOperation();
+		if (CurrentTradeOperation)
+		{
+			CanTradeWithStorages = CurrentTradeOperation->CanTradeWithStorages;
+			Donation = CurrentTradeOperation->CanDonate;
+			InventoryLimit = CurrentTradeOperation->InventoryLimit;
+
+			LoadUnloadPriority = CurrentTradeOperation->LoadUnloadPriority;
+			BuySellPriority = CurrentTradeOperation->BuySellPriority;
+
+			if (CurrentTradeOperation->Type == EFlareTradeRouteOperation::Load)
+			{
+				ALlowedToSellToStation = false;
+			}
+
+			else if (CurrentTradeOperation->Type == EFlareTradeRouteOperation::Unload)
+			{
+				AllowedToBuyFromStation = false;
+			}
+
+#ifdef DEBUG_AI_ACTIVESECTOR
+			FLOGV("UFlareCompanyAI::SimulateActiveTradeShipBuyOrSell LoadUnload %d BuySell %d", LoadUnloadPriority, BuySellPriority);
+#endif
+
+		}
+	}
+
+	while (LocalStations.Num())
+	{
+		if (ActiveSector)
+		{
+			if (ActiveSector->GetIsDestroyingSector())
+			{
+				return true;
+			}
+		}
+		else
+		{
+			return true;
+		}
+
+		int32 StationIndex = FMath::RandRange(0, LocalStations.Num() - 1);
+		AFlareSpacecraft* Station = LocalStations[StationIndex];
+		LocalStations.RemoveAtSwap(StationIndex);
+		if (!Station)
+		{
+			continue;
+		}
+
+		if (!CanTradeWithStorages && Station->GetParent()->HasCapability(EFlareSpacecraftCapability::Storage))
+		{
+			continue;
+		}
+
+		if (Station->GetParent()->GetCompany() == Ship->GetParent()->GetCompany())
+		{
+			if (LoadUnloadPriority <= 0.f)
+			{
+
+#ifdef DEBUG_AI_ACTIVESECTOR
+				FLOG("UFlareCompanyAI::SimulateActiveTradeShipBuyOrSell Target station is same company as ship. LoadUnload is <= 0.f");
+#endif
+				continue;
+			}
+		}
+		else
+		{
+			if (BuySellPriority <= 0.f)
+			{
+				continue;
+			}
+		}
+
+		//station wants to buy this resource, so we could potentially sell what the ship has
+		if (ALlowedToSellToStation && Station->GetParent()->GetActiveCargoBay()->WantBuy(Resource, Ship->GetCompany()))
+		{
+			if (!Ship->GetParent()->CanTradeWith(Station->GetParent(), Unused, Resource))
+			{
+				continue;
+			}
+
+			//we already have cargo
+			if (InitialQuantity > 0)
+			{
+				int32 StationFreeSpace = Station->GetParent()->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, Ship->GetCompany());
+				if (StationFreeSpace > 0)
 				{
-					int32 ShipMaxAffordableQuantity = 0;
+					int32 StationMaxAffordableQuantity = 0;
 
 					if (Station->GetCompany() == Ship->GetCompany())
 					{
-						ShipMaxAffordableQuantity = INT_MAX;
+						StationMaxAffordableQuantity = INT_MAX;
 					}
 					else
 					{
-						int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Ship->GetParent(), Station->GetParent(), Resource);
-						ShipMaxAffordableQuantity = FMath::Max(int64(0), Ship->GetCompany()->GetMoney()) / ResourcePrice;
+						int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Station->GetParent(), Ship->GetParent(), Resource);
+						StationMaxAffordableQuantity = FMath::Max(int64(0), Station->GetCompany()->GetMoney()) / ResourcePrice;
 					}
 
-					ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, StationQuantity);
-					ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, FreeSpace);
+					StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, InitialQuantity);
+					StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, StationFreeSpace);
 
-					// found a station willing to sell, we'll buy!
-					if (ShipMaxAffordableQuantity > 0)
+					if (InventoryLimit != -1)
+					{
+						StationMaxAffordableQuantity = FMath::Min(StationMaxAffordableQuantity, Ship->GetParent()->GetCurrentFleet()->GetFleetResourceQuantity(Resource) - InventoryLimit);
+					}
+
+					// found a station willing to buy, we'll sell!
+					if (StationMaxAffordableQuantity > 0)
 					{
 						//chance has it we're already docked, sell immediately
 						if (Station->GetDockingSystem()->IsDockedShip(Ship))
 						{
-							SectorHelper::Trade(Station->GetParent(),
-							Ship->GetParent(),
-							Resource,
-							ShipMaxAffordableQuantity);
-							BreakOutOfLoop = true;
+							int64 TransactionPrice;
+							int32 SellQuantity = SectorHelper::Trade(Ship->GetParent(),
+								Station->GetParent(),
+								Resource,
+								StationMaxAffordableQuantity,
+								&TransactionPrice,
+								Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute(),
+								Donation);
+
+							if (ShipTradeRoute)
+							{
+								FFlareTradeRouteSave* TradeRouteData = ShipTradeRoute->GetData();
+								TradeRouteData->CurrentOperationProgress += SellQuantity;
+
+								TradeRouteData->StatsUnloadResources += SellQuantity;
+								if (!Donation)
+								{
+									TradeRouteData->StatsMoneySell += TransactionPrice;
+								}
+							}
+							else if (Ship->GetParent()->GetCurrentFleet()->IsAutoTrading())
+							{
+								Ship->GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsUnloadResources += SellQuantity;
+								Ship->GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsMoneySell += TransactionPrice;
+							}
+							return true;
 						}
 						else
 						{
-							bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, ShipMaxAffordableQuantity, Station->GetParent(), Ship->GetParent(), false);
+							bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, StationMaxAffordableQuantity, Ship->GetParent(), Station->GetParent(), Donation, false);
 							if (DockingConfirmed)
 							{
-								BreakOutOfLoop = true;
-								FoundSomething = true;
+								return true;
 							}
 						}
 						break;
@@ -449,19 +563,97 @@ void UFlareCompanyAI::SimulateActiveTradeShip(AFlareSpacecraft* Ship)
 				}
 			}
 		}
+
+		//station wants to sell this resource, so we could potentially buy what the station has
+		if (AllowedToBuyFromStation && FreeSpace > 0 && Station->GetParent()->GetActiveCargoBay()->WantSell(Resource, Ship->GetCompany()))
+		{
+			if (!Station->GetParent()->CanTradeWith(Ship->GetParent(), Unused, Resource))
+			{
+				continue;
+			}
+
+			int32 StationQuantity = Station->GetParent()->GetActiveCargoBay()->GetResourceQuantitySimple(Resource);
+			if (StationQuantity > 0)
+			{
+				int32 ShipMaxAffordableQuantity = 0;
+
+				if (Station->GetCompany() == Ship->GetCompany())
+				{
+					ShipMaxAffordableQuantity = INT_MAX;
+				}
+				else
+				{
+					int32 ResourcePrice = Ship->GetParent()->GetCurrentSector()->GetTransfertResourcePrice(Ship->GetParent(), Station->GetParent(), Resource);
+					ShipMaxAffordableQuantity = FMath::Max(int64(0), Ship->GetCompany()->GetMoney()) / ResourcePrice;
+				}
+
+				ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, StationQuantity);
+				ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, FreeSpace);
+
+				if (InventoryLimit != -1)
+				{
+					ShipMaxAffordableQuantity = FMath::Min(ShipMaxAffordableQuantity, InventoryLimit - Ship->GetParent()->GetCurrentFleet()->GetFleetResourceQuantity(Resource));
+				}
+
+				// found a station willing to sell, we'll buy!
+				if (ShipMaxAffordableQuantity > 0)
+				{
+					//chance has it we're already docked, sell immediately
+					if (Station->GetDockingSystem()->IsDockedShip(Ship))
+					{
+						int64 TransactionPrice;
+						int32 BroughtResource = SectorHelper::Trade(Station->GetParent(),
+							Ship->GetParent(),
+							Resource,
+							ShipMaxAffordableQuantity,
+							&TransactionPrice,
+							Ship->GetParent()->GetCurrentFleet()->GetCurrentTradeRoute(),
+							Donation);
+
+						if (ShipTradeRoute)
+						{
+							FFlareTradeRouteSave* TradeRouteData = ShipTradeRoute->GetData();
+							TradeRouteData->CurrentOperationProgress += BroughtResource;
+
+							TradeRouteData->StatsMoneyBuy += TransactionPrice;
+							TradeRouteData->StatsLoadResources += BroughtResource;
+						}
+						else if (Ship->GetParent()->GetCurrentFleet()->IsAutoTrading())
+						{
+							Ship->GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsLoadResources += BroughtResource;
+							Ship->GetParent()->GetCurrentFleet()->GetData()->AutoTradeStatsMoneyBuy += TransactionPrice;
+						}
+
+						return true;		
+					}
+					else
+					{
+						bool DockingConfirmed = Ship->GetNavigationSystem()->DockAtAndTrade(Station, Resource, ShipMaxAffordableQuantity, Station->GetParent(), Ship->GetParent(), Donation, false);
+						if (DockingConfirmed)
+						{
+							return true;
+						}
+					}
+					break;
+				}
+			}
+		}
 	}
+	return false;
 }
-void UFlareCompanyAI::SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship)
+
+bool UFlareCompanyAI::SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship)
 {
+	bool ReturnValue = false;
 	UFlareSector* ActiveSector = Game->GetActiveSector();
 	if (!ActiveSector)
 	{
-		return;
+		return true;
 	}
 	UFlareSimulatedSector* SimulatedSector = ActiveSector->GetSimulatedSector();
 	if (!SimulatedSector)
 	{
-		return;
+		return true;
 	}
 
 	FFlareSectorBattleState BattleState = SimulatedSector->GetSectorBattleState(Company);
@@ -505,11 +697,13 @@ void UFlareCompanyAI::SimulateActiveShipAttemptUpgrades(AFlareSpacecraft* Ship)
 					if (CanSpendBudget(EFlareBudget::Trade, TransactionCost))
 					{
 						Ship->GetNavigationSystem()->DockAtAndUpgrade(NewPartDesc, 0, StationInterface->GetActive());
+						ReturnValue = true;
 					}
 				}
 			}
 		}
 	}
+	return ReturnValue;
 }
 
 bool UFlareCompanyAI::IsAboveMinimumMoney()
@@ -4239,8 +4433,7 @@ void UFlareCompanyAI::UpdateNeedyCarrierMovement(UFlareSimulatedSpacecraft* Ship
 void UFlareCompanyAI::UpdatePeaceMilitaryMovement()
 {
 	CompanyValue TotalValue = Company->GetCompanyValue();
-	int64 TotalLicenseValue = Company->GetTotalStationLicenseValue() / 2;
-	int64 TotalDefendableValue = TotalValue.StationsValue + TotalValue.StockValue + TotalValue.ShipsValue + TotalLicenseValue - TotalValue.ArmyValue;
+	int64 TotalDefendableValue = TotalValue.StationsValue + TotalValue.StockValue + TotalValue.ShipsValue + TotalValue.LicenseValue/2 - TotalValue.ArmyValue;
 	float TotalDefenseRatio = (float) TotalValue.ArmyValue / (float) TotalDefendableValue;
 
 #ifdef DEBUG_AI_PEACE_MILITARY_MOVEMENT

@@ -32,7 +32,7 @@ public:
 		Public methods
 	----------------------------------------------------*/
 
-	virtual void Initialize(class AFlareSpacecraft* ParentSpacecraft);
+	virtual void InitializeStateManager(class AFlareSpacecraft* ParentSpacecraft);
 
 	virtual void Tick(float DeltaSeconds);
 
@@ -43,12 +43,26 @@ public:
 	bool GetIsPiloted();
 
 	/** Activate or deactivate the external camera */
+	virtual void SetPlayerCameraPan(bool Val);
+
 	virtual void SetExternalCamera(bool NewState, bool DeactivateWeapons = true);
+	virtual void SetExternalCameraPanning(bool NewState);
 
 	inline bool IsExternalCamera() const
 	{
 		return ExternalCamera;
 	}
+
+	inline bool IsPlayerCameraPanHold() const
+	{
+		return PlayerCameraPanHold;
+	}
+
+	inline bool IsExternalCameraPanning() const
+	{
+		return ExternalCameraPanning;
+	}
+
 
 	inline bool IsPilotMode() const
 	{
@@ -60,14 +74,31 @@ public:
 		return PlayerAim;
 	}
 
+	inline bool GetPlayerManualLockDirection() const
+	{
+		return PlayerManualLockDirection;
+	}
+
+	inline bool GetPlayerLeftMousePressed() const
+	{
+		return PlayerLeftMousePressed;
+	}
+
+	inline bool GetPlayerRightMousePressed() const
+	{
+		return PlayerRightMousePressed;
+	}
+
 	void ResetExternalCamera();
 
 	void OnCollision();
-	
+	void UpdateCameraControls(bool IgnoreInit = false);
+
 	// Mouse aim and firing
 	virtual void SetPlayerMousePosition(FVector2D Val);
 	virtual void SetPlayerAimMouse(FVector2D Val);
 	virtual void SetPlayerLeftMouse(bool Val);
+	virtual void SetPlayerRightMouse(bool Val);
 	virtual void SetPlayerFiring(bool Val);
 
 	// Joystick aim
@@ -83,6 +114,7 @@ public:
 	virtual void SetCombatZoom(bool ZoomIn);
 
 	// Mouse movement
+
 	virtual void SetPlayerLockDirection(bool Val);
 	virtual void SetPlayerXLinearVelocity(float Val);
 	virtual void SetPlayerYLinearVelocity(float Val);
@@ -125,6 +157,7 @@ protected:
 	// Dynamic gameplay data
 	bool                                     IsPiloted;
 	bool                                     ExternalCamera;
+	bool									 ExternalCameraPanning;
 	bool									 PilotForced;
 
 	// Combat zoom
@@ -155,6 +188,8 @@ protected:
 	
 	// Manual player pilot
 	bool                                     PlayerLeftMousePressed;
+	bool									 PlayerRightMousePressed;
+	bool									 PlayerCameraPanHold;
 	bool                                     PlayerManualLockDirection;
 	FVector                                  PlayerManualAngularVelocity; // In local space
 	FVector                                  FireDirectorAngularVelocity; // In local space

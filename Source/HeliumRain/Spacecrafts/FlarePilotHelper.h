@@ -124,7 +124,7 @@ struct PilotHelper
 
 
 	/** Correct trajectory to avoid incoming ships */
-	static FVector AnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit);
+	static FVector AnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig IgnoreConfig, float SpeedLimit, bool& IsIntersecting, AActor*& MostDangerousCandidateActor);
 
 	static bool FindMostDangerousCollision(AActor*& MostDangerousCandidateActor, FVector& MostDangerousLocation, float& MostDangerousTimeToHit, float& MostDangerousInterseptDepth,
 										   AFlareSpacecraft* Ship, AnticollisionConfig IgnoreConfig, float SpeedLimit);
@@ -142,6 +142,5 @@ struct PilotHelper
 private:
 
 	/** Check if CandidateActor is dangerous on the player's trajectory */
-	static bool CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor, FVector& MostDangerousLocation, float& MostDangerousTimeToHit, float& MostDangerousInterseptDepth, AActor* CandidateActor, FVector CurrentLocation, float CurrentSize, FVector TargetVelocity, FVector CurrentVelocity, float SpeedLimit);
-
+	static bool CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor, FVector& MostDangerousLocation, float& MostDangerousTimeToHit, float& MostDangerousInterseptDepth, AActor* CandidateActor, FVector CurrentLocation, float CurrentSize, FVector TargetVelocity, FVector CurrentVelocity, float SpeedLimit, AFlareSpacecraft* Ship);
 };

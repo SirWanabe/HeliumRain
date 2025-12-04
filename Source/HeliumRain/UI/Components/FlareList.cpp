@@ -36,6 +36,7 @@ void SFlareList::Construct(const FArguments& InArgs)
 
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 	AFlarePlayerController* PC = MenuManager->GetPC();
+	OnListFilterClicked = InArgs._OnListFilterClicked;
 	OnItemSelected = InArgs._OnItemSelected;
 	OnItemUnSelected = InArgs._OnItemUnSelected;
 	HasShips = false;
@@ -819,6 +820,10 @@ void SFlareList::OnTargetSelected(TSharedPtr<FInterfaceContainer> Item, ESelectI
 void SFlareList::OnToggleShowFlags()
 {
 	RefreshList(LastDisableSort);
+	if (OnListFilterClicked.IsBound())
+	{
+		OnListFilterClicked.Execute();
+	}
 }
 
 void SFlareList::OnShipRemoved(UFlareSimulatedSpacecraft* Ship)

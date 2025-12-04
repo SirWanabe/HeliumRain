@@ -74,8 +74,6 @@ struct FFlarePlayerObjectiveData
 			}
 		}
 	}
-
-
 };
 
 /** Game save data */

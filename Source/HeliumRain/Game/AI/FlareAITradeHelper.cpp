@@ -768,7 +768,6 @@ void AITradeHelper::ApplyDeal(UFlareSimulatedSpacecraft* Ship, SectorDeal const&
 
 	AFlareGame* Game = Ship->GetGame();
 
-
 #if DEBUG_AI_TRADING
 	if (Ship->GetCompany()->GetShortName() == DEBUG_AI_TRADING_COMPANY)
 	{
@@ -1503,7 +1502,9 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 
 				if(Station->GetActiveCargoBay()->WantBuy(Resource, nullptr))
 				{
-					int32 Quantity = Station->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, nullptr);
+					int32 Quantity = 0;
+					bool QuantityAboveTradingMinQuantity = false;
+
 					if (!IsConstruction && Station->IsComplex())
 					{
 						if(Station->GetActiveCargoBay()->WantBuy(Resource, Company) && Station->GetActiveCargoBay()->WantSell(Resource, Company))
@@ -1511,9 +1512,22 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 							int32 TotalCapacity = Station->GetActiveCargoBay()->GetTotalCapacityForResource(Resource, Company);
 							Quantity = FMath::Max(0, Quantity - TotalCapacity / 2);
 						}
+						else
+						{
+							Quantity = Station->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, nullptr);
+						}
+					}
+					else
+					{
+						Quantity = Station->GetActiveCargoBay()->GetFreeSpaceForResource(Resource, nullptr);
 					}
 
-					if(Quantity > TRADING_MIN_NEED_QUANTITY || (IsConstruction && Quantity > 0))
+					if (Quantity > TRADING_MIN_NEED_QUANTITY)
+					{
+						QuantityAboveTradingMinQuantity = true;
+					}			
+
+					if(QuantityAboveTradingMinQuantity || (IsConstruction && Quantity > 0) || (IsShipyard && Quantity > 0 && float(Station->GetActiveCargoBay()->GetResourceQuantity(Resource, Company) / Station->GetActiveCargoBay()->GetTotalCapacityForResource(Resource, Company)) <= 0.95))
 					{
 						AITradeNeed Need;
 						Need.Resource = Resource;
@@ -1524,6 +1538,7 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						Need.Station = Station;
 						Need.SourceFunctionIndex = 0;
 						Need.SourceFunctionIndexIterationsPerTry = 1;
+						Need.HighPriority = 0;
 						Need.Maintenance = false;
 						Need.Consume(0); // Generate ratio
 
@@ -1532,13 +1547,16 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 							Need.HighPriority = PlayerPriority;
 							if (IsConstruction && HasLicense)
 							{
-								Need.HighPriority += 10;
+								Need.HighPriority += 15;
 							}
 
 							if (IsShipyard && Station->IsAllowExternalOrder())
 							{
-								Need.HighPriority += 10;
-								Need.SourceFunctionIndexIterationsPerTry += 1;
+								Need.HighPriority += 15;
+								if (QuantityAboveTradingMinQuantity)
+								{
+									Need.SourceFunctionIndexIterationsPerTry += 1;
+								}
 							}
 						}
 
@@ -1546,10 +1564,14 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 						{
 							if (IsConstruction)
 							{
+								Need.HighPriority += 20;
 								if (HasLicense)
 								{
+									Need.SourceFunctionIndexIterationsPerTry += 2;
+								}
+								else
+								{
 									Need.SourceFunctionIndexIterationsPerTry += 1;
-									Need.HighPriority += 15;
 								}
 							}
 
@@ -1557,13 +1579,19 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 							{
 								if (Company == ST->Pirates)
 								{
-									Need.HighPriority += 15;
-									Need.SourceFunctionIndexIterationsPerTry += 1;
+									Need.HighPriority += 20;
+									if (QuantityAboveTradingMinQuantity)
+									{
+										Need.SourceFunctionIndexIterationsPerTry += 1;
+									}
 								}
 								else
 								{
-									Need.HighPriority += 25;
-									Need.SourceFunctionIndexIterationsPerTry += 2;
+									Need.HighPriority += 30;
+									if (QuantityAboveTradingMinQuantity)
+									{
+										Need.SourceFunctionIndexIterationsPerTry += 2;
+									}
 								}
 							}
 						}
@@ -1585,7 +1613,6 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 									uint32 InputQuantityCycles = Factory->GetInputResourceQuantityCycles(Resource);
 									if (InputQuantityCycles >= 0 && InputQuantityCycles < SeekingCycles)
 									{
-
 										{
 											Need.HighPriority += (SeekingCycles - InputQuantityCycles);
 										}
@@ -1600,10 +1627,26 @@ void AITradeHelper::GenerateTradingNeeds(AITradeNeeds& Needs, AITradeNeeds& Main
 							}
 
 							Need.HighPriority *= float(1 + (FactoriesAtMinimumEfficiency * 0.50));
-							if (HasLicense && FactoriesAtMinimumEfficiency > 0)
+
+							if (HasLicense)
 							{
-								Need.SourceFunctionIndexIterationsPerTry += 1;
+								if (FactoriesAtMinimumEfficiency > 0 ||
+									Need.Quantity >= Need.TotalCapacity*0.90)
+								{
+									Need.SourceFunctionIndexIterationsPerTry += 1;
+								}
+
+								//have absolutely no resources in the slot, increase priority
+								if (Need.Quantity == Need.TotalCapacity)
+								{
+									Need.HighPriority += Station->GetLevel();
+								}
 							}
+							/*
+							if (Station->HasCapability(EFlareSpacecraftCapability::Consumer))
+							{
+							}
+							*/
 						}
 
 						if(Station->HasCapability(EFlareSpacecraftCapability::Storage) && !IsConstruction)
@@ -1884,7 +1927,7 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 		{
 			if (SourceFunctionIndexIterationsPerTry > 0)
 			{
-
+/*
 				FLOGV("Need still has more attempts before moving to others : %s %s in %s: %d/%d %s. Remaining SourceFunctionIndexIterationsPerTry %d.",
 					*Need.Company->GetCompanyName().ToString(),
 					*Need.Station->GetImmatriculation().ToString(),
@@ -1892,8 +1935,8 @@ bool AITradeHelper::ProcessNeed(AITradeNeed& Need, AITradeSources& Sources, AITr
 					Need.Quantity,
 					Need.TotalCapacity,
 					*Need.Resource->Name.ToString(),
-					SourceFunctionIndexIterationsPerTry
-				);
+					SourceFunctionIndexIterationsPerTry);
+*/
 
 				return ProcessNeed(Need, Sources, MaintenanceSources, IdleShips, CompaniesMoney, SourceFunctionIndexIterationsPerTry);
 			}

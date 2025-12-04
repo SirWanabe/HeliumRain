@@ -40,6 +40,11 @@ public:
 	/** Info text */
 	FText GetDetailText(UFlareTradeRoute* TradeRoute) const;
 
+	void OnMoveUp(int32 Index);
+	void OnMoveDown(int32 Index);
+	bool IsMoveUpDisabled(int32 Index) const;
+	bool IsMoveDownDisabled(int32 Index) const;
+
 	/** Can we add more fleets ? */
 	bool IsNewTradeRouteDisabled() const;
 

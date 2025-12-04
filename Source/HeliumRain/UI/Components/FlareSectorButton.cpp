@@ -537,7 +537,7 @@ FText SFlareSectorButton::GetSectorText() const
 	// Get display mode
 
 	AFlareMenuManager* MenuManager = AFlareMenuManager::GetSingleton();
-	FText SectorText;
+	FText SectorButtonText;
 
 	EFlareOrbitalMode::Type DisplayMode = MenuManager->GetOrbitMenu()->GetDisplayMode();
 	if (MenuManager->GetCurrentMenu() == EFlareMenu::MENU_TradeRoute)
@@ -585,8 +585,8 @@ FText SFlareSectorButton::GetSectorText() const
 				}
 			}
 
-			SectorText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations{1}");
-			SectorText = FText::Format(SectorText, FText::AsNumber(TotalSectorStations), FText::FromString(DetailedStationString));
+			SectorButtonText = Sector->GetSectorStations().Num() == 1 ? LOCTEXT("Station", "{0} station") : LOCTEXT("Stations", "{0} stations{1}");
+			SectorButtonText = FText::Format(SectorButtonText, FText::AsNumber(TotalSectorStations), FText::FromString(DetailedStationString));
 			}
 
 		else if (DisplayMode == EFlareOrbitalMode::Ships && Sector->GetSectorShips().Num() > 0)
@@ -623,17 +623,17 @@ FText SFlareSectorButton::GetSectorText() const
 					}
 				}
 			}
-			SectorText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships{1}");
-			SectorText = FText::Format(SectorText, FText::AsNumber(TotalSectorShips), FText::FromString(DetailedShipString));
+			SectorButtonText = Sector->GetSectorShips().Num() == 1 ? LOCTEXT("Ship", "{0} ship") : LOCTEXT("Ships", "{0} ships{1}");
+			SectorButtonText = FText::Format(SectorButtonText, FText::AsNumber(TotalSectorShips), FText::FromString(DetailedShipString));
 		}
 
 		else if (DisplayMode == EFlareOrbitalMode::Battles)
 		{
-			SectorText = Sector->GetSectorBattleStateText(PlayerCompany);
+			SectorButtonText = Sector->GetSectorBattleStateText(PlayerCompany);
 		}
 	}
 
-	return SectorText;
+	return SectorButtonText;
 }
 
 const FSlateBrush* SFlareSectorButton::GetBackgroundBrush() const

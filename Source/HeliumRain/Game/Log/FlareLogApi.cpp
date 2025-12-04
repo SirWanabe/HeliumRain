@@ -29,7 +29,6 @@ void GameLog::GameUnloaded()
 	FFlareLogWriter::PushWriterMessage(Message);
 }
 
-
 void GameLog::DaySimulated(int64 NewDate)
 {
 	FlareLogMessage Message;
@@ -40,6 +39,22 @@ void GameLog::DaySimulated(int64 NewDate)
 		FlareLogMessageParam Param;
 		Param.Type = EFlareLogParam::Integer;
 		Param.IntValue = NewDate;
+		Message.Params.Add(Param);
+	}
+
+	FFlareLogWriter::PushWriterMessage(Message);
+}
+
+void GameLog::GenericEvent(FString PrintedString)
+{
+	FlareLogMessage Message;
+	Message.Target = EFlareLogTarget::Game;
+	Message.Event = EFlareLogEvent::GENERIC_EVENT;
+
+	{
+		FlareLogMessageParam Param;
+		Param.Type = EFlareLogParam::String;
+		Param.StringValue = PrintedString;
 		Message.Params.Add(Param);
 	}
 
@@ -61,6 +76,7 @@ void GameLog::AIConstructionStart(UFlareCompany* Company,
 		Param.StringValue = Company->GetShortName().ToString();
 		Message.Params.Add(Param);
 	}
+
 	{
 		FlareLogMessageParam Param;
 		Param.Type = EFlareLogParam::String;

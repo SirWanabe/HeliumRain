@@ -32,6 +32,7 @@ public:
 	/** Set the ship to display data for */
 	void OnPlayerShipChanged();
 
+	void HudMenuTick(float InDeltaTime);
 
 protected:
 
@@ -39,8 +40,7 @@ protected:
 		Events
 	----------------------------------------------------*/
 
-	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
-
+//	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 	/*----------------------------------------------------
 		Callbacks
@@ -48,6 +48,8 @@ protected:
 
 	/** Get the visibility of the top panel depending on overlay visibility */
 	EVisibility GetTopPanelVisibility() const;
+
+	EVisibility GetDockingVisibility() const;
 
 	/** Get the current information to show */
 	FText GetInfoText() const;
@@ -74,7 +76,28 @@ protected:
 	/** Get the text for the outage duration */
 	FText GetOutageText() const;
 
+	FSlateColor GetDockingDistanceColor() const;
+	FSlateColor GetDockingDistanceColorNoAlpha() const;
+	TOptional<float> GetDockingDistanceProgress() const;
+	FText GetDockingDistanceText() const;
 
+	FSlateColor GetDockingLinearColor() const;
+	FSlateColor GetDockingLinearColorNoAlpha() const;
+	TOptional<float> GetDockingLinearProgress() const;
+	FText GetDockingLinearText() const;
+
+	FSlateColor GetDockingRollColor() const;
+	FSlateColor GetDockingRollColorNoAlpha() const;
+	TOptional<float> GetDockingRollProgress() const;
+	FText GetDockingRollText() const;
+
+	FSlateColor GetDockingAngularColor() const;
+	FSlateColor GetDockingAngularColorNoAlpha() const;
+	TOptional<float> GetDockingAngularProgress() const;
+	FText GetDockingAngularText() const;
+
+	void SetDockingInfoToDefaults();
+	
 protected:
 
 	/*----------------------------------------------------
@@ -107,4 +130,17 @@ protected:
 	float                                TimeSinceOverheatChanged;
 	float                                TimeSinceOutageChanged;
 
+	bool DockingInProgress;
+
+	float DockingDistanceRatio;
+	FText DockingDistanceText;
+
+	float DockingLinearRatio;
+	FText DockingLinearText;
+
+	float DockingRollRatio;
+	FText DockingRollText;
+
+	float DockingAngularRatio;
+	FText DockingAngularText;
 };

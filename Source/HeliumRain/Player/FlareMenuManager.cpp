@@ -265,6 +265,14 @@ void AFlareMenuManager::CloseMainOverlay()
 	}
 }
 
+void AFlareMenuManager::UpdateNavHudVisibility()
+{
+	if (GetPC()->GetNavHUD())
+	{
+		GetPC()->GetNavHUD()->UpdateHUDVisibility();
+	}
+}
+
 bool AFlareMenuManager::ToggleMenu(EFlareMenu::Type Target)
 {
 	if(GetCurrentMenu() != Target)
@@ -973,8 +981,7 @@ void AFlareMenuManager::Travel()
 		// Reload sector to update it after the departure of a fleet
 		else if (PlayerFleet->GetCurrentSector() == NextMenu.Value.Travel->GetSourceSector())
 		{
-			GetGame()->DeactivateSector();
-			GetGame()->ActivateCurrentSector();
+			GetGame()->ReactivateSector();
 		}
 	}
 
@@ -1138,7 +1145,8 @@ void AFlareMenuManager::InspectCompany()
 	UFlareCompany* Company = (NextMenu.Value.Company) ? NextMenu.Value.Company : GetPC()->GetCompany();
 	FCHECK(Company);
 
-	CompanyMenu->Enter(Company);
+	UFlareSimulatedSpacecraft* MenuTarget = NextMenu.Value.Spacecraft;
+	CompanyMenu->Enter(Company, MenuTarget);
 }
 
 void AFlareMenuManager::InspectShip(bool IsEditable)
@@ -1447,7 +1455,7 @@ FString AFlareMenuManager::GetMenuKey(EFlareMenu::Type MenuType)
 		case EFlareMenu::MENU_Technology:     Key = "TechnologyMenu";   break;
 		case EFlareMenu::MENU_Quest:          Key = "QuestMenu";        break;
 		case EFlareMenu::MENU_Main:           Key = "MainMenu";         break;
-//		case EFlareMenu::MENU_Help:		      Key = "HelpMenu";		    break;
+		case EFlareMenu::MENU_Help:		      Key = "HelpMenu";		    break;
 		case EFlareMenu::MENU_Settings:       Key = "SettingsMenu";     break;
 		default:                              Key = "NoKey";
 	}

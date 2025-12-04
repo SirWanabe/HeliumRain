@@ -95,6 +95,8 @@ public:
 	/** Inspect the current spacecraft */
 	void OnInspect();
 
+	void OnTransactions();
+
 	/** Target the current spacecraft */
 	void OnTarget();
 
@@ -196,6 +198,7 @@ protected:
 	// Slate data (buttons)
 	TSharedPtr<SVerticalBox>          MessageBox;
 	TSharedPtr<SFlareButton>          InspectButton;
+	TSharedPtr<SFlareButton>          TransactionsButton;
 	TSharedPtr<SFlareButton>          TargetButton;
 	TSharedPtr<SFlareButton>          UpgradeButton;
 	TSharedPtr<SFlareButton>          TradeButton;

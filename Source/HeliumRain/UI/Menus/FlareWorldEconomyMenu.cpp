@@ -697,6 +697,7 @@ void SFlareWorldEconomyMenu::Construct(const FArguments& InArgs)
 					.WidthAdjuster(1.25f)
 					.UseCompactDisplay(false)
 					.Title(LOCTEXT("Stations", "Stations"))
+					.OnListFilterClicked(this, &SFlareWorldEconomyMenu::OnListFilterSelected)
 				]
 			]
 		]
@@ -962,6 +963,21 @@ EVisibility SFlareWorldEconomyMenu::GetStationFiltersCompanyVisibility() const
 void SFlareWorldEconomyMenu::OnToggleShowFlags()
 {
 	RefreshStationList();
+}
+
+void SFlareWorldEconomyMenu::OnListFilterSelected()
+{
+	FString FormattedNumber = FString::FormatAsNumber(StationList->GetFilteredItemCount());
+	if (!StationShipMode)
+	{
+		StationList->SetTitle(FText::Format(LOCTEXT("StationsHeader", "Stations ({0})"),
+			FText::FromString(FormattedNumber)));
+	}
+	else
+	{
+		StationList->SetTitle(FText::Format(LOCTEXT("ShipsHeader", "Ships ({0})"),
+			FText::FromString(FormattedNumber)));
+	}
 }
 
 void SFlareWorldEconomyMenu::OnStationShip()
@@ -1316,20 +1332,8 @@ void SFlareWorldEconomyMenu::RefreshStationList()
 		}
 	}
 
-	FString FormattedNumber = FString::FormatAsNumber(StationList->GetItemCount());
-	if (!StationShipMode)
-	{
-		StationList->SetTitle(FText::Format(LOCTEXT("StationsHeader", "Stations ({0})"),
-		FText::FromString(FormattedNumber)));
-	}
-	else
-	{
-		StationList->SetTitle(FText::Format(LOCTEXT("ShipsHeader", "Ships ({0})"),
-		FText::FromString(FormattedNumber)));
-	}
-
 	StationList->RefreshList(DisableDefaultSorting);
-
+	OnListFilterSelected();
 }
 
 void SFlareWorldEconomyMenu::Setup()

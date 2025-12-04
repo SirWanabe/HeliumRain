@@ -695,6 +695,18 @@ struct FFlareFactoryDescription
 		}
 		return false;
 	}
+
+	bool IsBuildStation() const
+	{
+		for (int32 Index = 0; Index < OutputActions.Num(); Index++)
+		{
+			if (OutputActions[Index].Action == EFlareFactoryAction::BuildStation)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 };
 
 /** Catalog data structure for a spacecraft */
@@ -912,7 +924,7 @@ struct FFlareSpacecraftDescription
 	bool IsComplex() const;
 	bool IsResearch() const;
 	bool IsTelescope() const;
-	static const FSlateBrush* GetIcon(FFlareSpacecraftDescription* Characteristic);
+	static const FSlateBrush* GetDescriptionIcon(FFlareSpacecraftDescription* Characteristic, bool IsObjective = false);
 };
 /** Spacecraft save data */
 USTRUCT()
@@ -959,7 +971,6 @@ struct FFlareSpacecraftSave
 	/** Ship immatriculation. In the event of a ship capture this value gets set to the captured ships new immatriculation for the now dead ship*/
 	UPROPERTY(EditAnywhere, Category = Save)
 	FName ImmatriculationReplacement;
-
 
 	/** Ship nickname. Readable for the player */
 	UPROPERTY(EditAnywhere, Category = Save)
@@ -1047,6 +1058,10 @@ struct FFlareSpacecraftSave
 	/** Is a trade in progress */
 	bool IsTrading;
 
+	/** Immatriculation of what we are trading with*/
+	UPROPERTY(EditAnywhere, Category = Save)
+	FName IsTradingWith;
+
 	/** Simple number to represent the reason for trading. A value of 1 is reserved for carriers automatically trading for their resources*/
 	int32 TradingReason;
 
@@ -1068,15 +1083,15 @@ struct FFlareSpacecraftSave
 
 	/** Actor to attach to */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName AttachActorName;
+	FName AttachActorName;
 
 	/** Station complex to attach to */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName AttachComplexStationName;
+	FName AttachComplexStationName;
 
 	/** Station complex dock to attach to */
 	UPROPERTY(EditAnywhere, Category = Save)
-		FName AttachComplexConnectorName;
+	FName AttachComplexConnectorName;
 
 	/** Is a in sector reserve */
 	bool IsReserve;

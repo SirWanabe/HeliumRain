@@ -36,6 +36,7 @@ DECLARE_CYCLE_STAT(TEXT("FlareShipPilot FindBestHostileTarget"), STAT_FlareShipP
 DECLARE_CYCLE_STAT(TEXT("FlareShipPilot ExitAvoidance"), STAT_FlareShipPilot_ExitAvoidance, STATGROUP_Flare);
 
 #define PILOT_AI_TICKRATE_LARGE 0.025f
+#define PILOT_AI_TICKRATE_SMALL 0.010f
 
 #define PILOT_ANTICOLLISION_SPEED -200.f
 //Large ships get 4 subordinates = wing of 5 ships
@@ -85,6 +86,25 @@ UFlareShipPilot::UFlareShipPilot(const class FObjectInitializer& PCIP)
 	Gameplay events
 ----------------------------------------------------*/
 
+void UFlareShipPilot::Initialize(const FFlareShipPilotSave* Data, UFlareCompany* Company, AFlareSpacecraft* OwnerShip)
+{
+	// Main data
+	Ship = OwnerShip;
+	PlayerCompany = Company;
+
+	// Setup properties
+	if (Data)
+	{
+		ShipPilotData = *Data;
+	}
+
+	AttackAngle = FMath::FRandRange(0, 360);
+	LeaderShip = Ship;
+	LastNewCollisionVector = 0;
+
+	PilotTarget = Ship->GetCurrentTarget();
+}
+
 void UFlareShipPilot::TickPilot(float DeltaSeconds)
 {
 	if (Ship->GetNavigationSystem()->IsAutoPilot())
@@ -93,17 +113,25 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 	}
 	else
 	{
-		TotalTimeAutoPiloting = 0;
+		TotalTimeAutoPiloting = 0.f;
 	}
 
+	PreviousTick += DeltaSeconds;
 	if (Ship->GetSize() == EFlarePartSize::L)
 	{
-		PreviousTick += DeltaSeconds;
 		if (PreviousTick < PILOT_AI_TICKRATE_LARGE)
 		{
 			return;
 		}
 		PreviousTick -= PILOT_AI_TICKRATE_LARGE;
+	}
+	else
+	{
+		if (PreviousTick < PILOT_AI_TICKRATE_SMALL)
+		{
+			return;
+		}
+		PreviousTick -= PILOT_AI_TICKRATE_SMALL;
 	}
 
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Tick);
@@ -178,25 +206,6 @@ void UFlareShipPilot::TickPilot(float DeltaSeconds)
 	}
 }
 
-void UFlareShipPilot::Initialize(const FFlareShipPilotSave* Data, UFlareCompany* Company, AFlareSpacecraft* OwnerShip)
-{
-	// Main data
-	Ship = OwnerShip;
-	PlayerCompany = Company;
-
-	// Setup properties
-	if (Data)
-	{
-		ShipPilotData = *Data;
-	}
-
-	AttackAngle = FMath::FRandRange(0, 360);
-	LeaderShip = Ship;
-	LastNewCollisionVector = 0;
-
-	PilotTarget = Ship->GetCurrentTarget();
-}
-
 /*----------------------------------------------------
 	Pilot functions
 ----------------------------------------------------*/
@@ -231,7 +240,7 @@ bool UFlareShipPilot::DroneReturnToCarrier(float DeltaSeconds)
 		FVector TargetAxis = DeltaLocation;
 		AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1, 0, 0), TargetAxis, FVector::ZeroVector, DeltaSeconds);
 
-		LinearTargetVelocity = (LocalMaster->GetActorLocation() - Ship->GetActorLocation()).GetUnsafeNormal()  * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
+		LinearTargetVelocity = (LocalMaster->GetActorLocation() - Ship->GetActorLocation()).GetUnsafeNormal() * Ship->GetNavigationSystem()->GetLinearMaxVelocity();
 
 		LinearTargetVelocity += LinearTargetVelocity.GetUnsafeNormal() * FVector::DotProduct(PilotTarget.GetLinearVelocity() / 100.f, LinearTargetVelocity.GetUnsafeNormal());
 
@@ -257,14 +266,6 @@ void UFlareShipPilot::ArmedStationPilot(float DeltaSeconds)
 		if (TimeUntilNextHostileTargetSwitch <= 0)
 		{
 			FindBestHostileTarget(EFlareCombatTactic::AttackMilitary);
-			if (InitiatedCombat)
-			{
-				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
-			}
-			else
-			{
-				TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
-			}
 		}
 
 		if (!Ship->IsImmobileStation())
@@ -295,15 +296,6 @@ void UFlareShipPilot::SetupNewTarget()
 
 	CurrentTactic = Ship->GetCompany()->GetTacticManager()->GetCurrentTacticForShipGroup(CombatGroup);
 	FindBestHostileTarget(CurrentTactic);
-
-	if (InitiatedCombat)
-	{
-		TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
-	}
-	else
-	{
-		TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
-	}
 }
 
 void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
@@ -347,9 +339,6 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 		if (TimeUntilNextHostileTargetSwitch <= 0)
 		{
 			//todo: Add neccessary events so that target checks out-side of combat are no longer required
-
-			SetupNewTarget();
-
 			if (!LeaderShip || LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed())
 			{
 				GetNewLeaderShip();
@@ -357,6 +346,8 @@ void UFlareShipPilot::MilitaryPilot(float DeltaSeconds)
 
 			if (LeaderShip == Ship)
 			{
+				SetupNewTarget();
+
 				if (InitiatedCombat)
 				{
 					if (FoundOutOfCombatLeader)
@@ -995,7 +986,6 @@ void UFlareShipPilot::FighterPilot(float DeltaSeconds)
 	// Anticollision
 	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, PilotHelper::AnticollisionConfig(), DeltaSeconds);
 
-
 	if (ClearTarget)
 	{
 		PilotTarget.Clear();
@@ -1382,7 +1372,14 @@ FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* TargetShip
 	LastNewCollisionVector -= DeltaSeconds;
 	if (LastNewCollisionVector <= 0)
 	{
-		PreviousAntiCollisionVector = PilotHelper::AnticollisionCorrection(TargetShip, LinearTargetVelocity, RequiredAntiCollisionPreviousTick ? TargetShip->GetPreferedAnticollisionTime() : TargetShip->GetCautiousAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED);
+		AActor* MostDangerousCandidateActor = NULL;
+		bool IsIntersecting = false;
+
+		FVector CollisionAlteredVector = PilotHelper::AnticollisionCorrection(TargetShip, LinearTargetVelocity, RequiredAntiCollisionPreviousTick ? TargetShip->GetPreferedAnticollisionTime() : TargetShip->GetCautiousAnticollisionTime(), IgnoreConfig, PILOT_ANTICOLLISION_SPEED, IsIntersecting, MostDangerousCandidateActor);
+
+//		if (MostDangerousCandidateActor && IsIntersecting)
+		PreviousAntiCollisionVector = CollisionAlteredVector;
+
 		if (PreviousAntiCollisionVector == InitialVelocity)
 		{
 			LastNewCollisionVector = CollisionVectorReactionTimeSlow;
@@ -1394,6 +1391,7 @@ FVector UFlareShipPilot::TryAnticollisionCorrection(AFlareSpacecraft* TargetShip
 			RequiredAntiCollisionPreviousTick = true;
 		}
 	}
+
 	return PreviousAntiCollisionVector;
 }
 
@@ -1410,7 +1408,10 @@ void UFlareShipPilot::FollowLeaderShip(int32 DefaultRadius)
 	if (Ship->GetCompany() == Ship->GetGame()->GetPC()->GetCompany())
 	{
 		// To keep current with the current player ship
-		GetNewLeaderShip();
+		if (Ship->GetParent()->GetCurrentFleet() == Ship->GetGame()->GetPC()->GetPlayerFleet())
+		{
+			GetNewLeaderShip();
+		}
 	}
 
 	float FollowRadius = (MaxFollowDistance + DefaultRadius) + FMath::Pow(LeaderShip->GetInSectorSquad().Num() * 4 * FMath::Pow(10000, 3), 1 / 3.);
@@ -1434,12 +1435,12 @@ void UFlareShipPilot::GetNewLeaderShip()
 	{
 		if (Ship->GetParent()->GetCurrentFleet() == Ship->GetGame()->GetPC()->GetPlayerFleet())
 		{
-			if (LeaderShip && LeaderShip->GetParent()->GetDamageSystem()->IsAlive())
+			if (LeaderShip != Ship->GetGame()->GetPC()->GetShipPawn())
 			{
 				LeaderShip = Ship->GetGame()->GetPC()->GetShipPawn();
 				SelectedNewLeader(OldLeaderShip);
-				return;
 			}
+			return;
 		}
 	}
 
@@ -1536,7 +1537,6 @@ void UFlareShipPilot::SelectedNewLeader(AFlareSpacecraft* OldLeaderShip)
 	}
 }
 
-
 void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_Flagship);
@@ -1549,13 +1549,15 @@ void UFlareShipPilot::FlagShipPilot(float DeltaSeconds)
 
 	if (LeaderShip != Ship)
 	{
-		if (LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed() || LeaderShip->GetParent()->GetDamageSystem()->IsUncontrollable())
+		if (!LeaderShip || LeaderShip->GetParent()->GetDamageSystem()->IsDisarmed() || LeaderShip->GetParent()->GetDamageSystem()->IsUncontrollable())
 		{
 			LeaderShip = Ship;
 		}
+
 		else if(CurrentTactic == EFlareCombatTactic::ProtectMe || CurrentTactic == EFlareCombatTactic::StandDown)
 		{
 			FollowLeaderShip(7500);
+			LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, PilotHelper::AnticollisionConfig(), DeltaSeconds);
 			return;
 		}
 	}
@@ -1605,7 +1607,6 @@ void UFlareShipPilot::FlagShipMovement(float DeltaSeconds)
 	float Distance = DeltaLocation.Size() * 0.01f; // Distance in meters
 
 	//FLOGV("DeltaLocation %f", DeltaLocation.Size());
-
 	AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1,0,0), DeltaLocation.GetUnsafeNormal(), FVector::ZeroVector, DeltaSeconds);
 	AngularTargetVelocity = AngularTargetVelocity.GetClampedToMaxSize(10.f);
 
@@ -1619,9 +1620,10 @@ void UFlareShipPilot::FlagShipMovement(float DeltaSeconds)
 	}
 
 	// Anticollision
-	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, PilotHelper::AnticollisionConfig(), DeltaSeconds);
-	FVector FrontAxis = Ship->Airframe->GetComponentToWorld().GetRotation().RotateVector(FVector(1,0,0));
 
+	LinearTargetVelocity = TryAnticollisionCorrection(Ship, LinearTargetVelocity, PilotHelper::AnticollisionConfig(), DeltaSeconds);
+
+	FVector FrontAxis = Ship->Airframe->GetComponentToWorld().GetRotation().RotateVector(FVector(1,0,0));
 	if (FVector::DotProduct(FrontAxis, LinearTargetVelocity.GetUnsafeNormal()) > 0.9 && (LinearTargetVelocity - Ship->Airframe->GetPhysicsLinearVelocity()).Size() > 500)
 	{
 		UseOrbitalBoost = true;
@@ -1687,19 +1689,22 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 
 	Ship->GetWeaponsSystem()->UpdateTargetPreference(TargetPreferences);
 
-
 	float MinAmmoRatio = 1.f;
 
-
 	UFlareSpacecraftComponentsCatalog* Catalog = Ship->GetGame()->GetShipPartsCatalog();
-	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
-	{
-		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
-		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
 
-		if (ComponentDescription->Type == EFlarePartType::Weapon)
+	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetActiveSpacecraftComponents().Num(); ComponentIndex++)
+//	for (int32 ComponentIndex = 0; ComponentIndex < Ship->GetData().Components.Num(); ComponentIndex++)
+	{
+//		FFlareSpacecraftComponentSave* ComponentData = &Ship->GetData().Components[ComponentIndex];
+//		FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentData->ComponentIdentifier);
+
+		UFlareWeapon* Weapon = Cast<UFlareWeapon>(Ship->GetActiveSpacecraftComponents()[ComponentIndex]);
+		if (Weapon)
+//		if (ComponentDescription->Type == EFlarePartType::Weapon)
 		{
-			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) / ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+//			float AmmoRatio = float(ComponentDescription->WeaponCharacteristics.AmmoCapacity - ComponentData->Weapon.FiredAmmo) / ComponentDescription->WeaponCharacteristics.AmmoCapacity;
+			float AmmoRatio = float(Weapon->GetCurrentAmmo() / Weapon->GetDescription()->WeaponCharacteristics.AmmoCapacity);
 			if (AmmoRatio < MinAmmoRatio)
 			{
 				MinAmmoRatio = AmmoRatio;
@@ -1764,6 +1769,15 @@ void UFlareShipPilot::FindBestHostileTarget(EFlareCombatTactic::Type Tactic)
 
 	TargetCandidate = PilotHelper::GetBestTarget(Ship, TargetPreferences);
 	SelectNewHostileTarget(TargetCandidate);
+
+	if (InitiatedCombat)
+	{
+		TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeFast;
+	}
+	else
+	{
+		TimeUntilNextHostileTargetSwitch = HostileTargetSwitchReactionTimeSlow;
+	}
 }
 
 void UFlareShipPilot::SelectNewHostileTarget(PilotHelper::PilotTarget TargetCandidate)
@@ -1850,13 +1864,6 @@ int32 UFlareShipPilot::GetPreferedWeaponGroup() const
 FVector UFlareShipPilot::ExitAvoidance(AFlareSpacecraft* TargetShip, FVector InitialVelocityTarget, float CurveTrajectoryLimit, float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_ExitAvoidance);
-
-	// DEBUG
-	/*if(TargetShip->GetImmatriculation() != "PIRSPX-Arrow")
-	{
-
-		return InitialVelocityTarget;
-	}*/
 
 	TimeUntilNextExitAvoidanceCheck -= DeltaSeconds;
 	if (TimeUntilNextExitAvoidanceCheck > 0 && !RunningExitAvoidance)
@@ -1971,7 +1978,7 @@ void UFlareShipPilot::FindPilotAvoidShip(float DeltaSeconds)
 	SCOPE_CYCLE_COUNTER(STAT_FlareShipPilot_AvoidShip);
 	TimeUntilNextPilotAvoidCheck -= DeltaSeconds;
 
-	if (PilotAvoidShip!= nullptr && IsValid(PilotAvoidShip))
+	if (PilotAvoidShip != nullptr && IsValid(PilotAvoidShip))
 	{
 		if (PilotAvoidShip->IsSafeDestroying())
 		{

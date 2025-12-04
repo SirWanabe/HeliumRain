@@ -90,7 +90,6 @@ void UFlarePeople::Simulate()
 		return;
 	}
 
-
 	SimulateResourcePurchase();
 
 	float Happiness = GetHappiness();
@@ -537,7 +536,7 @@ float UFlarePeople::GetRessourceConsumption(FFlareResourceDescription* Resource,
 			return PeopleData.Population * PeopleData.FoodConsumption / 1000.f;
 		}
 
-		uint32 FoodToHave =  MIN_GENERAL_STOCK + PeopleData.Population * PeopleData.FoodConsumption * FOOD_NEED_STOCK; // In kg
+		uint32 FoodToHave = MIN_GENERAL_STOCK + PeopleData.Population * PeopleData.FoodConsumption * FOOD_NEED_STOCK; // In kg
 		if(FoodToHave > PeopleData.FoodStock)
 		{
 			uint32 FoodToBuy = FoodToHave - PeopleData.FoodStock;

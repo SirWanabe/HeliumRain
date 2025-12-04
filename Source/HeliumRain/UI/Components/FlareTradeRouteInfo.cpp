@@ -108,7 +108,7 @@ void SFlareTradeRouteInfo::Update()
 {
 	Clear();
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
-
+	int32 CurrentIndex = 0;
 	// List trade routes
 	for (UFlareTradeRoute* TradeRoute : MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes())
 	{
@@ -140,26 +140,32 @@ void SFlareTradeRouteInfo::Update()
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
-					SNew(SFlareButton)
-					.Transparent(true)
-					.Text(FText())
-					.HelpText(LOCTEXT("PauseTradeRouteHelp", "Pause or restart this trade route"))
-					.Icon(this, &SFlareTradeRouteInfo::GetTogglePauseTradeRouteIcon, TradeRoute)
-					.OnClicked(this, &SFlareTradeRouteInfo::OnTogglePauseTradeRoute, TradeRoute)
-					.Width(1)
-				]
-
-				// Remove
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(SFlareButton)
-					.Transparent(true)
-					.Text(FText())
-					.HelpText(LOCTEXT("RemoveTradeRouteHelp", "Remove this trade route"))
-					.Icon(FFlareStyleSet::GetIcon("Stop"))
-					.OnClicked(this, &SFlareTradeRouteInfo::OnDeleteTradeRoute, TradeRoute)
-					.Width(1)
+					// Buttons
+					SNew(SHorizontalBox)
+					// Inspect
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SFlareButton)
+						.Transparent(true)
+						.Text(FText())
+						.HelpText(LOCTEXT("PauseTradeRouteHelp", "Pause or restart this trade route"))
+						.Icon(this, &SFlareTradeRouteInfo::GetTogglePauseTradeRouteIcon, TradeRoute)
+						.OnClicked(this, &SFlareTradeRouteInfo::OnTogglePauseTradeRoute, TradeRoute)
+						.Width(1)
+					]
+					// Remove
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SFlareButton)
+						.Transparent(true)
+						.Text(FText())
+						.HelpText(LOCTEXT("RemoveTradeRouteHelp", "Remove this trade route"))
+						.Icon(FFlareStyleSet::GetIcon("Stop"))
+						.OnClicked(this, &SFlareTradeRouteInfo::OnDeleteTradeRoute, TradeRoute)
+						.Width(1)
+					]
 				]
 			]
 
@@ -168,15 +174,74 @@ void SFlareTradeRouteInfo::Update()
 			.AutoHeight()
 			.Padding(Theme.SmallContentPadding)
 			[
-				SNew(SRichTextBlock)
-				.TextStyle(&Theme.TextFont)
-				.Text(this, &SFlareTradeRouteInfo::GetDetailText, TradeRoute)
-				.WrapTextAt(Theme.ContentWidth / 2)
-				.DecoratorStyleSet(&FFlareStyleSet::Get())
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SBox)
+					.WidthOverride(333)
+					[
+						SNew(SRichTextBlock)
+						.TextStyle(&Theme.TextFont)
+						.Text(this, &SFlareTradeRouteInfo::GetDetailText, TradeRoute)
+//						.WrapTextAt(Theme.ContentWidth / 2)
+						.WrapTextAt(333)
+						.DecoratorStyleSet(&FFlareStyleSet::Get())
+					]
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SFlareButton)
+					.Transparent(true)
+					.Text(FText())
+					.HelpText(LOCTEXT("PauseTradeRouteHelp", "Pause or restart this trade route"))
+					.Icon(FFlareStyleSet::GetIcon("MoveUp"))
+					.OnClicked(this, &SFlareTradeRouteInfo::OnMoveUp, CurrentIndex)
+					.IsDisabled(this, &SFlareTradeRouteInfo::IsMoveUpDisabled, CurrentIndex)
+					.Width(1)
+				]
+				// TradeDown
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SFlareButton)
+					.Transparent(true)
+					.Text(FText())
+					.HelpText(LOCTEXT("RemoveTradeRouteHelp", "Remove this trade route"))
+					.Icon(FFlareStyleSet::GetIcon("MoveDown"))
+					.OnClicked(this, &SFlareTradeRouteInfo::OnMoveDown, CurrentIndex)
+					.IsDisabled(this, &SFlareTradeRouteInfo::IsMoveDownDisabled, CurrentIndex + 1)
+					.Width(1)
+				]
 			]
 		];
+		++CurrentIndex;
 	}
 }
+
+void SFlareTradeRouteInfo::OnMoveUp(int32 Index)
+{
+	MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes().Swap(Index, Index - 1);
+	Update();
+}
+
+void SFlareTradeRouteInfo::OnMoveDown(int32 Index)
+{
+	MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes().Swap(Index, Index + 1);
+	Update();
+}
+
+bool SFlareTradeRouteInfo::IsMoveUpDisabled(int32 Index) const
+{
+	return Index==0 ? true : false;
+}
+
+bool SFlareTradeRouteInfo::IsMoveDownDisabled(int32 Index) const
+{
+	return Index == MenuManager->GetPC()->GetCompany()->GetCompanyTradeRoutes().Num() ? true : false;
+}
+
 
 void SFlareTradeRouteInfo::Clear()
 {

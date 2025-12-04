@@ -521,15 +521,11 @@ void UFlareQuestManager::NotifyNewQuests(TArray<UFlareQuest*>& QuestsToNotify)
 
 void UFlareQuestManager::OnTravelEnded(UFlareFleet* Fleet)
 {
-	if (Fleet == Game->GetPC()->GetPlayerFleet())
-	{
-		// Player end travel, try to generate a quest in the destination sector
-		QuestGenerator->GenerateSectorQuest(Fleet->GetCurrentSector());
+	// Player end travel, try to generate a quest in the destination sector
+	QuestGenerator->GenerateSectorQuest(Fleet->GetCurrentSector());
 
-		NotifyNewQuests(NewQuestAccumulator);
-		NewQuestAccumulator.Empty();
-
-	}
+	NotifyNewQuests(NewQuestAccumulator);
+	NewQuestAccumulator.Empty();
 }
 
 void UFlareQuestManager::OnQuestStatusChanged(UFlareQuest* Quest)

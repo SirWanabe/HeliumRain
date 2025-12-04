@@ -721,8 +721,7 @@ FSlateColor SFlareCompanyInfo::GetWarColor() const
 
 		if (SelectedCompany && SelectedCompany != Company)
 		{
-//			if (Company->GetPlayerWarState() == EFlareHostility::Hostile)
-			if (SelectedCompany->IsAtWar(Company))// == EFlareHostility::Hostile)
+			if (SelectedCompany->IsAtWar(Company))
 			{
 				return Theme.EnemyColor;
 			}

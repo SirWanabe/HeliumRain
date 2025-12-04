@@ -172,6 +172,7 @@ protected:
 
 	/** Reset statistics */
 	void OnResetStatistics();
+	void OnDuplicateTradeRoute();
 
 	/** Confirm a new name for this trade route */
 	void OnConfirmChangeRouteNameClicked();
@@ -180,6 +181,8 @@ protected:
 
 	/** Sector added */
 	void OnAddSectorClicked();
+
+	bool IsDuplicateTradeRouteDisabled() const;
 
 	/** Move trade route */
 	void OnMoveLeft(UFlareSimulatedSector* Sector);
@@ -242,6 +245,10 @@ protected:
 	void OnInventoryLimitEntered(const FText& TextValue);
 	void OnWaitLimitChanged(float Value);
 
+	void OnCopyOperationClicked(UFlareSimulatedSector* Sector);
+	FText GetOnCopyOperationText(UFlareSimulatedSector* Sector) const;
+	bool IsCopyOperationDisabled(UFlareSimulatedSector* Sector) const;
+
 	/** Load the current resource */
 	void OnAddOperationClicked(UFlareSimulatedSector* Sector);
 	
@@ -267,6 +274,8 @@ protected:
 	FFlareTradeRouteSectorOperationSave*			   SelectedOperation;
 	FFlareTradeRouteSectorOperationSave*               EditSelectedOperation;
 	
+	int32											   CopyOperationsFromSectorIndex;
+
 	//Sector Index and Operation index for EditSelectedOperation
 	int32											   EditSelectedOperationSI;
 	int32											   EditSelectedOperationOI;

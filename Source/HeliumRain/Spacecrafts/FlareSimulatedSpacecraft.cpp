@@ -420,7 +420,7 @@ void UFlareSimulatedSpacecraft::Load(const FFlareSpacecraftSave& Data)
 				OutputAction.Identifier = "build-station";
 				OutputAction.Quantity = 1;
 				FactoryDescription->OutputActions.Add(OutputAction);
-				FactoryDescription->CycleCost.ProductionCost = SpacecraftDescription->CycleCost.ProductionCost;
+				FactoryDescription->CycleCost.ProductionCost = 0;
 				FactoryDescription->CycleCost.ProductionTime = SpacecraftDescription->CycleCost.ProductionTime;
 				FactoryDescription->CycleCost.InputResources.Append(SpacecraftDescription->CycleCost.InputResources);
 				FactoryDescription->VisibleStates = true;
@@ -918,14 +918,8 @@ bool UFlareSimulatedSpacecraft::CanBeFlown(FText& OutInfo) const
 		OutInfo = LOCTEXT("CantFlyDestroyedInfo", "This ship is uncontrollable");
 		return false;
 	}
-/*
-	else if (PlayerFleet && GetCurrentFleet() != PlayerFleet)
-	{
-		OutInfo = LOCTEXT("CantFlyOtherInfo", "You can only switch ships from within the same fleet");
-		return false;
-	}
-*/
-	else if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() != PlayerFleet->GetCurrentSector())
+
+	else if (Game->GetActiveSector() && Game->GetActiveSector()->GetSimulatedSector() != GetCurrentSector())
 	{
 		OutInfo = LOCTEXT("CantFlyDistantInfo", "Can't fly a ship from another sector");
 		return false;
@@ -1098,10 +1092,7 @@ bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpa
 		Reason = LOCTEXT("CantTradeShips", "Can't trade between two ships");
 		return false;
 	}
-
-	// Check if spacecraft are are not already trading
-
-	//	if (IsTrading() || OtherSpacecraft->IsTrading())
+/*
 	if (Game->GetActiveSector())
 	{
 		if (Game->GetActiveSector()->GetSimulatedSector() != GetCurrentSector() && (IsTrading() || OtherSpacecraft->IsTrading()))
@@ -1110,10 +1101,21 @@ bool UFlareSimulatedSpacecraft::CanTradeWith(UFlareSimulatedSpacecraft* OtherSpa
 			return false;
 		}
 	}
+*/
 
-	if (IsTrading() || OtherSpacecraft->IsTrading())
+	if (Game->GetActiveSector())
 	{
-		Reason = LOCTEXT("CantTradeAlreadyTrading", "Can't trade with spacecraft that are already in a trading transaction");
+		if ( Game->GetActiveSector()->GetSimulatedSector() != GetCurrentSector()
+		  && ((IsTrading() && !IsTradingWith(OtherSpacecraft)) || (OtherSpacecraft->IsTrading() && !OtherSpacecraft->IsTradingWith(this))))
+		{
+			Reason = LOCTEXT("CantTradeAlreadyTrading", "Can't trade with spacecraft that is already in a trading transaction");
+			return false;
+		}
+	}
+
+	else if ((IsTrading() && !IsTradingWith(OtherSpacecraft)) || (OtherSpacecraft->IsTrading() && !OtherSpacecraft->IsTradingWith(this)))
+	{
+		Reason = LOCTEXT("CantTradeAlreadyTrading", "Can't trade with spacecraft that is already in a trading transaction");
 		return false;
 	}
 
@@ -1568,11 +1570,12 @@ void UFlareSimulatedSpacecraft::ForceUndock()
 	SpacecraftData.DockedAt = -1;
 	if (GetActive())
 	{
+		GetActive()->GetNavigationSystem()->Undock(true);
 		GetActive()->GetNavigationSystem()->SetStatus(EFlareShipStatus::SS_Manual);
 	}
 }
 
-void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason)
+void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason, UFlareSimulatedSpacecraft* TradingWith)
 {
 	if (IsStation())
 	{
@@ -1581,24 +1584,34 @@ void UFlareSimulatedSpacecraft::SetTrading(bool Trading, int32 TradeReason)
 	}
 
 	// Notify end of state if not on trade route
-	if (!Trading
-		&& SpacecraftData.IsTrading
-		&& GetCompany() == GetGame()->GetPC()->GetCompany()
-		&& (GetCurrentTradeRoute() == NULL || GetCurrentTradeRoute()->IsPaused())
-		&& !GetCurrentFleet()->IsAutoTrading()
-		&& SpacecraftData.TradingReason != 1)
+	if (!Trading)
 	{
-		FFlareMenuParameterData Data;
-		Data.Spacecraft = this;
-		Game->GetPC()->Notify(LOCTEXT("TradingStateEnd", "Trading complete"),
-			FText::Format(LOCTEXT("TravelEndedFormat", "{0} finished trading in {1}"),
-				UFlareGameTools::DisplaySpacecraftName(this),
-				GetCurrentSector()->GetSectorName()),
-			FName("trading-state-end"),
-			EFlareNotification::NT_Economy,
-			NOTIFY_DEFAULT_TIMER,
-			EFlareMenu::MENU_Ship,
-			Data);
+		SpacecraftData.IsTradingWith = NAME_None;
+		if (SpacecraftData.IsTrading
+			&& GetCompany() == GetGame()->GetPC()->GetCompany()
+			&& (GetCurrentTradeRoute() == NULL || GetCurrentTradeRoute()->IsPaused())
+			&& !GetCurrentFleet()->IsAutoTrading()
+			&& SpacecraftData.TradingReason != 1)
+		{
+			FFlareMenuParameterData Data;
+			Data.Spacecraft = this;
+			Game->GetPC()->Notify(LOCTEXT("TradingStateEnd", "Trading complete"),
+				FText::Format(LOCTEXT("TravelEndedFormat", "{0} finished trading in {1}"),
+					UFlareGameTools::DisplaySpacecraftName(this),
+					GetCurrentSector()->GetSectorName()),
+				FName("trading-state-end"),
+				EFlareNotification::NT_Economy,
+				NOTIFY_DEFAULT_TIMER,
+				EFlareMenu::MENU_Ship,
+				Data);
+		}
+	}
+	else
+	{
+		if (TradingWith)
+		{
+			SpacecraftData.IsTradingWith = TradingWith->GetImmatriculation();
+		}
 	}
 
 	SpacecraftData.IsTrading = Trading;
@@ -3395,11 +3408,11 @@ float UFlareSimulatedSpacecraft::GetDamageRatio()
 	return GetDamageSystem()->GetGlobalHealth();
 }
 
-float UFlareSimulatedSpacecraft::GetStationEfficiency()
+float UFlareSimulatedSpacecraft::GetStationEfficiency(UFlareSimulatedSpacecraft* InitiatedStation)
 {
 	if(IsComplexElement())
 	{
-		return GetComplexMaster()->GetStationEfficiency();
+		return GetComplexMaster()->GetStationEfficiency(this);
 	}
 
 	// if Damage ratio == 1 ,  efficiency == 1
@@ -3425,9 +3438,20 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 		{
 			Efficiency = Efficiency - 0.06f;
 		}
-		if (!Company->IsTechnologyUnlockedStation(GetDescription()))
+
+		if (InitiatedStation)
 		{
-			Efficiency = Efficiency - 0.12f;
+			if (!Company->IsTechnologyUnlockedStation(InitiatedStation->GetDescription()))
+			{
+				Efficiency = Efficiency - 0.12f;
+			}
+		}
+		else
+		{
+			if (!Company->IsTechnologyUnlockedStation(GetDescription()))
+			{
+				Efficiency = Efficiency - 0.12f;
+			}
 		}
 	}
 
@@ -3435,8 +3459,8 @@ float UFlareSimulatedSpacecraft::GetStationEfficiency()
 	{
 		if (CurrentFleet->IsTraveling())
 		{
-		//carriers which are traveling build a little slower, no help from locals perhaps?
-		Efficiency = Efficiency - 0.10f;
+			//carriers which are traveling build a little slower, no help from locals perhaps?
+			Efficiency = Efficiency - 0.10f;
 		}
 	}
 	return Efficiency;
@@ -3466,7 +3490,6 @@ int32 UFlareSimulatedSpacecraft::GetEquippedSalvagerCount()
 	}
 	return Salvagers;
 }
-
 
 int32 UFlareSimulatedSpacecraft::GetCombatPoints(bool ReduceByDamage)
 {
@@ -3520,6 +3543,16 @@ bool UFlareSimulatedSpacecraft::IsUnderConstruction(bool local)  const
 	}
 
 	return SpacecraftData.IsUnderConstruction;
+}
+
+bool UFlareSimulatedSpacecraft::IsInCompanyTransactionSource()
+{
+	if (!HasCompanyTransactionSource)
+	{
+		HasCompanyTransactionSource = GetCompany()->IsShipInTransactionSources(this);
+	}
+
+	return HasCompanyTransactionSource;
 }
 
 bool UFlareSimulatedSpacecraft::IsPlayerShip()
@@ -3742,12 +3775,17 @@ bool UFlareSimulatedSpacecraft::IsResponsible(EFlareDamage::Type DamageType)
 
 
 
-const FSlateBrush* FFlareSpacecraftDescription::GetIcon(FFlareSpacecraftDescription* Characteristic)
+const FSlateBrush* FFlareSpacecraftDescription::GetDescriptionIcon(FFlareSpacecraftDescription* Characteristic, bool IsObjective)
 {
 	if (Characteristic)
 	{
 		if (Characteristic->IsStation())
 		{
+			if (IsObjective)
+			{
+				return FFlareStyleSet::GetIcon("ContractSmall");
+			}
+
 			return FFlareStyleSet::GetIcon("SS");
 		}
 		else if (Characteristic->IsMilitary())

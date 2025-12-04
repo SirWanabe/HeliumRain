@@ -8,6 +8,7 @@
 #include "../../Player/FlarePlayerController.h"
 #include "../FlareOrbitalEngine.h"
 #include "../FlarePilotHelper.h"
+#include "../../Game/FlareCollider.h"
 
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 
@@ -50,90 +51,6 @@ UFlareSpacecraftNavigationSystem::UFlareSpacecraftNavigationSystem(const class F
 	Gameplay events
 ----------------------------------------------------*/
 
-void UFlareSpacecraftNavigationSystem::TickSystem(float DeltaSeconds)
-{
-	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Tick);
-
-	UpdateCOM();
-/*
-	MaxTorqueCacheClearTime -= DeltaSeconds;
-	if (MaxTorqueCacheClearTime <= 0)
-	{
-		MaxTorqueCacheClearTime = 1;
-		MaxTorqueCache.Empty();
-	}
-*/
-	// Manual pilot
-	if (IsManualPilot() && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
-	{
-		SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Manual);
-
-		LinearEngineTarget = Spacecraft->GetStateManager()->GetLinearEngineTarget();
-		AngularTargetVelocity = Spacecraft->GetStateManager()->GetAngularTargetVelocity();
-		UseOrbitalBoost = Spacecraft->GetStateManager()->IsUseOrbitalBoost();
-	}
-
-	// Autopilot
-	else if (IsAutoPilot())
-	{
-		SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Auto);
-
-		FFlareShipCommandData CurrentCommand;
-		if (CommandData.Peek(CurrentCommand))
-		{
-			bool KeepCommand = true;
-			if (CurrentCommand.Type == EFlareCommandDataType::CDT_Location)
-			{
-				KeepCommand = UpdateLinearAttitudeAuto(DeltaSeconds, CurrentCommand.LocationTarget, FVector::ZeroVector, (CurrentCommand.PreciseApproach ? LinearMaxDockingVelocity : LinearMaxVelocity), 1.0);
-
-				//TODO
-				CurrentCommand.VelocityTarget = PilotHelper::AnticollisionCorrection(Spacecraft, CurrentCommand.VelocityTarget, Spacecraft->GetPreferedAnticollisionTime(), PilotHelper::AnticollisionConfig(), 0.f);
-			}
-			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_BrakeLocation)
-			{
-				KeepCommand = UpdateLinearBraking(CurrentCommand, DeltaSeconds, CurrentCommand.VelocityTarget);
-
-				FVector RotationTarget = -Spacecraft->Airframe->GetPhysicsLinearVelocity();
-
-				if (RotationTarget.SizeSquared() > FMath::Square(10000))
-				{
-					CurrentCommand.RotationTarget = RotationTarget;
-					CurrentCommand.LocalShipAxis = FVector(1, 0, 0);
-					KeepCommand |= UpdateAngularAttitudeAuto(CurrentCommand, DeltaSeconds);
-				}
-			}
-			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_Rotation)
-			{
-				KeepCommand = UpdateAngularAttitudeAuto(CurrentCommand, DeltaSeconds);
-			}
-			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_BrakeRotation)
-			{
-				KeepCommand = UpdateAngularBraking(DeltaSeconds);
-			}
-			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
-			{
-				DockingAutopilot(Cast<AFlareSpacecraft>(CurrentCommand.ActionTarget), CurrentCommand.ActionTargetParam, DeltaSeconds);
-			}
-
-			if(!KeepCommand)
-			{
-				ClearCurrentCommand();
-			}
-		}
-
-		// TODO Autopilot anticollision system
-	}
-
-	// Physics
-	HasUsedOrbitalBoost = false;
-	if (!IsDocked())
-	{
-		// TODO enable physic when docked but attach the ship to the station
-
-		PhysicSubTick(DeltaSeconds);
-	}
-}
-
 void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecraft, FFlareSpacecraftSave* OwnerData)
 {
 	Spacecraft = OwnerSpacecraft;
@@ -156,6 +73,7 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 	YEngines.Value.Empty();
 	ZEngines.Value.Empty();
 
+	TimeUntilAvoidanceAttempt = 0.f;
 	ResetTransactionInfo();
 
 //	TArray<UActorComponent*> Engines = Spacecraft->GetComponentsByClass(UFlareEngine::StaticClass());
@@ -207,6 +125,104 @@ void UFlareSpacecraftNavigationSystem::Initialize(AFlareSpacecraft* OwnerSpacecr
 			FLOGV("WARNING: engine #%d for %s as %d axis match", EngineIndex, *Spacecraft->GetImmatriculation().ToString(), MatchCount);
 		}
 	}
+
+	RecentEscapeAttempts = 0;
+	TraceParams = FCollisionQueryParams(FName(TEXT("Safety LineTrace")), false, NULL);
+	TraceParams.bTraceComplex = false;
+	TraceParams.bReturnPhysicalMaterial = false;
+	TraceParams.AddIgnoredActor(Spacecraft);
+}
+
+void UFlareSpacecraftNavigationSystem::TickSystem(float DeltaSeconds)
+{
+	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Tick);
+
+	UpdateCOM();
+	/*
+		MaxTorqueCacheClearTime -= DeltaSeconds;
+		if (MaxTorqueCacheClearTime <= 0)
+		{
+			MaxTorqueCacheClearTime = 1;
+			MaxTorqueCache.Empty();
+		}
+	*/
+	// Manual pilot
+	if (IsManualPilot() && Spacecraft->GetParent()->GetDamageSystem()->IsAlive())
+	{
+		SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Manual);
+
+		LinearEngineTarget = Spacecraft->GetStateManager()->GetLinearEngineTarget();
+		AngularTargetVelocity = Spacecraft->GetStateManager()->GetAngularTargetVelocity();
+		UseOrbitalBoost = Spacecraft->GetStateManager()->IsUseOrbitalBoost();
+	}
+
+	// Autopilot
+	else if (IsAutoPilot())
+	{
+		SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_Auto);
+
+		FFlareShipCommandData CurrentCommand;
+		if (CommandData.Peek(CurrentCommand))
+		{
+			bool KeepCommand = true;
+			if (CurrentCommand.Type == EFlareCommandDataType::CDT_Location)
+			{
+				KeepCommand = UpdateLinearAttitudeAuto(DeltaSeconds, CurrentCommand.LocationTarget, FVector::ZeroVector, (CurrentCommand.PreciseApproach ? LinearMaxDockingVelocity : LinearMaxVelocity), 1.0, CurrentCommand.VelocitySlowRequired);
+
+				PilotHelper::AnticollisionConfig IgnoreConfig;
+				AActor* MostDangerousCandidateActor = NULL;
+				bool IsIntersecting = false;
+				CurrentCommand.VelocityTarget = PilotHelper::AnticollisionCorrection(Spacecraft, CurrentCommand.VelocityTarget, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f, IsIntersecting, MostDangerousCandidateActor);
+
+				UKismetSystemLibrary::DrawDebugPoint(Spacecraft->GetWorld(), CurrentCommand.VelocityTarget, 10, FColor::White, 5.f);
+			}
+			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_BrakeLocation)
+			{
+				KeepCommand = UpdateLinearBraking(CurrentCommand, DeltaSeconds, CurrentCommand.VelocityTarget);
+
+				FVector RotationTarget = -Spacecraft->Airframe->GetPhysicsLinearVelocity();
+
+				if (RotationTarget.SizeSquared() > FMath::Square(10000))
+				{
+					CurrentCommand.RotationTarget = RotationTarget;
+					CurrentCommand.LocalShipAxis = FVector(1, 0, 0);
+					KeepCommand |= UpdateAngularAttitudeAuto(CurrentCommand, DeltaSeconds);
+				}
+			}
+			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_Rotation)
+			{
+				KeepCommand = UpdateAngularAttitudeAuto(CurrentCommand, DeltaSeconds);
+			}
+			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_BrakeRotation)
+			{
+				KeepCommand = UpdateAngularBraking(DeltaSeconds);
+			}
+			else if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
+			{
+				DockingAutopilot(Cast<AFlareSpacecraft>(CurrentCommand.ActionTarget), CurrentCommand.ActionTargetParam, DeltaSeconds);
+			}
+
+			if (!KeepCommand)
+			{
+				ClearCurrentCommand();
+			}
+		}
+
+		// TODO Autopilot anticollision system
+	}
+
+	// Physics
+	HasUsedOrbitalBoost = false;
+	TimeUntilAvoidanceAttempt = FMath::Max(0.0f, TimeUntilAvoidanceAttempt - DeltaSeconds);
+	TimeUntilLineTraceAttempt = FMath::Max(0.0f, TimeUntilLineTraceAttempt - DeltaSeconds);
+	TimeSinceUndocking = FMath::Max(0.0f, TimeSinceUndocking - DeltaSeconds);
+
+	if (!IsDocked())
+	{
+		// TODO enable physic when docked but attach the ship to the station
+
+		PhysicSubTick(DeltaSeconds);
+	}
 }
 
 void UFlareSpacecraftNavigationSystem::ResetTransactionInfo()
@@ -219,6 +235,7 @@ void UFlareSpacecraftNavigationSystem::ResetTransactionInfo()
 	TransactionDestination = NULL;
 	TransactionDestinationDock = NULL;
 	TransactionDonation = false;
+	TransactionPlayerInitiated = false;
 }
 
 void UFlareSpacecraftNavigationSystem::Start()
@@ -246,6 +263,7 @@ void UFlareSpacecraftNavigationSystem::SetStatus(EFlareShipStatus::Type NewStatu
 {
 	if (NewStatus != Status)
 	{
+/*
 		switch (NewStatus)
 		{
 			case EFlareShipStatus::SS_Manual:
@@ -262,6 +280,8 @@ void UFlareSpacecraftNavigationSystem::SetStatus(EFlareShipStatus::Type NewStatu
 
 			default: break;
 		}
+*/
+		RecentEscapeAttempts = 0;
 		if (Spacecraft->GetStateManager())
 		{
 			// Not available on redock
@@ -280,7 +300,22 @@ void UFlareSpacecraftNavigationSystem::SetAngularAccelerationRate(float Accelera
 /*----------------------------------------------------
 	Docking
 ----------------------------------------------------*/
-bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation)
+
+AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetNavigationDockingTarget(int32 *DockingPort)
+{
+	FFlareShipCommandData CurrentCommand;
+	if (CommandData.Peek(CurrentCommand))
+	{
+		if (CurrentCommand.Type == EFlareCommandDataType::CDT_Dock)
+		{
+			*DockingPort = CurrentCommand.ActionTargetParam;
+			return CurrentCommand.ActionTarget;
+		}
+	}
+	return nullptr;
+}
+
+bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetStation, FFlareResourceDescription* TransactionResource_, uint32 TransactionQuantity_, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool Donation, bool PlayerInitiated)
 {
 	bool DockingConfirmed = Spacecraft->GetNavigationSystem()->DockAt(TargetStation);
 	if (DockingConfirmed)
@@ -291,6 +326,7 @@ bool UFlareSpacecraftNavigationSystem::DockAtAndTrade(AFlareSpacecraft* TargetSt
 		TransactionDestination = DestinationSpacecraft;
 		TransactionDestinationDock = TargetStation->GetParent();
 		TransactionDonation = Donation;
+		TransactionPlayerInitiated = PlayerInitiated;
 		return true;
 	}
 
@@ -400,75 +436,75 @@ void UFlareSpacecraftNavigationSystem::BreakDock()
 	if(DockConstraint)
 	{
 		DockConstraint->BreakConstraint();
-//		DockConstraint->DestroyComponent();
 		DockConstraint = NULL;
 	}
 }
 
-bool UFlareSpacecraftNavigationSystem::Undock()
+bool UFlareSpacecraftNavigationSystem::Undock(bool ForcedUndock)
 {
 	// Try undocking
-	if (IsDocked())
+	AFlareSpacecraft* DockStation = GetDockStation(true);
+	if (!DockStation)
 	{
-		AFlareSpacecraft* DockStation = GetDockStation();
-		if (!DockStation)
-		{
-			return true;
-		}
+		// Failed
+//		FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' is not docked or could not find dockstation", *Spacecraft->GetParent()->GetImmatriculation().ToString());
+		return false;
+	}
 
-		FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' undocking from '%s'",
-			*Spacecraft->GetParent()->GetImmatriculation().ToString(),
-			*Data->DockedTo.ToString());
+	FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' undocking from '%s'",
+		*Spacecraft->GetParent()->GetImmatriculation().ToString(),
+		*Data->DockedTo.ToString());
 
-		// Detach from station
-		BreakDock();
+	// Detach from station
+	BreakDock();
+	DockStation->GetDockingSystem()->ReleaseDock(Spacecraft, Data->DockedAt);
 
-		DockStation->GetDockingSystem()->ReleaseDock(Spacecraft, Data->DockedAt);
+	// Update data
+	LastDockedStation = nullptr;
+	Data->DockedTo = NAME_None;
+	Data->DockedAt = -1;
+	Spacecraft->SetRCSDescription(Spacecraft->GetRCSDescription());
+	// Update Angular acceleration rate : when it's docked the mass is the ship mass + the station mass
 
-		// Update data
-		SetStatus(EFlareShipStatus::SS_AutoPilot);
-		Data->DockedTo = NAME_None;
-		Data->DockedAt = -1;
-
-		// Update Angular acceleration rate : when it's docked the mass is the ship mass + the station mass
-		Spacecraft->SetRCSDescription(Spacecraft->GetRCSDescription());
+	if (!ForcedUndock)
+	{
 		Spacecraft->OnUndocked(DockStation);
-
+		SetStatus(EFlareShipStatus::SS_AutoPilot);
 		// Leave
 		if (Spacecraft->IsPlayerShip())
 		{
-			FVector UndockDestination = 5000 * FVector(-1, 0, 0);
-			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination),false, DockStation);
+			FVector UndockDestination = FVector(-5000, 0, 0);
+			PushCommandLocation(Spacecraft->GetActorTransform().TransformPositionNoScale(UndockDestination), false, DockStation, true, LOCTEXT("UndockingFrom", "Undocking"));
 		}
 		else
 		{
-			FVector UndockDestination = 10000 * FVector(-1, 0, 0) + 5000 * FMath::VRand();
-			PushCommandLocation(Spacecraft->GetRootComponent()->GetComponentTransform().TransformPositionNoScale(UndockDestination),false, DockStation);
+			FVector UndockDestination = FVector(-10000, 0, 0);
+			PushCommandLocation(Spacecraft->GetActorTransform().TransformPositionNoScale(UndockDestination), false, DockStation, true, LOCTEXT("UndockingFrom", "Undocking"));
 		}
-
-		// Hack for bug #195: for ue4 to reweld all.
-		Spacecraft->Airframe->SetSimulatePhysics(false);
-		Spacecraft->Airframe->SetSimulatePhysics(true);
-
-		// Successful
-		FLOG("UFlareSpacecraftNavigationSystem::Undock : successful");
-		Spacecraft->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("undock").PutName("target", Spacecraft->GetImmatriculation()));
-		return true;
 	}
 
-	// Failed
-	else
-	{
-		FLOGV("UFlareSpacecraftNavigationSystem::Undock : '%s' is not docked", *Spacecraft->GetParent()->GetImmatriculation().ToString());
-		return false;
-	}
+	// Hack for bug #195: for ue4 to reweld all.
+	Spacecraft->Airframe->SetSimulatePhysics(false);
+	Spacecraft->Airframe->SetSimulatePhysics(true);
+	TimeSinceUndocking = 1.50f;
+
+	// Successful
+	FLOG("UFlareSpacecraftNavigationSystem::Undock : successful");
+	Spacecraft->GetGame()->GetQuestManager()->OnEvent(FFlareBundle().PutTag("undock").PutName("target", Spacecraft->GetImmatriculation()));
+	return true;
 }
 
-AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation()
+AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetDockStation(bool SkipDockedCheck)
 {
-	if (IsDocked() && (Spacecraft->GetGame()->GetActiveSector() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector()))
+	if ((IsDocked() || SkipDockedCheck) && (Spacecraft->GetGame()->GetActiveSector() && Spacecraft->GetGame()->GetActiveSector()->GetSimulatedSector() == Spacecraft->GetParent()->GetCurrentSector()))
 	{
+		if (LastDockedStation && LastDockedStation->GetImmatriculation() == Data->DockedTo)
+		{
+			return LastDockedStation;
+		}
+
 		AFlareSpacecraft* Station = Spacecraft->GetGame()->GetActiveSector()->FindSpacecraft(Data->DockedTo);
+		LastDockedStation = Station;
 		return Station;
 	}
 	return NULL;
@@ -628,7 +664,6 @@ FFlareDockingParameters UFlareSpacecraftNavigationSystem::GetDockingParameters(F
 	{
 		FVector LocalDockToCamera = FVector::VectorPlaneProject(DockToCamera, Params.ShipDockAxis);
 		FVector StationLeftDockVector = FVector::CrossProduct(Params.StationDockTopAxis, Params.StationDockAxis);
-
 
 		FVector ShipTopAxis = Spacecraft->GetActorRotation().RotateVector(FVector(0, 0, 1));
 		FVector ShipLeftAxis = FVector::CrossProduct(Params.ShipDockAxis, ShipTopAxis);
@@ -849,6 +884,111 @@ FFlareDockingParameters UFlareSpacecraftNavigationSystem::GetDockingParameters(F
 	return Params;
 }
 
+bool UFlareSpacecraftNavigationSystem::ConductSafetyLineTrace(FVector LocationTarget, bool ForceTrace)
+{
+	if (TimeUntilLineTraceAttempt <= 0 || ForceTrace)
+	{
+		TimeUntilLineTraceAttempt = 0.1f;
+		FHitResult HitResult(ForceInit);
+		ECollisionChannel CollisionChannel = ECollisionChannel::ECC_WorldDynamic;
+
+		FBox CandidateBox = Spacecraft->GetComponentsBoundingBox();
+
+//		UKismetSystemLibrary::DrawDebugLine(Spacecraft->GetWorld(), CandidateBox.Min, LocationTarget, FColor::Turquoise, true);
+		bool FoundHit = GetWorld()->LineTraceSingleByChannel(HitResult, CandidateBox.Min, LocationTarget, CollisionChannel, TraceParams);
+
+		if (!FoundHit)
+		{
+//			UKismetSystemLibrary::DrawDebugLine(Spacecraft->GetWorld(), CandidateBox.Max, LocationTarget, FColor::Green, true);
+			FoundHit = GetWorld()->LineTraceSingleByChannel(HitResult, CandidateBox.Max, LocationTarget, CollisionChannel, TraceParams);
+/*
+			if (FoundHit)
+			{
+				if (Spacecraft->IsPlayerShip())
+				{
+					FLOGV("UFlareSpacecraftNavigationSystem::TimeUntilAvoidanceAttempt Found 2nd Hit, %s", *HitResult.Actor->GetHumanReadableName());
+				}
+			}
+*/
+		}
+/*
+		else
+		{
+			if (Spacecraft->IsPlayerShip())
+			{
+				FLOGV("UFlareSpacecraftNavigationSystem::TimeUntilAvoidanceAttempt Found 1st Hit, %s", *HitResult.Actor->GetHumanReadableName());
+			}
+		}
+*/
+		PreviousLineTraceHadHit = FoundHit;
+	}
+	return PreviousLineTraceHadHit;
+}
+
+void UFlareSpacecraftNavigationSystem::BackAwayFromTarget(AActor* MostDangerousCandidateActor)
+{
+	if (Spacecraft->IsPlayerShip())
+	{
+		FLOGV("UFlareSpacecraftNavigationSystem::BackAwayFromTarget Who am I AVOIDING? : %s\n%s", *MostDangerousCandidateActor->GetFName().ToString(), *MostDangerousCandidateActor->GetHumanReadableName());
+	}
+
+	TimeUntilAvoidanceAttempt = 15.f;
+	FailureTimeUntilAvoidanceAttempt = 0.f;
+
+	FFlareShipCommandData CurrentCommand;
+	bool HadPreviousCommand = CommandData.Dequeue(CurrentCommand);
+
+	AFlareSpacecraft* ActionTarget = Cast<AFlareSpacecraft>(MostDangerousCandidateActor);
+	FVector EscapeVector;
+	int32 Loops = 0;
+
+	while (true)
+	{
+		FVector RelativeOffset;
+
+		if (Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "farm" && MostDangerousCandidateActor && MostDangerousCandidateActor->IsA(AFlareCollider::StaticClass()))
+		{
+			RelativeOffset = FVector((-25000) - FMath::RandRange(1, 2) == 1 ? (-100 * (Loops + RecentEscapeAttempts)) : (100 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))), FMath::RandRange(1, 2) == 1 ? (-5000 - (500 * (Loops + RecentEscapeAttempts))) : (5000 + (500 * (Loops + RecentEscapeAttempts))));
+			TimeUntilAvoidanceAttempt = 10.f;
+		}
+		else
+		{
+			RelativeOffset = FVector(-5000 - FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)), FMath::RandRange(1, 2) == 1 ? (-250 * (Loops + RecentEscapeAttempts)) : (250 * (Loops + RecentEscapeAttempts)));
+		}
+
+		EscapeVector = Spacecraft->GetTransform().TransformPosition(RelativeOffset);
+		if (!ConductSafetyLineTrace(EscapeVector, true))
+		{
+			break;
+		}
+
+		++Loops;
+
+		if (Loops >= 10)
+		{
+			RelativeOffset = FVector(FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops, FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops, FMath::RandRange(1, 2) == 1 ? -50 * Loops : 50 * Loops);
+			if (!ConductSafetyLineTrace(EscapeVector, true))
+			{
+				break;
+			}
+
+			if (Loops >= 20)
+			{
+				RelativeOffset = FVector(-100 , 0 , 0);
+				TimeUntilAvoidanceAttempt = 5.f;
+				break;
+			}
+		}
+	}
+
+	++RecentEscapeAttempts;
+	PushCommandLocation(EscapeVector, false, ActionTarget, false, LOCTEXT("AvoidingFrom", "Avoiding"));
+	if (!HadPreviousCommand)
+	{
+		CommandData.Enqueue(CurrentCommand);
+	}
+}
+
 void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockStation, int32 DockId, float DeltaSeconds)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_DockingAuto);
@@ -871,6 +1011,7 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	AFlareSpacecraft* AnticollisionDockStation = DockStation;
 	bool Anticollision = false;
 	FVector VelocityTarget = DockingParameters.LinearVelocityAtShipDistance - DockingParameters.ShipDockSelfRotationInductedLinearVelocity;
+	float Distance = 0;
 
 	switch (DockingParameters.DockingPhase)
 	{
@@ -887,11 +1028,14 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 
 		//FLOGV("Anticollision test ignore FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis)=%f", FVector::DotProduct(DockToDockDeltaLocation.GetUnsafeNormal(), StationDockAxis));
 
+		Distance = Spacecraft->GetDistanceTo(AnticollisionDockStation) / 100; // Distance in meters;
+
 		// During rendez-vous avoid the station if not in axis
 		if (FVector::DotProduct(DockingParameters.DockToDockDeltaLocation.GetUnsafeNormal(), DockingParameters.StationDockAxis) > -0.9)
 		{
 			AnticollisionDockStation = NULL;
 		}
+
 		Anticollision = true;
 		break;
 	case EFlareDockingPhase::Approach:
@@ -916,6 +1060,11 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	}
 
 	// Not in approach, just go to the docking entrance point
+	if (PreviousLineTraceHadHit)
+	{
+		MaxVelocity *= 0.50;
+	}
+
 	UpdateLinearAttitudeAuto(DeltaSeconds, LocationTarget, VelocityTarget / 100, MaxVelocity, 0.1);
 	AngularTargetVelocity = GetAngularVelocityToAlignAxis(FVector(1, 0, 0), AxisTarget, AngularVelocityTarget, DeltaSeconds);
 
@@ -923,27 +1072,96 @@ void UFlareSpacecraftNavigationSystem::DockingAutopilot(AFlareSpacecraft* DockSt
 	{
 		//FLOGV("Docking Anticollision ignore=%p", AnticollisionDockStation);
 
-		// During docking, lets the others avoid me
+		float SpeedMaxEscape = 0.1f;
+
 		PilotHelper::AnticollisionConfig IgnoreConfig;
 		IgnoreConfig.SpacecraftToIgnore = AnticollisionDockStation;
+		AActor* MostDangerousCandidateActor = NULL;
+		bool IsIntersecting = false;
 		FVector Global = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LinearEngineTarget.Target);
-		FVector GlobalFixed = PilotHelper::AnticollisionCorrection(Spacecraft, Global, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f);
+		FVector GlobalFixed = PilotHelper::AnticollisionCorrection(Spacecraft, Global, Spacecraft->GetPreferedAnticollisionTime(), IgnoreConfig, 0.f, IsIntersecting, MostDangerousCandidateActor);
+		bool ChangeEnginesToGlobalFixed = true;
 
-		LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(GlobalFixed));
+		if (Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "Farm" && MostDangerousCandidateActor && MostDangerousCandidateActor->IsA(AFlareCollider::StaticClass()))
+		{
+			if (Distance > 50)
+			{
+				if (!ConductSafetyLineTrace(LocationTarget))
+				{
+					ChangeEnginesToGlobalFixed = false;
+					SpeedMaxEscape = 0.20f;
+/*
+					if (Spacecraft->IsPlayerShip())
+					{
+						FLOG("No line trace hit, turn off anticollision")
+					}
+*/
+				}
+				else
+				{
+					SpeedMaxEscape = 0.40f;
+				}
+			}
+		}
+
+		if (ChangeEnginesToGlobalFixed)
+		{
+			LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(GlobalFixed));
+		}
 
 		// This speed check basically serves as a simple timeout if the ship gets stuck
-		int32 Speed = Spacecraft->GetLinearVelocity().Size();
-		if (Speed == 0)
+		float Speed = Spacecraft->GetLinearVelocity().Size();
+		if (Speed >= 0 && Speed <= SpeedMaxEscape)
 		{
-			LinearEngineTarget.XVelocityControl = false;
-			LinearEngineTarget.YVelocityControl = false;
-			LinearEngineTarget.ZVelocityControl = false;
+/*
+			if (Spacecraft->IsPlayerShip())
+			{
+				FLOGV("UFlareSpacecraftNavigationSystem::TimeUntilAvoidanceAttempt %f", TimeUntilAvoidanceAttempt);
+			}
+*/
+			if (IsIntersecting && TimeUntilAvoidanceAttempt <= 0)
+			{
+				Distance = Spacecraft->GetDistanceTo(MostDangerousCandidateActor) / 100; // Distance in meters;
+/*
+				if (Spacecraft->IsPlayerShip())
+				{
+					FLOGV("UFlareSpacecraftNavigationSystem::Distance for intersecting : %f", Distance);
+				}
+*/
+				if (Distance <= 250 || 
+					(Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "Farm" && Distance <= 350) ||
+					(Spacecraft->GetGame()->GetActiveSector()->GetDescription()->Identifier == "nights-home" && Distance <= 450))
+				{
+					FVector TargetAxis = (MostDangerousCandidateActor->GetActorLocation() - Spacecraft->GetActorLocation()).GetUnsafeNormal();
+					FVector NoseAxis = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(FVector(1, 0, 0));
+
+					float Product = FVector::DotProduct(TargetAxis, NoseAxis);
+/*
+					if (Spacecraft->IsPlayerShip())
+					{
+						FLOGV("UFlareSpacecraftNavigationSystem::DockingAutopilot : DOT %f", Product);
+					}
+*/
+
+					if (Product > 0.70 || FailureTimeUntilAvoidanceAttempt >= 15.f)
+					{
+						BackAwayFromTarget(MostDangerousCandidateActor);
+					}
+					else
+					{
+						FailureTimeUntilAvoidanceAttempt += DeltaSeconds;
+					}
+				}
+			}
+		}
+		else
+		{
+			FailureTimeUntilAvoidanceAttempt = 0.f;
 		}
 	}
 }
 
 void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
-
 {
 	FFlareShipCommandData CurrentCommand;
 	while (CommandData.Dequeue(CurrentCommand))
@@ -955,6 +1173,7 @@ void UFlareSpacecraftNavigationSystem::ForceFinishAutoPilots()
 
 			if (DockStation)
 			{
+				LastDockedStation = DockStation;
 				Data->DockedTo = DockStation->GetImmatriculation();
 				Data->DockedAt = DockId;
 				ConfirmDock(DockStation, DockId, false, false);
@@ -979,6 +1198,7 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 
 	// Set as docked
 	SetStatus(EFlareShipStatus::SS_Docked);
+	LastDockedStation = DockStation;
 	Data->DockedTo = DockStation->GetImmatriculation();
 	Data->DockedAt = DockId;
 	Data->DockedAngle = OutputAngle;
@@ -1014,7 +1234,6 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 		DockConstraint->AttachToComponent(Spacecraft->GetRootComponent(), FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
 	}
 
-
 	AFlareSpacecraft* AttachStation = DockStation;
 
 	if (DockStation->IsComplexElement())
@@ -1044,7 +1263,7 @@ void UFlareSpacecraftNavigationSystem::ConfirmDock(AFlareSpacecraft* DockStation
 			Engine->SetAlpha(0.0f);
 		}
 
-		Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination, TransactionDonation, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
+		Spacecraft->OnDocked(DockStation, TellUser, TransactionResource, TransactionQuantity, TransactionSourceShip, TransactionDestination, TransactionDonation, TransactionPlayerInitiated, TransactionNewPartDesc, TransactionNewPartWeaponGroupIndex);
 		ResetTransactionInfo();
 	}
 }
@@ -1068,13 +1287,15 @@ void UFlareSpacecraftNavigationSystem::PushCommandAngularBrake()
 	PushCommand(Command);
 }
 
-void UFlareSpacecraftNavigationSystem::PushCommandLocation(const FVector& Location, bool Precise, AFlareSpacecraft* NewActionTarget)
+void UFlareSpacecraftNavigationSystem::PushCommandLocation(const FVector& Location, bool Precise, AFlareSpacecraft* NewActionTarget, bool VelocitySlowRequired, FText HUDDisplay)
 {
 	FFlareShipCommandData Command;
 	Command.Type = EFlareCommandDataType::CDT_Location;
 	Command.ActionTarget = NewActionTarget;
 	Command.LocationTarget = Location;
-	Command.PreciseApproach = Precise;
+	Command.PreciseApproach = Precise; 
+	Command.CommandHUDDisplay = HUDDisplay;
+	Command.VelocitySlowRequired = VelocitySlowRequired;
 	PushCommand(Command);
 }
 
@@ -1136,7 +1357,7 @@ FFlareShipCommandData UFlareSpacecraftNavigationSystem::GetCurrentCommand()
 	return CurrentCommand;
 }
 
-void UFlareSpacecraftNavigationSystem::AbortAllCommands(bool AttemptUndock, bool ClearTransactionInfo)
+void UFlareSpacecraftNavigationSystem::AbortAllCommands(bool ClearTransactionInfo,bool ShouldUndock)
 {
 	FFlareShipCommandData Command;
 
@@ -1154,12 +1375,13 @@ void UFlareSpacecraftNavigationSystem::AbortAllCommands(bool AttemptUndock, bool
 		}
 	}
 
-	if(AttemptUndock && IsDocked())
+	if (ShouldUndock && IsDocked())
 	{
 		Undock();
 	}
 
 	SetStatus(EFlareShipStatus::SS_Manual);
+
 	if (ClearTransactionInfo)
 	{
 		ResetTransactionInfo();
@@ -1236,8 +1458,7 @@ AFlareSpacecraft* UFlareSpacecraftNavigationSystem::GetNearestShip(AFlareSpacecr
 	Attitude control : linear version
 ----------------------------------------------------*/
 
-
-bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSeconds, FVector TargetLocation, FVector TargetVelocity, float MaxVelocity, float SecurityRatio)
+bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSeconds, FVector TargetLocation, FVector TargetVelocity, float MaxVelocity, float SecurityRatio, bool VelocitySlowRequired)
 {
 	SCOPE_CYCLE_COUNTER(STAT_NavigationSystem_UpdateLinearAttitudeAuto);
 	TArray<UActorComponent*> Engines = Spacecraft->GetActiveSpacecraftEngineComponents();
@@ -1250,6 +1471,8 @@ bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSecon
 	FVector DeltaVelocity = TargetVelocity - Spacecraft->GetLinearVelocity();
 	FVector DeltaVelocityAxis = DeltaVelocity;
 	DeltaVelocityAxis.Normalize();
+
+//	UKismetSystemLibrary::DrawDebugLine(Spacecraft->GetWorld(), Spacecraft->GetActorLocation(), TargetLocation, FColor::Silver, true);
 
 	float TimeToFinalVelocity;
 
@@ -1277,7 +1500,6 @@ bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSecon
 	}
 	else
 	{
-
 		float MaxPreciseSpeed = FMath::Min((Distance - DistanceToStop) / DeltaSeconds, MaxVelocity);
 
 		if (DistanceToStop * 1.1 > Distance)
@@ -1289,18 +1511,41 @@ bool UFlareSpacecraftNavigationSystem::UpdateLinearAttitudeAuto(float DeltaSecon
 		RelativeResultSpeed = DeltaPositionDirection;
 		RelativeResultSpeed *= MaxPreciseSpeed;
 		RelativeResultSpeed += TargetVelocity;
-		/*FLOGV("DeltaPositionDirection %s", *DeltaPositionDirection.ToString());
-		FLOGV("MaxPreciseSpeed %f", MaxPreciseSpeed);
-		FLOGV("TargetVelocity %s", *TargetVelocity.ToString());*/
+/*
+		if (Spacecraft->IsPlayerShip())
+		{
+			FLOGV("DeltaPositionDirection %s", *DeltaPositionDirection.ToString());
+			FLOGV("MaxPreciseSpeed %f", MaxPreciseSpeed);
+			FLOGV("TargetVelocity %s", *TargetVelocity.ToString());
+		}
+*/
 	}
-
-	// Under this distance we consider the variation negligible, and ensure null delta + null speed
-	if (Distance < LinearDeadDistance && DeltaVelocity.Size() < NegligibleSpeedRatio * MaxVelocity)
+/*
+	if (Spacecraft->IsPlayerShip())
 	{
-		LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(TargetVelocity));
-		return false;
+		FLOGV("Distance %f < %f", Distance, LinearDeadDistance);
+		FLOGV("NegligibleSpeedRatio %f * %f = %f", NegligibleSpeedRatio, MaxVelocity, NegligibleSpeedRatio * MaxVelocity);
+		FLOGV("DeltaVelocity Size %f", DeltaVelocity.Size());
 	}
-	//FLOGV("RelativeResultSpeed %s", *RelativeResultSpeed.ToString());
+*/
+	// Under this distance we consider the variation negligible, and ensure null delta + null speed
+	if (Distance < LinearDeadDistance)
+	{
+		if (VelocitySlowRequired && DeltaVelocity.Size() < NegligibleSpeedRatio * MaxVelocity)
+		{
+		}
+		else
+		{
+			LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(TargetVelocity));
+			return false;
+		}
+	}
+/*
+	if (Spacecraft->IsPlayerShip())
+	{
+		FLOGV("RelativeResultSpeed %s", *RelativeResultSpeed.ToString());
+	}
+*/
 	LinearEngineTarget.SetVelocity(Spacecraft->Airframe->GetComponentToWorld().GetRotation().Inverse().RotateVector(RelativeResultSpeed));
 	return true;
 }
@@ -1523,15 +1768,13 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 	{
 		EnginesAlpha.Add(0.f);
 	}
-
 /*
 	bool Log = false;
-	if (false && Spacecraft == Spacecraft->GetGame()->GetPC()->GetShipPawn())
+	if (Spacecraft == Spacecraft->GetGame()->GetPC()->GetShipPawn())
 	{
 		Log = true;
 	}
 */
-
 
 	FVector LocalLinearVelocity = Spacecraft->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(Spacecraft->GetLinearVelocity());
 	FVector LocalDeltaV = FVector::ZeroVector;
@@ -1620,14 +1863,10 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 				{
 					EnginesAlpha[EngineIndex] += LinearMasterAlpha;
 				}
-				else
+				else if(HasUsedOrbitalBoost)
 				{
-					if(HasUsedOrbitalBoost)
-					{
-						EnginesAlpha[EngineIndex] += LinearMasterBoostAlpha;
-					}
+					EnginesAlpha[EngineIndex] += LinearMasterBoostAlpha;
 				}
-
 			}
 
 			float ClampedAcceleration = FMath::Clamp(Acceleration, 0.f, FMath::Abs(DeltaV) / DeltaSeconds);
@@ -1705,6 +1944,7 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 
 	FVector GlobalDeltaV = Spacecraft->Airframe->GetComponentToWorld().GetRotation().RotateVector(LocalDeltaV);
 	Spacecraft->Airframe->SetPhysicsLinearVelocity(GlobalDeltaV, true);
+
 /*
 	if(Log) {
 
@@ -1729,7 +1969,6 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 			float DamageRatio = GetTotalMaxTorqueInAxis(Engines, DeltaAngularVAxis, true) / TotalMaxTorqueInAxis;
 			FVector DamagedSimpleAcceleration = SimpleAcceleration * DamageRatio;
 			FVector ClampedSimplifiedAcceleration = DamagedSimpleAcceleration.GetClampedToMaxSize(DeltaAngularV.Size() / DeltaSeconds);
-
 			Spacecraft->Airframe->SetPhysicsAngularVelocityInDegrees(ClampedSimplifiedAcceleration  * DeltaSeconds, true);
 		}
 	}
@@ -1748,11 +1987,11 @@ void UFlareSpacecraftNavigationSystem::PhysicSubTick(float DeltaSeconds)
 		}
 		else if (!DeltaAngularV.IsNearlyZero() && !Engine->IsA(UFlareOrbitalEngine::StaticClass()))
 		{
-				FVector EngineOffset = (Engine->GetComponentLocation() - COM) / 100;
-				FVector TorqueDirection = FVector::CrossProduct(EngineOffset, ThrustAxis);
-				TorqueDirection.Normalize();
+			FVector EngineOffset = (Engine->GetComponentLocation() - COM) / 100;
+			FVector TorqueDirection = FVector::CrossProduct(EngineOffset, ThrustAxis);
+			TorqueDirection.Normalize();
 
-				AngularAlpha = -FVector::DotProduct(TorqueDirection, DeltaAngularVAxis);
+			AngularAlpha = -FVector::DotProduct(TorqueDirection, DeltaAngularVAxis);
 		}
 
 		/*if(Log) {

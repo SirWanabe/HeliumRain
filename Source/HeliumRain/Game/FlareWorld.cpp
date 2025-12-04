@@ -494,12 +494,12 @@ bool UFlareWorld::CheckIntegrity()
 	return Integrity;
 }
 
-inline static bool CompanyValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
+inline static bool CompanyValueComparator(UFlareCompany& ip1, UFlareCompany& ip2)
 {
 	return ip1.GetCompanyValue().TotalValue < ip2.GetCompanyValue().TotalValue;
 }
 
-inline static bool CompanyTotalCombatValueComparator(const UFlareCompany& ip1, const UFlareCompany& ip2)
+inline static bool CompanyTotalCombatValueComparator(UFlareCompany& ip1, UFlareCompany& ip2)
 {
 	return ip1.GetCompanyValue().ArmyTotalCombatPoints < ip2.GetCompanyValue().ArmyTotalCombatPoints;
 }
@@ -574,7 +574,7 @@ void UFlareWorld::Simulate()
 			BattleSimulation->Load(Sector);
 			BattleSimulation->Simulate();
 		}
-
+/*
 		// Forcibly remove destroyed "active" spacecraft
 		for (int32 SpacecraftIndex = 0; SpacecraftIndex < PendingActiveSpacecraftDeletions.Num(); SpacecraftIndex++)
 		{
@@ -586,18 +586,19 @@ void UFlareWorld::Simulate()
 		}
 
 		PendingActiveSpacecraftDeletions.Empty();
-
+*/
 		for (int32 SpacecraftIndex = 0 ; SpacecraftIndex < Sector->GetSectorSpacecrafts().Num(); SpacecraftIndex++)
 		{
 			UFlareSimulatedSpacecraft* Spacecraft = Sector->GetSectorSpacecrafts()[SpacecraftIndex];
 
 			if(!Spacecraft->GetDamageSystem()->IsAlive())
 			{
+/*
 				if (Spacecraft->GetActive())
 				{
 					PendingActiveSpacecraftDeletions.Add(Spacecraft->GetActive());
 				}
-
+*/
 				Spacecraft->GetCompany()->DestroySpacecraft(Spacecraft);
 			}
 			else if(Spacecraft->GetActive())
@@ -1490,13 +1491,14 @@ void UFlareWorld::ProcessAllCaptures()
 
 		Owner->GetAI()->FinishedConstruction(Spacecraft);
 		Owner->DestroySpacecraft(Spacecraft);
-		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data);
+		UFlareSimulatedSpacecraft* NewShip = Sector->CreateSpacecraft(ShipDescription, Capturer, SpawnLocation, SpawnRotation, &Data, 1);
+
 		Capturer->CapturedStation(NewShip, Owner);
 		Spacecraft->SetImmatriculationReplacementTo(NewShip->GetImmatriculation());
 
 		for (TPair<FFlareSpacecraftDescription*, FFlareSpacecraftSave>& Pair : ChildStructure)
 		{
-			UFlareSimulatedSpacecraft* NewChildStation = Sector->CreateSpacecraft(Pair.Key, Capturer, SpawnLocation, SpawnRotation, &Pair.Value, false, false, NewShip->GetImmatriculation());
+			UFlareSimulatedSpacecraft* NewChildStation = Sector->CreateSpacecraft(Pair.Key, Capturer, SpawnLocation, SpawnRotation, &Pair.Value, 0, false, NewShip->GetImmatriculation());
 			Sector->AttachStationToComplexStation(NewChildStation, NewShip->GetImmatriculation(), Pair.Value.AttachComplexConnectorName);
 		}
 
@@ -2137,11 +2139,13 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 		TravelingFleet->GetCurrentTravel()->ChangeDestination(DestinationSector);
 		return TravelingFleet->GetCurrentTravel();
 	}
+
 	else if (TravelingFleet->GetCurrentSector() == DestinationSector && !Force)
 	{
 		//Try to start a travel to current sector
 		return NULL;
 	}
+
 	else if(DestinationSector)
 	{
 		UFlareSimulatedSector* OriginSector = TravelingFleet->GetCurrentSector();
@@ -2189,6 +2193,18 @@ UFlareTravel* UFlareWorld::	StartTravel(UFlareFleet* TravelingFleet, UFlareSimul
 			// Make the fleet exit the sector
 
 			OriginSector->RetireFleet(TravelingFleet);
+
+
+/*
+				UFlareSector* ActiveSector = Game->GetActiveSector();
+				if (ActiveSector && ActiveSector->GetSimulatedSector() == MenuManager->GetPC()->GetPlayerFleet()->GetCurrentSector())
+				{
+					MenuManager->GetGame()->ReactivateSector();
+				}
+
+*/
+
+
 
 			// Create the travel
 			FFlareTravelSave TravelData;

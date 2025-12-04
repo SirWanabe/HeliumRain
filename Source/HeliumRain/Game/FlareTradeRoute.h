@@ -251,7 +251,7 @@ public:
 
 	virtual void ChangeSector(UFlareSimulatedSector* OldSector, UFlareSimulatedSector* NewSector);
 
-	virtual void AddSector(UFlareSimulatedSector* Sector);
+	virtual FFlareTradeRouteSectorSave* AddSector(UFlareSimulatedSector* Sector);
 
 	virtual void RemoveSector(UFlareSimulatedSector* Sector);
 
@@ -263,6 +263,7 @@ public:
 	void RemoveOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, FFlareTradeRouteOperationConditionSave* Condition);
 	void AddOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, EFlareTradeRouteOperationConditions::Type ConditionType);
 	virtual FFlareTradeRouteSectorOperationSave* AddSectorOperation(int32 SectorIndex, EFlareTradeRouteOperation::Type Type, FFlareResourceDescription* Resource);
+	void CopySectorOperation(FFlareTradeRouteSectorSave* NewSector,FFlareTradeRouteSectorOperationSave* CopiedOperation);
 
 	virtual void RemoveSectorOperation(int32 SectorIndex, int32 OperationIndex);
 
@@ -301,6 +302,7 @@ protected:
 
 	UFlareFleet*						   TradeRouteFleet;
 	UFlareCompany*			               TradeRouteCompany;
+	UFlareSimulatedSector*				   CurrentTargetSector;
 	FFlareTradeRouteSave                   TradeRouteData;
 	AFlareGame*                            Game;
 	bool                                   IsFleetListLoaded;

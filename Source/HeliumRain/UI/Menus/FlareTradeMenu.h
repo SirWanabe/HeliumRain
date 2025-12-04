@@ -48,7 +48,6 @@ public:
 //	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 
 protected:
-
 	bool CheckIsActiveSector();
 
 	/*----------------------------------------------------
@@ -85,6 +84,8 @@ protected:
 	
 	/** Get the name of the left spacecraft */
 	FText GetLeftSpacecraftName() const;
+
+	FSlateColor GetRightSpacecraftColor() const;
 
 	/** Get the name of the right spacecraft */
 	FText GetRightSpacecraftName() const;
@@ -141,6 +142,7 @@ protected:
 	
 	/** Update which ships appear in the left ships menu*/
 	void UpdateLeftShips();
+	void UpdateRightShips();
 
 	/** Return true if the transaction is valid*/
 	bool IsTransactionValid(FText& Reason) const;

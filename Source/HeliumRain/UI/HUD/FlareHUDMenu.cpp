@@ -47,27 +47,319 @@ void SFlareHUDMenu::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Top)
 		[
-			SAssignNew(InfoText, STextBlock)
-			.TextStyle(&Theme.NameFont)
-			.Justification(ETextJustify::Center)
-			.Text(this, &SFlareHUDMenu::GetInfoText)
-			.ColorAndOpacity(NormalColor)
-			.Visibility(this, &SFlareHUDMenu::GetTopPanelVisibility)
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Top)
+			.AutoWidth()
+			.Padding(Theme.ContentPadding)
+			[
+				SNew(SVerticalBox)
+				// Info text
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Top)
+				[
+					SNew(SBox)
+					.Padding(FMargin(150,0,0,0))
+					.WidthOverride(1800)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Top)
+					.Visibility(this, &SFlareHUDMenu::GetTopPanelVisibility)
+					[
+						SNew(SVerticalBox)
+
+						// Info text 1
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Top)
+						[
+							SAssignNew(InfoText, STextBlock)
+							.TextStyle(&Theme.NameFont)
+							.Text(this, &SFlareHUDMenu::GetInfoText)
+							.ColorAndOpacity(NormalColor)
+						]
+
+						// Info text 2
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Top)
+						[
+							SAssignNew(LowerInfoText, STextBlock)
+							.TextStyle(&Theme.NameFont)
+							.Text(this, &SFlareHUDMenu::GetWarningText)
+							.ColorAndOpacity(EnemyColor)
+						]
+					]
+				]
+			]
+
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.HAlign(HAlign_Right)
+			.Padding(Theme.SmallContentPadding)
+			[
+				SNew(SBox)
+				.HAlign(HAlign_Right)
+				.VAlign(VAlign_Top)
+				.Visibility(this, &SFlareHUDMenu::GetDockingVisibility)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+
+						// Title
+						+ SHorizontalBox::Slot()
+						[
+							SNew(SBox)
+							.WidthOverride(25)
+							.HAlign(HAlign_Right)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(LOCTEXT("Distance", "Distance"))
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingDistanceColor)
+							]
+						]
+							
+						// Distance Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SImage)
+							.Image(FFlareStyleSet::GetIcon("MoveRight"))
+							.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingDistanceColorNoAlpha)
+						]
+						// Bar
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SProgressBar)
+								.Style(&Theme.ProgressBarStyle)
+								.Percent(this, &SFlareHUDMenu::GetDockingDistanceProgress)
+								.FillColorAndOpacity(this, &SFlareHUDMenu::GetDockingDistanceColorNoAlpha)
+							]
+						]
+						// Text
+						+ SHorizontalBox::Slot()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(this, &SFlareHUDMenu::GetDockingDistanceText)
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingDistanceColor)
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+
+						// Title
+						+ SHorizontalBox::Slot()
+						[
+							SNew(SBox)
+							.WidthOverride(25)
+							.HAlign(HAlign_Right)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(LOCTEXT("Lateral", "Lateral"))
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingLinearColor)
+							]
+						]
+							
+						// Lateral Error Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SImage)
+							.Image(FFlareStyleSet::GetIcon("RCS"))
+							.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingLinearColorNoAlpha)
+						]
+						// Bar
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SProgressBar)
+								.Style(&Theme.ProgressBarStyle)
+								.Percent(this, &SFlareHUDMenu::GetDockingLinearProgress)
+								.FillColorAndOpacity(this, &SFlareHUDMenu::GetDockingLinearColorNoAlpha)
+							]
+						]
+						// Text
+						+ SHorizontalBox::Slot()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(this, &SFlareHUDMenu::GetDockingLinearText)
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingLinearColor)
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+
+						// Title
+						+ SHorizontalBox::Slot()
+						[
+							SNew(SBox)
+							.WidthOverride(25)
+							.HAlign(HAlign_Right)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(LOCTEXT("Roll", "Roll"))
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingRollColor)
+							]
+						]
+
+						// Roll Error Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SImage)
+							.Image(FFlareStyleSet::GetIcon("RCS"))
+							.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingRollColorNoAlpha)
+						]
+						// Bar
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SProgressBar)
+								.Style(&Theme.ProgressBarStyle)
+								.Percent(this, &SFlareHUDMenu::GetDockingRollProgress)
+								.FillColorAndOpacity(this, &SFlareHUDMenu::GetDockingRollColorNoAlpha)
+							]
+						]
+						// Text
+						+ SHorizontalBox::Slot()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(this, &SFlareHUDMenu::GetDockingRollText)
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingRollColor)
+							]
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Right)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+
+						// Title
+						+ SHorizontalBox::Slot()
+						[
+							SNew(SBox)
+							.WidthOverride(25)
+							.HAlign(HAlign_Right)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(LOCTEXT("Angular", "Angular"))
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingAngularColor)
+							]
+						]	
+
+						// Angular Error Icon
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SImage)
+							.Image(FFlareStyleSet::GetIcon("RCS"))
+							.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingAngularColorNoAlpha)
+						]
+						// Bar
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.HAlign(HAlign_Fill)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SProgressBar)
+								.Style(&Theme.ProgressBarStyle)
+								.Percent(this, &SFlareHUDMenu::GetDockingAngularProgress)
+								.FillColorAndOpacity(this, &SFlareHUDMenu::GetDockingAngularColorNoAlpha)
+							]
+						]
+						// Text
+						+ SHorizontalBox::Slot()
+						.Padding(Theme.SmallContentPadding)
+						[
+							SNew(SBox)
+							.MinDesiredWidth(150)
+							.Padding(Theme.SmallContentPadding)
+							.VAlign(VAlign_Top)
+							[
+								SNew(STextBlock)
+								.TextStyle(&Theme.NameFont)
+								.Text(this, &SFlareHUDMenu::GetDockingAngularText)
+								.ColorAndOpacity(this, &SFlareHUDMenu::GetDockingAngularColor)
+							]
+						]
+					]
+				]
+			]
 		]
 
-		// Info text 2
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Top)
-		[
-			SAssignNew(LowerInfoText, STextBlock)
-			.TextStyle(&Theme.NameFont)
-			.Text(this, &SFlareHUDMenu::GetWarningText)
-			.ColorAndOpacity(EnemyColor)
-			.Visibility(this, &SFlareHUDMenu::GetTopPanelVisibility)
-		]
-	
 		// Overheating box
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -128,15 +420,22 @@ void SFlareHUDMenu::Construct(const FArguments& InArgs)
 			
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SAssignNew(TemperatureStatus, SFlareSubsystemStatus)
-				.Subsystem(EFlareSubsystem::SYS_Temperature)
+				SAssignNew(PowerStatus, SFlareSubsystemStatus)
+				.Subsystem(EFlareSubsystem::SYS_Power)
 				.MenuManager(MenuManager)
 			]
 
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SAssignNew(PowerStatus, SFlareSubsystemStatus)
-				.Subsystem(EFlareSubsystem::SYS_Power)
+				SAssignNew(LifeSupportStatus, SFlareSubsystemStatus)
+				.Subsystem(EFlareSubsystem::SYS_LifeSupport)
+				.MenuManager(MenuManager)
+			]
+
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SAssignNew(TemperatureStatus, SFlareSubsystemStatus)
+				.Subsystem(EFlareSubsystem::SYS_Temperature)
 				.MenuManager(MenuManager)
 			]
 
@@ -156,13 +455,6 @@ void SFlareHUDMenu::Construct(const FArguments& InArgs)
 
 			+ SHorizontalBox::Slot().AutoWidth()
 			[
-				SAssignNew(LifeSupportStatus, SFlareSubsystemStatus)
-				.Subsystem(EFlareSubsystem::SYS_LifeSupport)
-				.MenuManager(MenuManager)
-			]
-
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
 				SAssignNew(WeaponStatus, SFlareSubsystemStatus)
 				.Subsystem(EFlareSubsystem::SYS_Weapon)
 				.MenuManager(MenuManager)
@@ -176,46 +468,51 @@ void SFlareHUDMenu::Construct(const FArguments& InArgs)
 		.VAlign(VAlign_Top)
 		[
 			SNew(SHorizontalBox)
-				
-			// Icon
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(Theme.SmallContentPadding)
-			[
-				SNew(SImage)
-				.Image(FFlareStyleSet::GetIcon("Temperature"))
-				.ColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColorNoAlpha)
-			]
 
-			// Bar
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			[
-				SNew(SBox)
-				.MinDesiredWidth(500)
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				[
-					SNew(SProgressBar)
-					.Style(&Theme.ProgressBarStyle)
-					.Percent(this, &SFlareHUDMenu::GetTemperatureProgress)
-					.FillColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColorNoAlpha)
-				]
-			]
-
-			// Text
 			+ SHorizontalBox::Slot()
 			.Padding(Theme.SmallContentPadding)
 			[
-				SNew(SBox)
-				.MinDesiredWidth(100)
+				SNew(SHorizontalBox)
+				// Icon
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
 				.Padding(Theme.SmallContentPadding)
-				.VAlign(VAlign_Top)
 				[
-					SNew(STextBlock)
-					.TextStyle(&Theme.NameFont)
-					.Text(this, &SFlareHUDMenu::GetTemperatureText)
-					.ColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColor)
+					SNew(SImage)
+					.Image(FFlareStyleSet::GetIcon("Temperature"))
+					.ColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColorNoAlpha)
+				]
+
+				// Bar
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SBox)
+					.MinDesiredWidth(500)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SProgressBar)
+						.Style(&Theme.ProgressBarStyle)
+						.Percent(this, &SFlareHUDMenu::GetTemperatureProgress)
+						.FillColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColorNoAlpha)
+					]
+				]
+
+				// Text
+				+ SHorizontalBox::Slot()
+				.Padding(Theme.SmallContentPadding)
+				[
+					SNew(SBox)
+					.MinDesiredWidth(100)
+					.Padding(Theme.SmallContentPadding)
+					.VAlign(VAlign_Top)
+					[
+						SNew(STextBlock)
+						.TextStyle(&Theme.NameFont)
+						.Text(this, &SFlareHUDMenu::GetTemperatureText)
+						.ColorAndOpacity(this, &SFlareHUDMenu::GetTemperatureColor)
+					]
 				]
 			]
 		]
@@ -223,7 +520,6 @@ void SFlareHUDMenu::Construct(const FArguments& InArgs)
 
 	SetVisibility(EVisibility::Collapsed);
 }
-
 
 /*----------------------------------------------------
 	Interaction
@@ -263,6 +559,18 @@ void SFlareHUDMenu::OnPlayerShipChanged()
 			.MenuManager(MenuManager)
 			.TargetWeaponGroupIndex(-1)
 		];
+
+		if (PlayerShip->GetDescription()->IsDroneCarrier)
+		{
+			// Drones
+			WeaponContainer->AddSlot()
+			.AutoHeight()
+			[
+				SNew(SFlareWeaponStatus)
+				.MenuManager(MenuManager)
+				.TargetWeaponGroupIndex(-2)
+			];
+		}
 	}
 }
 
@@ -271,16 +579,16 @@ void SFlareHUDMenu::OnPlayerShipChanged()
 	Events
 ----------------------------------------------------*/
 
-void SFlareHUDMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+//void SFlareHUDMenu::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+void SFlareHUDMenu::HudMenuTick(float InDeltaTime)
 {
-	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+//	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 
 	UFlareSimulatedSpacecraft* PlayerShip = MenuManager->GetPC()->GetPlayerShip();
-
 	if (PlayerShip)
 	{
 		// Is alive ?
-		SetVisibility(PlayerShip->GetDamageSystem()->IsAlive() ? EVisibility::Visible : EVisibility::Collapsed);
+		// SetVisibility(PlayerShip->GetDamageSystem()->IsAlive() ? EVisibility::Visible : EVisibility::Collapsed);
 
 		// Overheating status
 		TimeSinceOverheatChanged += InDeltaTime;
@@ -293,6 +601,7 @@ void SFlareHUDMenu::Tick(const FGeometry& AllottedGeometry, const double InCurre
 		{
 			TimeSinceOverheatChanged = 0;
 		}
+
 		Overheating = NewOverheating;
 
 		// Outage status
@@ -302,25 +611,109 @@ void SFlareHUDMenu::Tick(const FGeometry& AllottedGeometry, const double InCurre
 		{
 			TimeSinceOutageChanged = 0;
 		}
+
 		PowerOutage = NewPowerOutage;
+
+		AFlareSpacecraft* PlayerActiveShip = PlayerShip->GetActive();
+		if (PlayerActiveShip)
+		{
+			// Docking info
+			FText DockInfo;
+			AFlareSpacecraft* DockSpacecraft = NULL;
+			FFlareDockingParameters DockParameters;
+			DockingInProgress = PlayerActiveShip->GetManualDockingProgress(DockSpacecraft, DockParameters, DockInfo);
+			if (DockSpacecraft)
+			{
+				// Angular / linear errors
+				float AngularDot = FVector::DotProduct(DockParameters.ShipDockAxis.GetSafeNormal(), -DockParameters.StationDockAxis.GetSafeNormal());
+				float AngularError = FMath::RadiansToDegrees(FMath::Acos(AngularDot));
+				float LinearError = FVector::VectorPlaneProject(DockParameters.DockToDockDeltaLocation, DockParameters.StationDockAxis).Size() / 100;
+
+				// Roll error
+				FVector StationTopAxis = DockParameters.StationDockTopAxis;
+				FVector TopAxis = PlayerActiveShip->GetActorRotation().RotateVector(FVector(0, 0, 1));
+				FVector LocalTopAxis = FVector::VectorPlaneProject(TopAxis, DockParameters.StationDockAxis).GetSafeNormal();
+				float RollDot = FVector::DotProduct(StationTopAxis, LocalTopAxis);
+				float RollError = FMath::RadiansToDegrees(FMath::Acos(RollDot));
+
+				// Ratios
+				float AngularTarget = 2; // 2° max error
+				float LinearTarget = 1; // 2m max error
+				float DistanceTarget = (PlayerActiveShip->GetSize() == EFlarePartSize::S) ? 250 : 500;
+				DockingDistanceRatio = 1 - FMath::Clamp(DockParameters.DockToDockDistance / 10000, 0.0f, 1.0f); // 100m distance range
+				DockingRollRatio = 1 - FMath::Clamp(RollError / 30, 0.0f, 1.0f); // 30° range
+				DockingAngularRatio = 1 - FMath::Clamp(AngularError / 30, 0.0f, 1.0f); // 30° range
+				DockingLinearRatio = 1 - FMath::Clamp(LinearError / 10, 0.0f, 1.0f); // 10m range
+				
+				DockingDistanceText = FText::Format(LOCTEXT("DockingDistanceHUDFormat", "{0}m"),
+					FText::AsNumber(FMath::RoundToInt(DockParameters.DockToDockDistance / 100)));
+				DockingRollText = FText::Format(LOCTEXT("DockingRollHUDFormat", "{0}\u00B0"),
+					FText::AsNumber(FMath::RoundToInt(RollError)));
+				DockingAngularText = FText::Format(LOCTEXT("DockingAlignmentHUDFormat", "{0}\u00B0"),
+					FText::AsNumber(FMath::RoundToInt(AngularError)));
+				DockingLinearText = FText::Format(LOCTEXT("DockingOffsetHUDFormat", "{0}m"),
+					FText::AsNumber(FMath::RoundToInt(LinearError)));
+			}
+			else
+			{
+				SetDockingInfoToDefaults();
+			}
+		}
+		else
+		{
+			SetDockingInfoToDefaults();
+		}
 	}
 }
-
 
 /*----------------------------------------------------
 	Callbacks
 ----------------------------------------------------*/
+
+void SFlareHUDMenu::SetDockingInfoToDefaults()
+{
+	DockingInProgress = false;
+
+	DockingDistanceRatio = 0;
+	DockingDistanceText = FText();
+
+	DockingRollRatio = 0;
+	DockingRollText = FText();
+
+	DockingLinearRatio = 0;
+	DockingLinearText = FText();
+
+	DockingAngularRatio = 0;
+	DockingAngularText = FText();
+}
 
 EVisibility SFlareHUDMenu::GetTopPanelVisibility() const
 {
 	return MenuManager->IsOverlayOpen() ? EVisibility::Hidden : EVisibility::Visible;
 }
 
+EVisibility SFlareHUDMenu::GetDockingVisibility() const
+{
+	if (MenuManager->IsOverlayOpen())
+	{
+		return EVisibility::Hidden;
+	}
+
+	bool IsDocked = false;
+
+	if (MenuManager->GetPC()->GetPlayerShip() && MenuManager->GetPC()->GetPlayerShip()->GetActive())
+	{
+		IsDocked = MenuManager->GetPC()->GetPlayerShip()->GetActive()->GetNavigationSystem()->IsDocked();
+	}
+
+	return DockingInProgress && !IsDocked ? EVisibility::Visible : EVisibility::Hidden;
+}
+
+
 FText SFlareHUDMenu::GetInfoText() const
 {
 	UFlareSimulatedSpacecraft* PlayerShip = MenuManager->GetPC()->GetPlayerShip();
-
-	if (PlayerShip && PlayerShip->IsActive() && !MenuManager->GetPC()->UseCockpit && MenuManager->GetPC()->GetGame()->GetActiveSector())
+	if (PlayerShip && PlayerShip->IsActive() && (!MenuManager->GetPC()->UseCockpit || (PlayerShip->GetActive() && PlayerShip->GetActive()->GetStateManager()->IsExternalCamera() && !PlayerShip->GetActive()->GetStateManager()->IsExternalCameraPanning())) && MenuManager->GetPC()->GetGame()->GetActiveSector())
 	{
 		AFlareSpacecraft* ActivePlayerShip = PlayerShip->GetActive();
 
@@ -346,8 +739,15 @@ FText SFlareHUDMenu::GetInfoText() const
 			CurrentSector->GetSectorName(),
 			CurrentSector->GetSectorFriendlynessText(PlayerShip->GetCompany()));
 
+		FText Pretext;
+		if (ActivePlayerShip->GetStateManager()->GetPlayerManualLockDirection())
+		{
+			Pretext = LOCTEXT("DirectionLocked", "(DL) ");
+		}
+
 		// Full flight info
-		FText FlightInfo = FText::Format(LOCTEXT("ShipInfoTextFormat", "{0} m/s - {1} {2} in {3}"),
+		FText FlightInfo = FText::Format(LOCTEXT("ShipInfoTextFormat", "{0}{1} m/s - {2} {3} in {4}"),
+			Pretext,
 			FText::AsNumber(FMath::RoundToInt(ActivePlayerShip->GetLinearVelocity().Size())),
 			ModeText,
 			AutopilotText,
@@ -387,6 +787,86 @@ FText SFlareHUDMenu::GetInfoText() const
 	}
 
 	return FText();
+}
+
+FSlateColor SFlareHUDMenu::GetDockingDistanceColor() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingDistanceRatio, 0.0f, 1.0f), true);
+}
+
+FSlateColor SFlareHUDMenu::GetDockingDistanceColorNoAlpha() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingDistanceRatio, 0.0f, 1.0f), false);
+}
+
+TOptional<float> SFlareHUDMenu::GetDockingDistanceProgress() const
+{
+	return (FMath::Clamp(DockingDistanceRatio, 0.0f, 1.0f) / 1);
+}
+
+FText SFlareHUDMenu::GetDockingDistanceText() const
+{
+	return DockingDistanceText;
+}
+
+FSlateColor SFlareHUDMenu::GetDockingLinearColor() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingLinearRatio, 0.0f, 1.0f), true);
+}
+
+FSlateColor SFlareHUDMenu::GetDockingLinearColorNoAlpha() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingLinearRatio, 0.0f, 1.0f), false);
+}
+
+TOptional<float> SFlareHUDMenu::GetDockingLinearProgress() const
+{
+	return (FMath::Clamp(DockingLinearRatio, 0.0f, 1.0f) / 1);
+}
+
+FText SFlareHUDMenu::GetDockingLinearText() const
+{
+	return DockingLinearText;
+}
+
+FSlateColor SFlareHUDMenu::GetDockingRollColor() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingRollRatio, 0.0f, 1.0f), true);
+}
+
+FSlateColor SFlareHUDMenu::GetDockingRollColorNoAlpha() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingRollRatio, 0.0f, 1.0f), false);
+}
+
+TOptional<float> SFlareHUDMenu::GetDockingRollProgress() const
+{
+	return (FMath::Clamp(DockingRollRatio, 0.0f, 1.0f) / 1);
+}
+
+FText SFlareHUDMenu::GetDockingRollText() const
+{
+	return DockingRollText;
+}
+
+FSlateColor SFlareHUDMenu::GetDockingAngularColor() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingAngularRatio, 0.0f, 1.0f), true);
+}
+
+FSlateColor SFlareHUDMenu::GetDockingAngularColorNoAlpha() const
+{
+	return FFlareStyleSet::GetRatioColour(FMath::Clamp(DockingAngularRatio, 0.0f, 1.0f), false);
+}
+
+TOptional<float> SFlareHUDMenu::GetDockingAngularProgress() const
+{
+	return (FMath::Clamp(DockingAngularRatio, 0.0f, 1.0f) / 1);
+}
+
+FText SFlareHUDMenu::GetDockingAngularText() const
+{
+	return DockingAngularText;
 }
 
 FText SFlareHUDMenu::GetWarningText() const

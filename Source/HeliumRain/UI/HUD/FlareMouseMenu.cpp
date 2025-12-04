@@ -60,12 +60,12 @@ void SFlareMouseMenu::Construct(const FArguments& InArgs)
 	Interaction
 ----------------------------------------------------*/
 
-void SFlareMouseMenu::AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault)
+void SFlareMouseMenu::AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault, FLinearColor SetColor)
 {
 	int32 Index = Actions.Num();
 
 	Actions.Add(Action);
-	AddWidgetInternal(Icon, Legend, Index);
+	AddWidgetInternal(Icon, Legend, SetColor, Index);
 	if (SelectDefault)
 	{
 		SelectedWidget = Index;
@@ -115,6 +115,7 @@ void SFlareMouseMenu::Close(bool EnableAction)
 	// Result extraction
 	if (HasSelection() && EnableAction)
 	{
+		FLOG("SFlareMouseMenu::Close : action taken");
 		SelectOption();
 	}
 	else
@@ -249,14 +250,24 @@ FVector2D SFlareMouseMenu::GetWidgetSize(int32 Index) const
 	return BaseSize;
 }
 
-FSlateColor SFlareMouseMenu::GetWidgetColor(int32 Index) const
+FSlateColor SFlareMouseMenu::GetWidgetColor(int32 Index, FLinearColor SetColor) const
 {
 	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
 
-	FLinearColor Color = Theme.NeutralColor;
+	FLinearColor Color;
+
+	if (SetColor.A >= 1.f)
+	{
+		Color = SetColor;
+	}
+	else
+	{
+		Color = Theme.NeutralColor;
+	}
+		
 	float AnimAlpha = FMath::Clamp(CurrentTime / AnimTime, 0.0f, 1.0f);
 	
-	// Menu open, maks everything
+	// Menu open, mask everything
 	if (MenuManager->IsUIOpen())
 	{
 		Color.A = 0;
@@ -308,7 +319,7 @@ FSlateColor SFlareMouseMenu::GetWidgetColor(int32 Index) const
 	Helpers
 ----------------------------------------------------*/
 
-void SFlareMouseMenu::AddWidgetInternal(FString Icon, FText Legend, int32 Index)
+void SFlareMouseMenu::AddWidgetInternal(FString Icon, FText Legend,FLinearColor SetColor, int32 Index)
 {
 	HUDCanvas->AddSlot()
 		.VAlign(VAlign_Center)
@@ -318,7 +329,7 @@ void SFlareMouseMenu::AddWidgetInternal(FString Icon, FText Legend, int32 Index)
 		[
 			SNew(SBorder)
             .BorderImage(FFlareStyleSet::GetIcon("LargeButtonBackground"))
-            .BorderBackgroundColor(this, &SFlareMouseMenu::GetWidgetColor, Index)
+            .BorderBackgroundColor(this, &SFlareMouseMenu::GetWidgetColor, Index, SetColor)
             .HAlign(HAlign_Center)
             .VAlign(VAlign_Center)
             [
@@ -326,9 +337,9 @@ void SFlareMouseMenu::AddWidgetInternal(FString Icon, FText Legend, int32 Index)
 				.Clickable(false)
 				.Text(Legend)
 				.Icon(FFlareStyleSet::GetIcon(Icon))
-				.HighlightColor(this, &SFlareMouseMenu::GetWidgetColor, Index)
-				.IconColor(this, &SFlareMouseMenu::GetWidgetColor, Index)
-				.TextColor(this, &SFlareMouseMenu::GetWidgetColor, Index)
+				.HighlightColor(this, &SFlareMouseMenu::GetWidgetColor, Index, SetColor)
+				.IconColor(this, &SFlareMouseMenu::GetWidgetColor, Index, SetColor)
+				.TextColor(this, &SFlareMouseMenu::GetWidgetColor, Index, SetColor)
 			]
 		];
 }

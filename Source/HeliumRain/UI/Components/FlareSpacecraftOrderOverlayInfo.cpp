@@ -13,6 +13,7 @@
 #include "../../Data/FlareSpacecraftComponentsCatalog.h"
 
 #define LOCTEXT_NAMESPACE "FlareSpacecraftOrderOverlayInfo"
+#define DEBUG_TURRETANGLES
 
 /*----------------------------------------------------
 	Construct
@@ -512,7 +513,9 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		}
 	}
 
-//	FString TurretAngleStrings = "";
+#ifdef	DEBUG_TURRETANGLES
+	FString TurretAngleStrings = "";
+#endif
 
 	if (Desc->TurretSlots.Num() > 0)
 	{
@@ -526,7 +529,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 				{
 					ComponentIdentifier = DefaultTurretIdentifier;
 				}
-/*
+
+#ifdef	DEBUG_TURRETANGLES
 				if (TurretAngleStrings.Len())
 				{
 					TurretAngleStrings += "\n";
@@ -539,7 +543,8 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 					float Value = SlotDescription->TurretBarrelsAngleLimit[BarrelAngles];			
 					TurretAngleStrings += FString::Printf(TEXT("%f\n"), Value);
 				}
-*/
+#endif
+
 				FFlareSpacecraftComponentDescription* ComponentDescription = Catalog->Get(ComponentIdentifier);
 				if (ComponentDescription)
 				{
@@ -583,7 +588,10 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 	FText TotalAmmoCapacityText;
 	FText TotalAmmoCapacityTextRight;
 
-//	FText TurretAngles = FText::FromString(TurretAngleStrings);
+#ifdef	DEBUG_TURRETANGLES
+	FText TurretAngles = FText::FromString(TurretAngleStrings);
+#endif
+
 //	FText InternalCompsLeft = FText::FromString(InternalCompString);
 //	FText InternalCompsRight = FText::FromString(InternalCompRightString);
 
@@ -705,11 +713,18 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		FText::AsNumber(Desc->CapturePointThreshold));
 	}
 
+	if (Desc->Mass > 0)
+	{
+		Mass = LOCTEXT("Mass", "Mass:\n");
+		MassRight = FText::Format(LOCTEXT("MassValue", "{0}-Tons\n"),
+		FText::AsNumber(Desc->Mass / 1000));
+	}
+
 	if (Desc->HeatCapacity > 0)
 	{
 		HeatCapacity = LOCTEXT("HeatCapacity", "Heat Capacity:\n");
 		HeatCapacityRight = FText::Format(LOCTEXT("HeatCapacityValue", "{0} KJ/K\n"),
-			FText::AsNumber(Desc->HeatCapacity));
+		FText::AsNumber(Desc->HeatCapacity));
 	}
 
 	if (Desc->OrbitalEngineCount > 0)
@@ -747,7 +762,7 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 			FText::AsNumber(Desc->DroneMaximum));
 	}
 
-	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}"),
+	VerboseInfoLeft = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperLeft", "{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}"),
 		Mass,
 		CapturePointsOffense,
 		CapturePointDefense,
@@ -757,11 +772,12 @@ void SFlareSpaceCraftOverlayInfo::SetSpacecraftInfoVerbose()
 		AngularMaxVelocity,
 		LinearMaxVelocity,
 		DroneMax,
-		InternalComponents);
+		InternalComponents,
+		TurretAngles);
 //		InternalCompsLeft,
 //		TurretAngles);
 
-	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}"),
+	VerboseInfoRight = FText::Format(LOCTEXT("SpacecraftInfoVerboseHelperRight", "\n\n{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}"),
 		MassRight,
 		CapturePointsOffenseRight,
 		CapturePointsDefenseRight,

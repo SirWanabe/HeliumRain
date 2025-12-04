@@ -273,9 +273,10 @@ void AFlareHUD::OnTargetShipChanged()
 void AFlareHUD::UpdateHUDVisibility()
 {
 	AFlarePlayerController* PC = MenuManager->GetPC();
+	UFlareSimulatedSpacecraft* PlayerShip = PC->GetPlayerShip();
 
-	HUDMenu->SetVisibility((HUDVisible && !MenuManager->IsMenuOpen() && PC->GetPlayerShip()->GetDamageSystem()->IsAlive() && !PC->UseCockpit) ?
-		EVisibility::Visible : EVisibility::Collapsed);
+	HUDMenu->SetVisibility((HUDVisible && !MenuManager->IsMenuOpen() && PC->GetPlayerShip()->GetDamageSystem()->IsAlive() && (!PC->UseCockpit || (PlayerShip->GetActive() && PlayerShip->GetActive()->GetStateManager()->IsExternalCamera() && !PlayerShip->GetActive()->GetStateManager()->IsExternalCameraPanning()))) ? EVisibility::Visible : EVisibility::Collapsed);
+
 	MenuManager->GetNotifier()->SetVisibility((HUDVisible) ?
 		EVisibility::SelfHitTestInvisible : EVisibility::Hidden);
 }
@@ -335,6 +336,11 @@ void AFlareHUD::Tick(float DeltaSeconds)
 	if (!GEngine)
 	{
 		return;
+	}
+
+	if (HUDMenu->GetVisibility() == EVisibility::Visible)
+	{
+		HUDMenu->HudMenuTick(DeltaSeconds);
 	}
 
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
@@ -434,6 +440,7 @@ void AFlareHUD::Tick(float DeltaSeconds)
 
 		// Should we paint the render target ?
 		bool DrawRenderTarget = false;
+	
 		if (PC->UseCockpit)
 		{
 			DrawRenderTarget = PlayerShip && !PC->IsInMenu();
@@ -1235,12 +1242,13 @@ void AFlareHUD::DrawHUDInternal()
 	AFlarePlayerController* PC = Cast<AFlarePlayerController>(GetOwner());
 	AFlareSpacecraft* PlayerShip = PC->GetShipPawn();
 	UFlareSector* ActiveSector = PC->GetGame()->GetActiveSector();
+
 	bool IsExternalCamera = PlayerShip->GetStateManager()->IsExternalCamera();
 	bool IsPlayerShipAlive = PlayerShip->GetParent()->GetDamageSystem()->IsAlive();
 	EFlareWeaponGroupType::Type WeaponType = PlayerShip->GetWeaponsSystem()->GetActiveWeaponType();
 
 	// Draw combat mouse pointer
-	if (HUDVisible && !PlayerShip->GetNavigationSystem()->IsAutoPilot())
+	if (HUDVisible && !PlayerShip->GetNavigationSystem()->IsAutoPilot() && !PlayerShip->GetNavigationSystem()->IsDocked())
 	{
 		// Compute clamped mouse position
 		FVector2D MousePosDelta = CombatMouseRadius * PlayerShip->GetStateManager()->GetPlayerAim();
@@ -1276,7 +1284,7 @@ void AFlareHUD::DrawHUDInternal()
 			bool IsObjective = (PC->GetCurrentObjective() && PC->GetCurrentObjective()->TargetSpacecrafts.Find(Spacecraft->GetParent()) != INDEX_NONE);
 
 			// Draw search markers for alive ships or highlighted stations when not in external camera
-			if (!IsExternalCamera && ShouldDrawSearchMarker
+			if ((!IsExternalCamera || (IsExternalCamera && !PlayerShip->GetStateManager()->IsExternalCameraPanning())) && ShouldDrawSearchMarker
 				&& IsPlayerShipAlive
 				&& Spacecraft->GetParent()->GetDamageSystem()->IsAlive()
 				&& (Highlighted || IsObjective || !Spacecraft->IsStation())
@@ -1336,7 +1344,7 @@ void AFlareHUD::DrawHUDInternal()
 			}
 
 			// Draw objective
-			if (ShouldDrawMarker && !IsExternalCamera && Target->Active && !Target->RequiresScan)
+			if (ShouldDrawMarker && (!IsExternalCamera || (IsExternalCamera && !PlayerShip->GetStateManager()->IsExternalCameraPanning())) && Target->Active && !Target->RequiresScan)
 			{
 				DrawSearchArrow(ObjectiveLocation, HudColorObjective, true);
 			}
@@ -1353,7 +1361,7 @@ void AFlareHUD::DrawHUDInternal()
 		{
 			UFlareTurret* Turret = Cast<UFlareTurret>(Weapon);
 
-			if(Turret->IsIgnoreManualAim())
+			if(!Turret || Turret->IsIgnoreManualAim())
 			{
 				continue;
 			}
@@ -1568,7 +1576,7 @@ void AFlareHUD::DrawHUDInternal()
 	}
 
 	// Draw nose
-	if (HUDVisible && !IsExternalCamera)
+	if (HUDVisible && (!IsExternalCamera || (IsExternalCamera && !PlayerShip->GetStateManager()->IsExternalCameraPanning())))
 	{
 		// Color
 		FLinearColor HUDNosePowerColor = HudColorNeutral;
@@ -1584,28 +1592,70 @@ void AFlareHUD::DrawHUDInternal()
 		// Nose drawing
 		if (WeaponType != EFlareWeaponGroupType::WG_TURRET)
 		{
-			DrawHUDIcon(
-				CurrentViewportSize / 2,
-				IconSize,
-				NoseIcon,
-				HUDNosePowerColor,
-				true);
+			if (IsExternalCamera)
+			{
+				FFlareWeaponGroup* WeaponGroup = PlayerShip->GetWeaponsSystem()->GetActiveWeaponGroup();
+				if (WeaponGroup)
+				{
+					for (UFlareWeapon* Weapon : PlayerShip->GetWeaponsSystem()->GetActiveWeaponGroup()->Weapons)
+					{
+						FVector FiringDirection = Weapon->GetFireAxis();
+
+						for (int GunIndex = 0; GunIndex < Weapon->GetComponentDescription()->WeaponCharacteristics.GunCharacteristics.GunCount; GunIndex++)
+						{
+							FVector FiringLocation = Weapon->GetMuzzleLocation(GunIndex);
+							FVector FireTargetLocation = FiringLocation + FiringDirection * 100000;
+
+							FVector2D ScreenPosition;
+
+							if (ProjectWorldLocationToCockpit(FireTargetLocation, ScreenPosition))
+							{
+								DrawHUDIcon(ScreenPosition, IconSize, HUDAimIcon, HUDNosePowerColor, true);
+							}
+						}
+					}
+				}
+				else
+				{
+					FBox PlayerShipBox = PlayerShip->GetComponentsBoundingBox();
+					float PlayerShipSize = FMath::Max(PlayerShipBox.GetExtent().Size(), 1.0f);
+
+					FVector RelativeOffset = FVector(2500 + PlayerShipSize, 0, 0);
+					FVector2D ScreenPosition;
+					ProjectWorldLocationToCockpit(PlayerShip->GetTransform().TransformPosition(RelativeOffset), ScreenPosition);
+					DrawHUDIcon(ScreenPosition, IconSize, NoseIcon, HUDNosePowerColor, true);
+				}
+			}
+			else
+			{
+				DrawHUDIcon(CurrentViewportSize / 2, IconSize, NoseIcon, HUDNosePowerColor, true);
+			}
 		}
 
 		// Speed data
 		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
 		FVector LocalShipSmoothedVelocity = PlayerShip->Airframe->GetComponentToWorld().Inverse().GetRotation().RotateVector(ShipSmoothedVelocity);
-		
+
+		FText Pretext;
+		if (PlayerShip->GetStateManager()->GetPlayerManualLockDirection())
+		{
+			Pretext = LOCTEXT("DirectionLocked", "(DL) ");
+		}
+
 		// Speed indication
 		float FrontVelocity = FMath::Abs(LocalShipSmoothedVelocity.X);
 		int32 SpeedMS = (FrontVelocity + 10.) / 100.0f;
 		FVector2D BaseSpeedLocation(0, 100);
-		FText VelocityText = FText::FromString(FString::FromInt(PlayerShip->IsMovingForward() ? SpeedMS : -SpeedMS) + FString(" m/s"));
+		FText VelocityText = FText::Format(LOCTEXT("SpeedFormat", "{0}{1} m/s"),
+			Pretext,
+			FText::FromString(FString::FromInt(PlayerShip->IsMovingForward() ? SpeedMS : -SpeedMS)));
+
 		FlareDrawText(VelocityText, BaseSpeedLocation, HUDNosePowerColor, true);
 
 		// Lateral speed indication
 		FVector LateralVelocity = FVector(0, LocalShipSmoothedVelocity.Y, LocalShipSmoothedVelocity.Z);
 		int32 SpeedLateralMS = (LateralVelocity.Size() + 10.) / 100.0f;
+
 		if (SpeedLateralMS > 1.f && MyGameSettings->ShowLateralVelocity)
 		{
 			FVector LateralVelocityAxis = LateralVelocity.GetSafeNormal();
@@ -1793,7 +1843,6 @@ bool AFlareHUD::DrawHUDDesignator(AFlareSpacecraft* Spacecraft)
 					{
 						FVector2D AimOffset = ScreenPosition - HelperScreenPosition;
 						UTexture2D* NoseIcon = (HasPlayerHit) ? HUDAimHitIcon : HUDAimIcon;
-
 						DrawHUDIcon(AimOffset + CurrentViewportSize / 2, IconSize *0.75 , NoseIcon, HUDAimHelperColor, true);
 					}
 					
@@ -1921,7 +1970,6 @@ FVector2D AFlareHUD::DrawHUDDesignatorStatus(FVector2D Position, float Designato
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDWeaponIcon, Color);
 	}
 
-//	if (Ship->GetParent()->IsHarpooned() && Ship->GetParent()->GetCompany()->GetPlayerHostility() != EFlareHostility::Owned)
 	if (Ship->GetParent()->GetCapturePointsMap().Num() > 0 && Ship->GetParent()->GetCompany()->GetPlayerHostility() != EFlareHostility::Owned)
 	{
 		Position = DrawHUDDesignatorStatusIcon(Position, DesignatorIconSize, HUDHarpoonedIcon, Color);

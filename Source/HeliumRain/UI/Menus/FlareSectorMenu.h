@@ -128,6 +128,11 @@ protected:
 	/** Visibility callback to hide sector controls during skirmish */
 	EVisibility GetSectorControlsVisibility() const;
 
+	FText GetOwnedSpacecraftTitle();
+
+	FText GetOtherSpacecraftTitle();
+
+
 	/*----------------------------------------------------
 		Action callbacks
 	----------------------------------------------------*/
@@ -158,6 +163,9 @@ protected:
 
 	/** A player owned active spacecraft has been selected*/
 	void OnOwnedActiveSpacecraftSelectedLeft(TSharedPtr<FInterfaceContainer> SpacecraftContainer);
+
+	void OnOwnedSpacecraftFilterSelected();
+	void OnOtherSpacecraftFilterSelected();
 
 protected:
 

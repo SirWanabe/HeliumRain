@@ -49,7 +49,10 @@ UFlareCompanyCatalog::UFlareCompanyCatalog(const class FObjectInitializer& PCIP)
 			}
 			if (OldEntry)
 			{
-				CompanyCatalog.Remove(OldEntry);
+				if (CompanyCatalog.Remove(OldEntry))
+				{
+					Index = FMath::Min(0, Index -= 1);
+				}
 			}
 		}
 	}

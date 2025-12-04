@@ -77,6 +77,8 @@ public:
 
 	virtual void Logout(AController* Player) override;
 
+	void ReactivateSector();
+
 	virtual void ActivateSector(UFlareSimulatedSector* Sector);
 
 	virtual void ActivateCurrentSector();

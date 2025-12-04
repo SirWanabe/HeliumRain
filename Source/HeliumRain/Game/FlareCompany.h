@@ -412,7 +412,7 @@ public:
 		return CompanyData.Licenses.LicenseBuilding;
 	}
 
-	const struct CompanyValue GetCompanyValue(UFlareSimulatedSector* SectorFilter = NULL, bool IncludeIncoming = true) const;
+	const struct CompanyValue GetCompanyValue(UFlareSimulatedSector* SectorFilter = NULL, bool IncludeIncoming = true);
 
 	inline TArray<UFlareSimulatedSpacecraft*>& GetCompanyStations()
 	{
@@ -568,6 +568,7 @@ public:
 	bool WantWarWith(UFlareCompany* TargetCompany);
 
 	bool AtWar();
+	bool IsShipInTransactionSources(UFlareSimulatedSpacecraft* Ship);
 
 	int32 GetTransportCapacity();
 

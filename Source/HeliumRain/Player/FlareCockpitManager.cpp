@@ -138,6 +138,7 @@ void AFlareCockpitManager::OnFlyShip(AFlareSpacecraft* NewPlayerShip)
 		CockpitPowerTimer = 0;
 		CameraSwitchTimer = 0;
 	}
+
 	PlayerShip = NewPlayerShip;
 
 	// Setup new ship

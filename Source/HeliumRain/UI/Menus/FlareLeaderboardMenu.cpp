@@ -37,8 +37,8 @@ void SFlareLeaderboardMenu::Construct(const FArguments& InArgs)
 		[
 			SNew(STextBlock)
 			.Text(this, &SFlareLeaderboardMenu::GetWindowTitle)
-		.TextStyle(&Theme.TitleFont)
-		.Justification(ETextJustify::Center)
+			.TextStyle(&Theme.TitleFont)
+			.Justification(ETextJustify::Center)
 		]
 
 		// Company list

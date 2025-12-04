@@ -6,6 +6,7 @@
 #include "../../Spacecrafts/FlareSpacecraft.h"
 #include "../../Player/FlarePlayerController.h"
 #include "../../Player/FlareMenuManager.h"
+#include "../../Player/FlareHUD.h"
 
 #define LOCTEXT_NAMESPACE "FlareWeaponStatus"
 
@@ -40,6 +41,10 @@ void SFlareWeaponStatus::Construct(const FArguments& InArgs)
 	else
 	{
 		TargetWeaponGroup = NULL;
+		if (TargetWeaponGroupIndex == -2)
+		{
+			Icon = FFlareStyleSet::GetIcon("Mouse_MatchSpeed");
+		}
 	}
 	
 	// Structure
@@ -109,6 +114,17 @@ void SFlareWeaponStatus::Tick(const FGeometry& AllottedGeometry, const double In
 	else
 	{
 		ComponentHealth = 1.0;
+		if (TargetWeaponGroupIndex == -2)
+		{
+			if (PlayerShip->GetHasUndockedInternalShips())
+			{
+				IsSelected = true;
+			}
+			else if (PlayerShip->GetWantUndockInternalShips())
+			{
+				IsSelecting = true;
+			}
+		}
 	}
 
 	// Update animation state
@@ -116,6 +132,7 @@ void SFlareWeaponStatus::Tick(const FGeometry& AllottedGeometry, const double In
 	{
 		CurrentAlpha += InDeltaTime / FadeInTime;
 	}
+
 	else if (IsSelecting)
 	{
 		if (CurrentAlpha >= 0.5f)
@@ -131,8 +148,10 @@ void SFlareWeaponStatus::Tick(const FGeometry& AllottedGeometry, const double In
 	else
 	{
 		CurrentAlpha -= InDeltaTime / FadeOutTime;
+		CurrentAlpha = FMath::Clamp(CurrentAlpha, 0.2f, 1.0f);
 	}
-	CurrentAlpha = FMath::Clamp(CurrentAlpha, 0.0f, 1.0f);
+
+	CurrentAlpha = FMath::Clamp(CurrentAlpha, 0.2f, 1.0f);
 }
 
 FText SFlareWeaponStatus::GetText() const
@@ -158,6 +177,10 @@ FText SFlareWeaponStatus::GetText() const
 			FText::AsNumber(TargetWeaponGroup->Weapons.Num()), TargetWeaponGroup->Description->Name,
 			FText::Format(LOCTEXT("Rounds", "{0} rounds"), FText::AsNumber(RemainingAmmo)),
 			FText::AsNumber(100 * ComponentHealth));
+	}
+	else if (TargetWeaponGroupIndex == -2)
+	{
+		return MenuManager->GetPC()->GetNavHUD()->GetCarrierText(MenuManager->GetPC()->GetShipPawn());
 	}
 
 	return Text;

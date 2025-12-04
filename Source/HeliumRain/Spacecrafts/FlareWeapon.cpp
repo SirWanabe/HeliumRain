@@ -352,10 +352,22 @@ bool UFlareWeapon::FireGun(int GunIndex)
 
 	// Get firing data
 	FVector FiringLocation = GetMuzzleLocation(GunIndex);
-	float Imprecision  = FMath::DegreesToRadians(ComponentDescription->WeaponCharacteristics.GunCharacteristics.AmmoPrecision  + 3.f *(1 - GetUsableRatio()));
 
-	FVector FiringAxis = ComputeParallaxCorrection(GunIndex);
+	AFlareSpacecraft* Spacecraft = Cast<AFlareSpacecraft>(SpacecraftPawn);
+
+	FVector FiringAxis;
+	if (Spacecraft && Spacecraft->IsPlayerShip() && Spacecraft->GetStateManager()->IsExternalCamera())
+	{
+		FiringAxis = GetFireAxis();
+	}
+	else
+	{
+		FiringAxis = ComputeParallaxCorrection(GunIndex);
+	}
+
+	float Imprecision = FMath::DegreesToRadians(ComponentDescription->WeaponCharacteristics.GunCharacteristics.AmmoPrecision + 3.f * (1 - GetUsableRatio()));
 	FVector FiringDirection = FMath::VRandCone(FiringAxis, Imprecision);
+
 	FVector FiringVelocity = Spacecraft->Airframe->GetPhysicsLinearVelocity();
 
 	AFlareShell* Shell = Spacecraft->GetGame()->GetCacheSystem()->RetrieveCachedShell();

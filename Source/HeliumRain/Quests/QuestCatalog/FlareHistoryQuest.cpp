@@ -307,7 +307,7 @@ bool UFlareQuestConditionDockAtType::IsCompleted()
 
 		if(PlayerShip->GetNavigationSystem()->GetDockStation())
 		{
-		if (PlayerShip->GetNavigationSystem()->GetDockStation()->GetDescription()->Identifier == TargetStationType)
+			if (PlayerShip->GetNavigationSystem()->GetDockStation()->GetDescription()->Identifier == TargetStationType)
 			{
 				Completed = true;
 				return true;

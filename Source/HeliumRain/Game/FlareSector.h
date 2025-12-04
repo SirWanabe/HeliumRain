@@ -34,6 +34,8 @@ public:
 	/** Destroy the sector */
 	virtual void DestroySector();
 
+	void ShipLeftSector(AFlareSpacecraft* Spacecraft);
+
 	/** Remove spacecraft from sector */
 	virtual void RemoveSpacecraft(AFlareSpacecraft* Spacecraft, bool RemoveSectorSpacecrafts = true);
 	virtual void SpaceCraftExplosionCheck(AFlareSpacecraft* Spacecraft);

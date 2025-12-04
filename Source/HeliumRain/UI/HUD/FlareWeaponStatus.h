@@ -72,6 +72,4 @@ protected:
 	// Target data
 	FFlareWeaponGroup*                      TargetWeaponGroup;
 	int32                                   TargetWeaponGroupIndex;
-
-
 };

@@ -270,7 +270,6 @@ FText SFlareFactoryInfo::GetFactoryName() const
 			Result = FText::Format(LOCTEXT("FactoryNameFormat", "{0} - {1}"),
 			FText::FromString(TargetFactory->GetDescription()->Name.ToString()),
 			TargetFactory->GetFactoryStatus());
-
 		}
 	}
 

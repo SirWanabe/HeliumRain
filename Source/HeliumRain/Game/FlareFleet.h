@@ -240,7 +240,6 @@ public:
 		return FleetSelectedWhiteList;
 	}
 
-
 	FText GetFleetName() const;
 
 	void SetFleetName(FText Name)

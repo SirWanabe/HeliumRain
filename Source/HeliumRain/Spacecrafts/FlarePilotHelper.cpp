@@ -19,6 +19,7 @@ DECLARE_CYCLE_STAT(TEXT("PilotHelper Anticollision Avoidance"), STAT_PilotHelper
 DECLARE_CYCLE_STAT(TEXT("PilotHelper GetBestTarget"), STAT_PilotHelper_GetBestTarget, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper GetBestTargetComponent"), STAT_PilotHelper_GetBestTargetComponent, STATGROUP_Flare);
 DECLARE_CYCLE_STAT(TEXT("PilotHelper CheckRelativeDangerosity"), STAT_PilotHelper_CheckRelativeDangerosity, STATGROUP_Flare);
+//#define DEBUG_ANTICOLLISION
 
 bool PilotHelper::CheckFriendlyFire(UFlareSector* Sector, UFlareCompany* MyCompany, FVector FireBaseLocation, FVector FireBaseVelocity , float AmmoVelocity, FVector FireAxis, float MaxDelay, float AimRadius)
 {
@@ -87,6 +88,10 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	TArray<TFlareCollisionCandidate> Candidates;
 	TFlareCollisionCandidate Candidate;
 
+	TArray<AActor*> ColliderActorList;
+	UGameplayStatics::GetAllActorsOfClass(Ship->GetWorld(), AFlareCollider::StaticClass(), ColliderActorList);
+	Candidates.Reserve(ActiveSector->GetAsteroids().Num() + ActiveSector->GetMeteorites().Num() + ColliderActorList.Num());
+
 	// Select dangerous ships
 	for (auto SpacecraftCandidate : ActiveSector->GetSpacecrafts())
 	{
@@ -129,8 +134,6 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 	}
 
 	// Select dangerous colliders
-	TArray<AActor*> ColliderActorList;
-	UGameplayStatics::GetAllActorsOfClass(Ship->GetWorld(), AFlareCollider::StaticClass(), ColliderActorList);
 	for (auto ColliderCandidate : ColliderActorList)
 	{
 		Candidate.Key = Cast<AFlareCollider>(ColliderCandidate);
@@ -160,7 +163,7 @@ bool PilotHelper::FindMostDangerousCollision(AActor*& MostDangerousCandidateActo
 		if ((SelectedCandidate.Key->GetActorLocation() - CurrentLocation).Size() < MaxRelevanceDistance)
 		{
 			CheckRelativeDangerosity(MostDangerousCandidateActor, MostDangerousLocation, MostDangerousTimeToHit, MostDangerousInterceptDepth,
-									 SelectedCandidate.Key, CurrentLocation, CurrentSize, SelectedCandidate.Value, CurrentVelocity, SpeedLimit);
+									 SelectedCandidate.Key, CurrentLocation, CurrentSize, SelectedCandidate.Value, CurrentVelocity, SpeedLimit, Ship);
 		}
 	}
 
@@ -185,14 +188,18 @@ bool PilotHelper::IsAnticollisionImminent(AFlareSpacecraft* Ship, float Preventi
 	return false;
 }
 
-FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig Config, float SpeedLimit)
+FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector InitialVelocity, float PreventionDuration, AnticollisionConfig Config, float SpeedLimit, bool& IsIntersecting, AActor*& MostDangerousCandidateActor)
 {
 	SCOPE_CYCLE_COUNTER(STAT_PilotHelper_AnticollisionCorrection);
 
-	//FLOGV("Anticollision for %s, PreventionDuration=%f", *Ship->GetImmatriculation().ToString(), PreventionDuration);
+#ifdef DEBUG_ANTICOLLISION
+	if (Ship->IsPlayerShip())
+	{
+		FLOGV("Anticollision for %s, PreventionDuration=%f", *Ship->GetImmatriculation().ToString(), PreventionDuration);
+	}
+#endif
 
 	// Output data
-	AActor* MostDangerousCandidateActor = NULL;
 	FVector MostDangerousLocation;
 	float MostDangerousTimeToHit = PreventionDuration;
 	float MostDangerousIntersectDepth;
@@ -202,6 +209,12 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 
 	if(!HaveCollision)
 	{
+#ifdef DEBUG_ANTICOLLISION
+		if (Ship->IsPlayerShip())
+		{
+			FLOG("No collision detected, returning initial velocity")
+		}
+#endif
 		return InitialVelocity;
 	}
 
@@ -211,16 +224,14 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 		SCOPE_CYCLE_COUNTER(STAT_PilotHelper_AnticollisionCorrection_Avoidance);
 
 		FBox ShipBox = Ship->GetComponentsBoundingBox();
-//		FBox ShipBox = Ship->GetMeshBox();
 		FVector CurrentLocation = (ShipBox.Max + ShipBox.Min) / 2.0;
 
-		if (MostDangerousTimeToHit > 0)
+		if (MostDangerousTimeToHit > 0.f)
 		{
 			UPrimitiveComponent* StaticMeshComponent = Cast<UPrimitiveComponent>(MostDangerousCandidateActor->GetRootComponent());
-			
 
 			FVector HitDistancePoint = CurrentLocation + Ship->Airframe->GetPhysicsLinearVelocity() * MostDangerousTimeToHit;
-			FVector FutureTargetLocation =  MostDangerousLocation + StaticMeshComponent->GetPhysicsLinearVelocity() * MostDangerousTimeToHit;
+			FVector FutureTargetLocation = MostDangerousLocation + StaticMeshComponent->GetPhysicsLinearVelocity() * MostDangerousTimeToHit;
 			FVector AvoidanceVector = HitDistancePoint - FutureTargetLocation;
 			FVector AvoidanceAxis;
 
@@ -232,15 +243,20 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 			{
 				AvoidanceAxis = AvoidanceVector.GetUnsafeNormal();
 			}
-
-			/*UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, HitDistancePoint , FColor::Yellow, true);
+/*
+			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, HitDistancePoint, FColor::Yellow, true);
 			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Ship->Airframe->GetPhysicsLinearVelocity(), FColor::White, true);
-			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + AvoidanceAxis *1000 , FColor::Green, true);
-			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + InitialVelocity *10 , FColor::Blue, true);
-			FLOGV("MostDangerousTimeToHit %f", MostDangerousTimeToHit);*/
-
+			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + AvoidanceAxis * 1000, FColor::Green, true);
+			UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + InitialVelocity * 10, FColor::Blue, true);
+*/
+#ifdef DEBUG_ANTICOLLISION
+			if (Ship->IsPlayerShip())
+			{
+				FLOGV("MostDangerousTimeToHit %f", MostDangerousTimeToHit);
+			}
+#endif
 			// Below few second begin avoidance maneuver
-			float Alpha = 1 - FMath::Max(0.0f, MostDangerousTimeToHit)/PreventionDuration;
+			float Alpha = 1 - FMath::Max(0.0f, MostDangerousTimeToHit) / PreventionDuration;
 
 			//FLOGV("InitialVelocity=%s", *InitialVelocity.ToString());
 			//FLOGV("InitialVelocity.GetUnsafeNormal()=%s", *InitialVelocity.GetUnsafeNormal().ToString());
@@ -253,13 +269,15 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 			{
 				if(InitialVelocity.IsNearlyZero())
 				{
-					return AvoidanceAxis * Alpha  * Ship->GetNavigationSystem()->GetLinearMaxVelocity() * 100;
+					return AvoidanceAxis * Alpha * Ship->GetNavigationSystem()->GetLinearMaxVelocity() * 100;
 				}
 				else
 				{
 					FVector Temp = InitialVelocity.GetUnsafeNormal() * (1.f - Alpha) + Alpha * AvoidanceAxis;
 					Temp *= InitialVelocity.Size();
-					//UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp * 10, FColor::Magenta, true);
+
+//					UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp * 10, FColor::Magenta, true);
+
 					return Temp;
 				}
 			}
@@ -268,18 +286,84 @@ FVector PilotHelper::AnticollisionCorrection(AFlareSpacecraft* Ship, FVector Ini
 		}
 		else
 		{
+			IsIntersecting = true;
+#ifdef DEBUG_ANTICOLLISION
+			if (Ship->IsPlayerShip())
+			{
+				FLOG("DangerousTimeToHit not above 0")
+			}
+#endif
 			if(Config.SpeedCorrectionOnly)
 			{
+#ifdef DEBUG_ANTICOLLISION
+				if (Ship->IsPlayerShip())
+				{
+					FLOG("SpeedcorrectonOnly, return zerovector")
+				}
+#endif
 				return FVector::ZeroVector;
 			}
 			else
 			{
+#ifdef DEBUG_ANTICOLLISION
+				if (Ship->IsPlayerShip())
+				{
+					FLOG("Not speed correction only")
+				}
+#endif
+
+				UPrimitiveComponent* StaticMeshComponent = Cast<UPrimitiveComponent>(MostDangerousCandidateActor->GetRootComponent());
+				FVector HitDistancePoint = CurrentLocation;// + Ship->Airframe->GetPhysicsLinearVelocity();
+				FVector FutureTargetLocation = MostDangerousLocation;// + StaticMeshComponent->GetPhysicsLinearVelocity();
+
+				FVector AvoidanceVector = HitDistancePoint - FutureTargetLocation;
+				FVector AvoidanceAxis;
+
+				if (AvoidanceVector.IsNearlyZero())
+				{
+					AvoidanceAxis = FMath::VRand();
+				}
+				else
+				{
+					AvoidanceAxis = AvoidanceVector.GetUnsafeNormal();
+				}
+/*
+				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, HitDistancePoint, FColor::Yellow, true);
+				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Ship->Airframe->GetPhysicsLinearVelocity(), FColor::White, true);
+				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + AvoidanceAxis * 1000, FColor::Green, true);
+				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + InitialVelocity * 10, FColor::Blue, true);
+*/
+				if (InitialVelocity.IsNearlyZero())
+				{
+					return AvoidanceAxis * 0.50f * Ship->GetNavigationSystem()->GetLinearMaxVelocity() * 100;
+				}
+				else
+				{
+					FVector Temp = InitialVelocity.GetUnsafeNormal() * 0.45f + 0.60f * AvoidanceAxis;
+					Temp *= InitialVelocity.Size();
+
+//					UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, (CurrentLocation + Temp) * 1000, FColor::Red, true);
+					return Temp;
+				}
+
+/*
 				FVector Temp = (CurrentLocation - MostDangerousLocation).GetUnsafeNormal() * (Ship->GetNavigationSystem()->GetLinearMaxVelocity());
-//				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp, FColor::Red, true);
+				FLOGV("Current\n%f\n%f\n%f\nMostDangerous\n%f\n%f\n%f\nUnsafeNormal\n%f\n%f\n%f\nLINEARMAX %f\nTEMP\n%f\n%f\n%f", CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z, MostDangerousLocation.X, MostDangerousLocation.Y, MostDangerousLocation.Z, (CurrentLocation - MostDangerousLocation).GetUnsafeNormal().X, (CurrentLocation - MostDangerousLocation).GetUnsafeNormal().Y, (CurrentLocation - MostDangerousLocation).GetUnsafeNormal().Z, Ship->GetNavigationSystem()->GetLinearMaxVelocity(), Temp.X, Temp.Y, Temp.Z);
+				UKismetSystemLibrary::DrawDebugLine(Ship->GetWorld(), CurrentLocation, CurrentLocation + Temp, FColor::Red, true);
 				return Temp;
+*/
 			}
 		}
 	}
+#ifdef DEBUG_ANTICOLLISION
+	else
+	{
+		if (Ship->IsPlayerShip())
+		{
+			FLOG("No MostDangerousCandidateActor set")
+		}
+	}
+#endif
 
 	return InitialVelocity;
 }
@@ -521,9 +605,7 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			StateScore *= Preferences.AttackMeWeight;
 		}
 
-
 		FVector Direction = (ShipCandidate->GetActorLocation() - Preferences.BaseLocation).GetUnsafeNormal();
-
 
 		float Alignment = FVector::DotProduct(Preferences.PreferredDirection, Direction);
 
@@ -594,6 +676,11 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 			continue;
 		}
 
+		float Distance = (Preferences.BaseLocation - BombCandidate->GetActorLocation()).Size();
+		if (Distance >= Preferences.MaxBombDistance)
+		{
+			continue;
+		}
 
 		float Score;
 		float StateScore;
@@ -605,13 +692,6 @@ PilotHelper::PilotTarget PilotHelper::GetBestTarget(AFlareSpacecraft* Ship, stru
 
 		if(Preferences.LastTarget.Is(BombCandidate)) {
 			StateScore *=  Preferences.LastTargetWeight;
-		}
-
-		float Distance = (Preferences.BaseLocation - BombCandidate->GetActorLocation()).Size();
-
-		if(Distance >= Preferences.MaxBombDistance)
-		{
-			continue;
 		}
 
 		if (Distance >= Preferences.MaxDistance)
@@ -848,7 +928,7 @@ UFlareSpacecraftComponent* PilotHelper::GetBestTargetComponent(AFlareSpacecraft*
 	return ComponentSelection[ComponentIndex];
 }
 
-bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor, FVector& MostDangerousLocation, float& MostDangerousTimeToHit, float& MostDangerousInterseptDepth, AActor* CandidateActor, FVector CurrentLocation, float CurrentSize, FVector TargetVelocity, FVector CurrentVelocity, float SpeedLimit)
+bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor, FVector& MostDangerousLocation, float& MostDangerousTimeToHit, float& MostDangerousInterseptDepth, AActor* CandidateActor, FVector CurrentLocation, float CurrentSize, FVector TargetVelocity, FVector CurrentVelocity, float SpeedLimit, AFlareSpacecraft* Ship)
 {
 	SCOPE_CYCLE_COUNTER(STAT_PilotHelper_CheckRelativeDangerosity);
 	//FLOGV("PilotHelper::CheckRelativeDangerosity for %s, ship size %f", *CandidateActor->GetName(), CurrentSize);
@@ -872,17 +952,19 @@ bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor,
 	float CandidateSize;
 	if (CandidateActor->IsA(AFlareCollider::StaticClass()) || CandidateActor->IsA(AFlareAsteroid::StaticClass()))
 	{
-		CandidateSize = Cast<UStaticMeshComponent>(CandidateActor->GetRootComponent())->Bounds.SphereRadius;
+		if (Ship->GetGame()->GetActiveSector()->GetDescription()->Identifier == "Farm")
+		{
+			CandidateSize = Cast<UStaticMeshComponent>(CandidateActor->GetRootComponent())->Bounds.SphereRadius * 1.30;
+		}
+		else if (Ship->GetGame()->GetActiveSector()->GetDescription()->Identifier == "blue-heart")
+		{
+			CandidateSize = Cast<UStaticMeshComponent>(CandidateActor->GetRootComponent())->Bounds.SphereRadius * 1.05;
+		}
+		else
+		{
+			CandidateSize = Cast<UStaticMeshComponent>(CandidateActor->GetRootComponent())->Bounds.SphereRadius;
+		}
 	}
-/*
-	else if (CandidateActor->IsA(AFlareSpacecraft::StaticClass()))
-	{
-		AFlareSpacecraft* CandidateSpacecraft = Cast<AFlareSpacecraft>(CandidateActor);
-		FBox CandidateBox = CandidateSpacecraft->GetMeshBox();
-		CandidateSize = CandidateSpacecraft->GetMeshScale();
-		CandidateLocation = (CandidateBox.Max + CandidateBox.Min) / 2.0;
-	}
-*/
 	else
 	{
 		FBox CandidateBox = CandidateActor->GetComponentsBoundingBox();
@@ -927,8 +1009,7 @@ bool PilotHelper::CheckRelativeDangerosity(AActor*& MostDangerousCandidateActor,
 	float DistanceToHit = TargetPointToMinPointDistance - MinPointToHitPointDistance;
 	float TimeToHit = DistanceToHit / DeltaVelocity.Size();
 
-
-	// Time to hit pointis high : not dangerous
+	// Time to hit point is high : not dangerous
 	if (TimeToHit > MostDangerousTimeToHit)
 	{
 		return false;

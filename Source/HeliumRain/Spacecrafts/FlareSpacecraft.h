@@ -25,9 +25,7 @@ struct FFlareScreenTarget
 	GENERATED_USTRUCT_BODY()
 
 	AFlareSpacecraft*      Spacecraft;
-
 	float                  DistanceFromScreenCenter;
-
 };
 
 
@@ -58,6 +56,7 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void TickSpacecraft(float DeltaSeconds) override;
+	void TickOwnedComponents(float DeltaSeconds);
 	
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, class AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 
@@ -70,7 +69,7 @@ public:
 
 	virtual void OnRefilled();
 
-	virtual void OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation = false, FFlareSpacecraftComponentDescription* TransactionNewPartDesc = NULL, int32 TransactionNewPartWeaponGroupIndex = -1);
+	virtual void OnDocked(AFlareSpacecraft* DockStation, bool TellUser, FFlareResourceDescription* TransactionResource, uint32 TransactionQuantity, UFlareSimulatedSpacecraft* SourceSpacecraft, UFlareSimulatedSpacecraft* DestinationSpacecraft, bool TransactionDonation = false, bool TransactionPlayerInitiated = false, FFlareSpacecraftComponentDescription* TransactionNewPartDesc = NULL, int32 TransactionNewPartWeaponGroupIndex = -1);
 
 	virtual void OnUndocked(AFlareSpacecraft* DockStation);
 
@@ -222,8 +221,9 @@ public:
 	virtual void StopFire();
 
 	virtual void LeftMousePress();
-
 	virtual void LeftMouseRelease();
+	virtual void RightMousePress();
+	virtual void RightMouseRelease();
 
 	virtual void DeactivateWeapon();
 
@@ -239,14 +239,32 @@ public:
 
 	virtual void PreviousWeapon();
 
-	virtual void NextTarget();
+	virtual void PreviousTarget(bool FilterOutStations = false, bool FilterOutShips = false, bool FilterEnemiesOnly = false, bool FilterObjectivesOnly = false);
+	virtual void NextTarget(bool FilterOutStations = false, bool FilterOutShips = false, bool FilterEnemiesOnly = false, bool FilterObjectivesOnly = false);
 
-	virtual void PreviousTarget();
-
-	virtual void AlternateNextTarget();
+	virtual void ClearTarget();
+	virtual void TargetDockedStation();
 
 	virtual void AlternatePreviousTarget();
+	virtual void AlternateNextTarget();
 
+	virtual void PreviousObjectiveTarget();
+	virtual void NextObjectiveTarget();
+
+	virtual void PreviousShipTarget();
+	virtual void NextShipTarget();
+
+	virtual void PreviousStationTarget();
+	virtual void NextStationTarget();
+
+	virtual void PreviousEnemyTarget();
+	virtual void NextEnemyTarget();
+
+	virtual void PreviousEnemyShipTarget();
+	virtual void NextEnemyShipTarget();
+
+	virtual void PreviousEnemyStationTarget();
+	virtual void NextEnemyStationTarget();
 
 	virtual void YawInput(float Val);
 
@@ -303,8 +321,8 @@ public:
 	virtual void BrakeToVelocity(const FVector& VelocityTarget = FVector::ZeroVector);
 
 	virtual void LockDirectionOn();
-
 	virtual void LockDirectionOff();
+	virtual void LockDirectionToggle();
 
 	virtual void FindTarget();
 
@@ -429,7 +447,7 @@ protected:
 
 	TArray<FFlareScreenTarget> Targets;
 
-	TArray<FFlareScreenTarget>& GetCurrentTargets();
+	TArray<FFlareScreenTarget>& GetCurrentTargets(bool FilterOutStations = false, bool FilterOutShips = false, bool FilterEnemiesOnly = false, bool FilterObjectivesOnly = false);
 
 	mutable bool TimeToStopCached = false;
 	mutable float TimeToStopCache;
@@ -458,6 +476,11 @@ public:
 	/*----------------------------------------------------
 		Getters
 	----------------------------------------------------*/
+
+	TArray<UFlareSpacecraftComponent*> GetActiveSpacecraftComponents() const
+	{
+		return ActiveSpacecraftComponents;
+	}
 
 	TArray<AFlareSpacecraft*> GetInSectorSquad() const
 	{

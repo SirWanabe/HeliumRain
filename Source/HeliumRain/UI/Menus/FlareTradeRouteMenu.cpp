@@ -68,7 +68,6 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 	.Padding(FMargin(0, AFlareMenuManager::GetMainOverlayHeight(), 0, 0))
 	[
 		SNew(SBox)
-//		.WidthOverride(2.4 * Theme.ContentWidth)
 		.WidthOverride(3.2 * Theme.ContentWidth)
 		[
 			SNew(SVerticalBox)
@@ -256,18 +255,36 @@ void SFlareTradeRouteMenu::Construct(const FArguments& InArgs)
 									]
 								]
 					
-								// Reset
 								+ SVerticalBox::Slot()
 								.AutoHeight()
 								.Padding(Theme.ContentPadding)
 								.HAlign(HAlign_Left)
 								[
-									SNew(SFlareButton)
-									.Width(4)
-									.Icon(FFlareStyleSet::GetIcon("OK"))
-									.Text(LOCTEXT("Reset", "Reset statistics"))
-									.HelpText(LOCTEXT("ResetInfo", "Reinitialize statistics for this trade route"))
-									.OnClicked(this, &SFlareTradeRouteMenu::OnResetStatistics)
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.Padding(Theme.SmallContentPadding)
+									.VAlign(VAlign_Center)
+									[
+										SNew(SFlareButton)
+										.Width(4.6)
+										.Icon(FFlareStyleSet::GetIcon("OK"))
+										.Text(LOCTEXT("Reset", "Reset statistics"))
+										.HelpText(LOCTEXT("ResetInfo", "Reinitialize statistics for this trade route"))
+										.OnClicked(this, &SFlareTradeRouteMenu::OnResetStatistics)
+									]
+									+ SHorizontalBox::Slot()
+									.Padding(FMargin(2,3,3,3))
+
+									.VAlign(VAlign_Center)
+									[
+										SNew(SFlareButton)
+										.Width(5.4)
+										.Icon(FFlareStyleSet::GetIcon("New"))
+										.Text(LOCTEXT("Duplicate", "Duplicate Trade Route"))
+										.HelpText(LOCTEXT("DuplicateInfo", "Create a new trade route with duplicated settings of the currently viewed trade route"))
+										.OnClicked(this, &SFlareTradeRouteMenu::OnDuplicateTradeRoute)
+										.IsDisabled(this, &SFlareTradeRouteMenu::IsDuplicateTradeRouteDisabled)
+									]
 								]
 							]
 
@@ -994,6 +1011,7 @@ void SFlareTradeRouteMenu::Enter(UFlareTradeRoute* TradeRoute)
 	MaxSectorsInRoute = DEFAULT_MAX_SECTORS + Technology_Bonus;
 
 	TargetTradeRoute = TradeRoute;
+	CopyOperationsFromSectorIndex = -1;
 	EditSelectedOperation = NULL;
 	EditSelectedOperationSI = -1;
 	EditSelectedOperationOI = -1;
@@ -1167,6 +1185,7 @@ void SFlareTradeRouteMenu::GenerateSectorList()
 				SectorList.Add(VisitedSectors[SectorIndex]);
 			}
 		}
+
 		SectorSelector->RefreshOptions();
 
 		// Iterate on the trade route
@@ -1264,10 +1283,24 @@ void SFlareTradeRouteMenu::GenerateSectorList()
 						.OnClicked(this, &SFlareTradeRouteMenu::OnAddOperationClicked, Sector)
 						.Text(LOCTEXT("SectorAddOperation", "Add"))
 						.Icon(FFlareStyleSet::GetIcon("New"))
-						.HelpText(LOCTEXT("UnloadHelp", "Add an operation for this sector"))
+						.HelpText(LOCTEXT("AddOperationHelp", "Add an operation for this sector"))
 					]
 
-					// Add operation button
+					// Copy operation button
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Left)
+					[
+						SNew(SFlareButton)
+						.Width(5)
+						.OnClicked(this, &SFlareTradeRouteMenu::OnCopyOperationClicked, Sector)
+						.Text(this, &SFlareTradeRouteMenu::GetOnCopyOperationText, Sector)
+						.IsDisabled(this, &SFlareTradeRouteMenu::IsCopyOperationDisabled, Sector)
+						.Icon(FFlareStyleSet::GetIcon("Travel"))
+						.HelpText(LOCTEXT("CopyOperationHelp", "Copy a sectors assigned operations and then paste them into another."))
+					]
+
+					// Move operation left and right button
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Left)
@@ -1311,6 +1344,11 @@ void SFlareTradeRouteMenu::GenerateSectorList()
 			for (int OperationIndex = 0; OperationIndex < SectorOrders->Operations.Num(); OperationIndex++)
 			{
 				FFlareTradeRouteSectorOperationSave* Operation = &SectorOrders->Operations[OperationIndex];
+				if (!Operation)
+				{
+					continue;
+				}
+
 				// TODO current operation progress
 				// Add operation limits
 
@@ -2178,6 +2216,7 @@ FText SFlareTradeRouteMenu::GetOperationStatusText(FFlareTradeRouteSectorOperati
 
 		FText CurrentWaitText;
 		bool ShowCurrentWaitText = true;
+
 		if (Operation->Type == EFlareTradeRouteOperation::Maintenance)
 		{
 			ShowCurrentWaitText = false;
@@ -2196,6 +2235,13 @@ FText SFlareTradeRouteMenu::GetOperationStatusText(FFlareTradeRouteSectorOperati
 			ShowCurrentWaitText ? LOCTEXT("LineBreak", "\n") : LOCTEXT("", ""),
 			FText::AsNumber(Operation->OperationConditions.Num()),
 			Operation->OperationConditions.Num() != 1 ? LOCTEXT("s", "s") : LOCTEXT("", ""));
+		}
+
+		FText HubStoragesText;
+		if (Operation->CanTradeWithStorages)
+		{
+			HubStoragesText = FText::Format(LOCTEXT("CanTradeWithStoragesFormat", "{0}Can trade with hubs"),
+				ShowCurrentWaitText || Operation->OperationConditions.Num() > 0 ? LOCTEXT("LineBreak", "\n") : LOCTEXT("", ""));
 		}
 
 		if (Operation->Type == EFlareTradeRouteOperation::Load || Operation->Type == EFlareTradeRouteOperation::Unload)
@@ -2237,8 +2283,6 @@ FText SFlareTradeRouteMenu::GetOperationStatusText(FFlareTradeRouteSectorOperati
 
 				if (Resource && Sector)
 				{
-
-
 					int64 TransactionResourcePrice = Sector->GetResourcePrice(Resource, (Operation->Type == EFlareTradeRouteOperation::Unload ? EFlareResourcePriceContext::FactoryInput : EFlareResourcePriceContext::FactoryOutput));
 					int64 BaseResourcePrice = Sector->GetResourcePrice(Resource, EFlareResourcePriceContext::Default);
 					int64 Fee = TransactionResourcePrice - BaseResourcePrice;
@@ -2251,11 +2295,12 @@ FText SFlareTradeRouteMenu::GetOperationStatusText(FFlareTradeRouteSectorOperati
 				}
 			}
 
-			FText CommonPart = FText::Format(LOCTEXT("OtherOperationStatusFormat", "Wait {0} or {1}{2}{3}{4}"),
+			FText CommonPart = FText::Format(LOCTEXT("OtherOperationStatusFormat", "Wait {0} or {1}{2}{3}{4}{5}"),
 			WaitText,
 			QuantityText,
 			InventoryText,
 			ConditionsText,
+			HubStoragesText,
 			PriceText);
 
 			// This is the active operation, add current progress
@@ -2379,12 +2424,11 @@ FText SFlareTradeRouteMenu::GetOperationStatusText(FFlareTradeRouteSectorOperati
 
 				if (TargetTradeRoute->GetActiveOperation() == Operation)
 				{
-					return FText::Format(LOCTEXT("CurrentOperationStatusFormatMaintenanceOrder", "{0}{1}{2} {3}\n({4})"),
+					return FText::Format(LOCTEXT("CurrentOperationStatusFormatMaintenanceOrder", "{0}{1}{2} {3}"),
 					ConditionsText,
 					!ConditionsText.IsEmpty() ? LOCTEXT("LineBreak", "\n") : LOCTEXT("", ""),
 					RepairText,
-					RearmText,
-					CurrentWaitText);
+					RearmText);
 				}
 
 				return FText::Format(LOCTEXT("CurrentOperationStatusFormatMaintenanceOrder", "{0}{1}{2} {3}"),
@@ -2536,6 +2580,109 @@ void SFlareTradeRouteMenu::OnResetStatistics()
 	TargetTradeRoute->ResetStats();
 }
 
+void SFlareTradeRouteMenu::OnDuplicateTradeRoute()
+{
+	if (!IsEnabled())
+	{
+		return;
+	}
+
+	UFlareTradeRoute* DuplicatedTradeRoute = MenuManager->GetPC()->GetCompany()->CreateTradeRoute(LOCTEXT("DuplicatedRoute", "Duplicated Route"));
+	FCHECK(DuplicatedTradeRoute);
+
+	FFlareMenuParameterData Data;
+	Data.Route = DuplicatedTradeRoute;
+
+	int32 SectorIndex = 0;
+	for (FFlareTradeRouteSectorSave& Sector : TargetTradeRoute->GetSectors())
+	{
+		UFlareSimulatedSector* SimulatedSector = MenuManager->GetGame()->GetGameWorld()->FindSector(Sector.SectorIdentifier);
+		FCHECK(SimulatedSector);
+
+		FFlareTradeRouteSectorSave* DuplicatedSector = DuplicatedTradeRoute->AddSector(SimulatedSector);
+
+		for (FFlareTradeRouteSectorOperationSave& Operation : Sector.Operations)
+		{
+			DuplicatedTradeRoute->CopySectorOperation(DuplicatedSector,&Operation);
+		}
+		++SectorIndex;
+	}
+
+	MenuManager->OpenMenu(EFlareMenu::MENU_TradeRoute, Data);
+}
+
+void SFlareTradeRouteMenu::OnCopyOperationClicked(UFlareSimulatedSector* Sector)
+{
+	int32 SectorIndex = TargetTradeRoute->GetSectorIndex(Sector);
+	if (SectorIndex >= 0)
+	{
+		// pasting
+		if (CopyOperationsFromSectorIndex >= 0 && CopyOperationsFromSectorIndex != SectorIndex)
+		{
+			FFlareTradeRouteSectorSave CopiedSectorOrders = TargetTradeRoute->GetSectors()[CopyOperationsFromSectorIndex];
+			FFlareTradeRouteSectorSave* PastedSectorOrders = &TargetTradeRoute->GetSectors()[SectorIndex];
+
+			for (FFlareTradeRouteSectorOperationSave& Operation : CopiedSectorOrders.Operations)
+			{
+				TargetTradeRoute->CopySectorOperation(PastedSectorOrders, &Operation);
+			}
+
+			CopyOperationsFromSectorIndex = -1;
+			GenerateSectorList();
+		}
+		// copying
+		else if (CopyOperationsFromSectorIndex != SectorIndex)
+		{
+			CopyOperationsFromSectorIndex = SectorIndex;
+		}
+		// remove copy action
+		else
+		{
+			CopyOperationsFromSectorIndex = -1;
+		}
+	}
+}
+
+FText SFlareTradeRouteMenu::GetOnCopyOperationText(UFlareSimulatedSector* Sector) const
+{
+	if (CopyOperationsFromSectorIndex >= 0)
+	{
+		int32 SectorIndex = TargetTradeRoute->GetSectorIndex(Sector);
+
+		// same sector
+		if (SectorIndex == CopyOperationsFromSectorIndex)
+		{
+			return FText(LOCTEXT("SectorCopiedOperation", "Copied Operations"));
+		}
+		else
+		{
+			return FText(LOCTEXT("SectorPasteOperation", "Paste Operations"));
+		}
+	}
+
+	return FText(LOCTEXT("SectorCopyOperation", "Copy Operations"));
+}
+
+
+bool SFlareTradeRouteMenu::IsCopyOperationDisabled(UFlareSimulatedSector* Sector) const
+{
+	if (!TargetTradeRoute)
+	{
+		return true;
+	}
+
+	int32 SectorIndex = TargetTradeRoute->GetSectorIndex(Sector);
+	if (TargetTradeRoute->GetSectors().Num() <= 1 || TargetTradeRoute->GetSectors()[SectorIndex].Operations.Num() <= 0)
+	{
+		if (CopyOperationsFromSectorIndex == -1)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void SFlareTradeRouteMenu::OnConfirmChangeRouteNameClicked()
 {
 	if (TargetTradeRoute)
@@ -2620,6 +2767,22 @@ bool SFlareTradeRouteMenu::IsMoveRightDisabled(UFlareSimulatedSector* Sector) co
 	return (TargetTradeRoute->GetSectorIndex(Sector) == TargetTradeRoute->GetSectors().Num() - 1);
 }
 
+bool SFlareTradeRouteMenu::IsDuplicateTradeRouteDisabled() const
+{
+	int32 FleetCount = 0;
+	TArray<UFlareFleet*>& Fleets = MenuManager->GetGame()->GetPC()->GetCompany()->GetCompanyFleets();
+
+	for (int FleetIndex = 0; FleetIndex < Fleets.Num(); FleetIndex++)
+	{
+		if (!Fleets[FleetIndex]->GetCurrentTradeRoute() && Fleets[FleetIndex] != MenuManager->GetPC()->GetPlayerFleet())
+		{
+			FleetCount++;
+		}
+	}
+
+	return (FleetCount == 0);
+}
+
 bool SFlareTradeRouteMenu::IsOperationUpDisabled() const
 {
 	if (EditSelectedOperation && TargetTradeRoute)
@@ -2649,7 +2812,7 @@ void SFlareTradeRouteMenu::OnResourceComboLineSelectionChanged(UFlareResourceCat
 	if (EditSelectedOperation)
 	{
 		EditSelectedOperation->ResourceIdentifier = Item->Data.Identifier;
-//		GenerateSectorList();
+		GenerateSectorList();
 	}
 }
 
@@ -2668,6 +2831,7 @@ void SFlareTradeRouteMenu::OnOperationComboLineSelectionChanged(TSharedPtr<FText
 		EditSelectedOperation->Type = OperationType;
 		OnOperationAltered();
 		UpdateSelectedOperation();
+		GenerateSectorList();
 	}
 }
 
@@ -2894,6 +3058,7 @@ void SFlareTradeRouteMenu::OnDeleteOperationClicked(FFlareTradeRouteSectorOperat
 		{
 			SelectedOperation = NULL;
 		}
+
 		if (Operation == EditSelectedOperation)
 		{
 			EditSelectedOperation = NULL;
@@ -2902,6 +3067,7 @@ void SFlareTradeRouteMenu::OnDeleteOperationClicked(FFlareTradeRouteSectorOperat
 			EditSelectedOperationOI = -1;
 		}
 
+		CopyOperationsFromSectorIndex = -1;
 		TargetTradeRoute->DeleteOperation(Operation);
 		GenerateSectorList();
 	}

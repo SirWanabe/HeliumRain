@@ -132,7 +132,7 @@ void UFlareTradeRoute::Simulate()
 
 	if (TargetSector && TargetSector != CurrentSector)
 	{
-		if (! TradeRouteFleet->IsTrading())
+		if (!TradeRouteFleet->IsTrading())
 		{
 			if(TargetSector->GetSectorBattleState(TradeRouteCompany).HasDanger)
 			{
@@ -191,6 +191,10 @@ UFlareSimulatedSector* UFlareTradeRoute::UpdateTargetSector()
 			FLOG("Has no TargetSector");
 		}
 		SetTargetSector(TargetSector);
+	}
+	else
+	{
+		CurrentTargetSector = TargetSector;
 	}
 
 	return TargetSector;
@@ -265,6 +269,7 @@ bool UFlareTradeRoute::ProcessCurrentOperation(FFlareTradeRouteSectorOperationSa
 	}
 
 	// Return true if : limit reach or all ship full/empty or buy and no money or sell and nobody has money
+
 	switch (Operation->Type)
 	{
 		case EFlareTradeRouteOperation::Load:
@@ -456,10 +461,9 @@ bool UFlareTradeRoute::ProcessLoadOperation(FFlareTradeRouteSectorOperationSave*
 
 bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSave* Operation)
 {
-
 	FFlareResourceDescription* Resource = Game->GetResourceCatalog()->Get(Operation->ResourceIdentifier);
 
-	TArray<UFlareSimulatedSpacecraft*> UsefullShips;
+	TArray<UFlareSimulatedSpacecraft*> UsefulShips;
 
 	TArray<UFlareSimulatedSpacecraft*>&  RouteShips = TradeRouteFleet->GetShips();
 	int32 FleetQuantity = 0;
@@ -488,7 +492,7 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 		if (Quantity > 0)
 		{
 			FleetQuantity += Quantity;
-			UsefullShips.Add(Ship);
+			UsefulShips.Add(Ship);
 		}
 
 		// TODO sort by most pertinent
@@ -513,9 +517,8 @@ bool UFlareTradeRoute::ProcessUnloadOperation(FFlareTradeRouteSectorOperationSav
 	Request.BuySellPriority = Operation->BuySellPriority;
 	Request.IsDonation = Operation->CanDonate;
 
-	for (UFlareSimulatedSpacecraft* Ship : UsefullShips)
+	for (UFlareSimulatedSpacecraft* Ship : UsefulShips)
 	{
-
 		if (Ship->IsTrading())
 		{
 			// Skip trading ships
@@ -643,6 +646,7 @@ void UFlareTradeRoute::SetTargetSector(UFlareSimulatedSector* Sector)
 		TradeRouteData.CurrentOperationIndex = 0;
 		TradeRouteData.CurrentOperationProgress = 0;
 	}
+	CurrentTargetSector = Sector;
 }
 
 
@@ -682,12 +686,12 @@ void UFlareTradeRoute::ChangeSector(UFlareSimulatedSector* OldSector, UFlareSimu
 	}
 }
 
-void UFlareTradeRoute::AddSector(UFlareSimulatedSector* Sector)
+FFlareTradeRouteSectorSave* UFlareTradeRoute::AddSector(UFlareSimulatedSector* Sector)
 {
     if (IsVisiting(Sector))
     {
         FLOG("Warning: try to add a sector already visited by the trade route");
-        return;
+        return nullptr;
     }
 
 	FFlareTradeRouteSectorSave TradeRouteSector;
@@ -700,7 +704,7 @@ void UFlareTradeRoute::AddSector(UFlareSimulatedSector* Sector)
 	}
 
 	Game->GetQuestManager()->OnEvent(FFlareBundle().PutTag("trade-route-sector-add"));
-
+	return &TradeRouteData.Sectors.Last();
 }
 
 void UFlareTradeRoute::RemoveSector(UFlareSimulatedSector* Sector)
@@ -849,6 +853,36 @@ FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::AddSectorOperation(int32 
 	Sector->Operations.Add(Operation);
 
 	return &Sector->Operations.Last();
+}
+
+void UFlareTradeRoute::CopySectorOperation(FFlareTradeRouteSectorSave* NewSector, FFlareTradeRouteSectorOperationSave* CopiedOperation)
+{
+	FFlareTradeRouteSectorOperationSave DuplicatedOperation;
+	DuplicatedOperation.Type = CopiedOperation->Type;
+	DuplicatedOperation.ResourceIdentifier = CopiedOperation->ResourceIdentifier;
+	DuplicatedOperation.GotoSectorIndex = CopiedOperation->GotoSectorIndex;
+	DuplicatedOperation.GotoOperationIndex = CopiedOperation->GotoOperationIndex;
+	DuplicatedOperation.MaxQuantity = CopiedOperation->MaxQuantity;
+	DuplicatedOperation.MaxWait = CopiedOperation->MaxWait;
+	DuplicatedOperation.InventoryLimit = CopiedOperation->InventoryLimit;
+	DuplicatedOperation.LoadUnloadPriority = CopiedOperation->LoadUnloadPriority;
+	DuplicatedOperation.BuySellPriority = CopiedOperation->BuySellPriority;
+	DuplicatedOperation.CanTradeWithStorages = CopiedOperation->CanTradeWithStorages;
+	DuplicatedOperation.CanDonate = CopiedOperation->CanDonate;
+
+	for (FFlareTradeRouteOperationConditionSave& Condition : CopiedOperation->OperationConditions)
+	{
+		FFlareTradeRouteOperationConditionSave NewOperationCondition;
+		NewOperationCondition.ConditionRequirement = Condition.ConditionRequirement;
+		NewOperationCondition.ConditionPercentage = Condition.ConditionPercentage;
+		NewOperationCondition.SkipOnConditionFail = Condition.SkipOnConditionFail;
+		NewOperationCondition.BooleanOne = Condition.BooleanOne;
+		NewOperationCondition.BooleanTwo = Condition.BooleanTwo;
+		NewOperationCondition.BooleanThree = Condition.BooleanThree;
+		DuplicatedOperation.OperationConditions.Add(NewOperationCondition);
+	}
+
+	NewSector->Operations.Add(DuplicatedOperation);
 }
 
 void UFlareTradeRoute::RemoveOperationCondition(FFlareTradeRouteSectorOperationSave* Operation, FFlareTradeRouteOperationConditionSave* Condition)
@@ -1215,11 +1249,11 @@ UFlareSimulatedSector* UFlareTradeRoute::GetNextTradeSector(UFlareSimulatedSecto
         NextSectorId = 0;
 	}
 
-
 	if (NextSectorId >= TradeRouteData.Sectors.Num())
 	{
 		NextSectorId = 0;
 	}
+
 	return Game->GetGameWorld()->FindSector(TradeRouteData.Sectors[NextSectorId].SectorIdentifier);
 }
 
@@ -1407,19 +1441,18 @@ int32 UFlareTradeRoute::GetOperationIndex(FFlareTradeRouteSectorOperationSave* O
 
 UFlareSimulatedSector* UFlareTradeRoute::GetTargetSector() const
 {
-	return Game->GetGameWorld()->FindSector(TradeRouteData.TargetSectorIdentifier);
+	return CurrentTargetSector ? CurrentTargetSector : Game->GetGameWorld()->FindSector(TradeRouteData.TargetSectorIdentifier);
 }
 
 FFlareTradeRouteSectorOperationSave* UFlareTradeRoute::GetActiveOperation()
 {
-	UFlareSimulatedSector* TargetSector = Game->GetGameWorld()->FindSector(TradeRouteData.TargetSectorIdentifier);
-
-	if(TargetSector == NULL)
+//	UFlareSimulatedSector* TargetSector = Game->GetGameWorld()->FindSector(TradeRouteData.TargetSectorIdentifier);
+	if(CurrentTargetSector == NULL)
 	{
 		return NULL;
 	}
 
-	FFlareTradeRouteSectorSave* SectorOrder = GetSectorOrders(TargetSector);
+	FFlareTradeRouteSectorSave* SectorOrder = GetSectorOrders(CurrentTargetSector);
 
 	if(SectorOrder == NULL)
 	{

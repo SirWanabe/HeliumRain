@@ -110,7 +110,6 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 	LastSimulateTime = 0;
 	QuickSwitchNextOffset = 0;
 	HasCurrentObjective = false;
-	RightMousePressed = false;
 	LastBattleState.Init();
 
 	// Setup
@@ -119,6 +118,8 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 
 	// Joystick smoothing
 	int32 SmoothFrames = 15;
+	JoystickHorizontalCameraInputVal.SetSize(SmoothFrames);
+	JoystickVerticalCameraInputVal.SetSize(SmoothFrames);
 	JoystickHorizontalInputVal.SetSize(SmoothFrames);
 	JoystickVerticalInputVal.SetSize(SmoothFrames);
 	JoystickPitchInputVal.SetSize(SmoothFrames);
@@ -130,6 +131,9 @@ AFlarePlayerController::AFlarePlayerController(const class FObjectInitializer& P
 	CompanyData.CustomizationOverlayColor = FLinearColor(0.894444,0.892754,1.0); //4
 	CompanyData.CustomizationLightColor = FLinearColor(0.0,0.3,1.0); //13
 	CompanyData.CustomizationPatternIndex = 1;
+
+	PlayerSetCameraMode = false;
+	PlayerSetCameraPanningMode = true;
 }
 
 
@@ -238,7 +242,7 @@ void AFlarePlayerController::PlayerTick(float DeltaSeconds)
 	// Update FOV
 	PlayerCameraManager->SetFOV(GetCurrentFOV());
 
-	// Mouse cursor
+	// Mouse cursor1
 	bool NewShowMouseCursor = true;
 	if ((!MenuManager->IsUIOpen() && ShipPawn && !ShipPawn->GetStateManager()->IsWantCursor()) || GetNavHUD()->IsWheelMenuOpen())
 	{
@@ -400,16 +404,25 @@ float AFlarePlayerController::GetCurrentFOV() const
 	return VerticalToHorizontalFOV(VerticalFOV);
 }
 
-void AFlarePlayerController::SetExternalCamera(bool NewState,  bool SetFromPlayerInput)
+void AFlarePlayerController::SetExternalCameraPanning(bool NewState)
 {
 	if (ShipPawn)
 	{
+		ShipPawn->GetStateManager()->SetExternalCameraPanning(NewState);
+		PlayerSetCameraPanningMode = NewState;
+
 		// Close main overlay if open outside menu
 		if (!MenuManager->IsMenuOpen())
 		{
 			MenuManager->CloseMainOverlay();
 		}
+	}
+}
 
+void AFlarePlayerController::SetExternalCamera(bool NewState,  bool SetFromPlayerInput, bool DeactivateWeapons)
+{
+	if (ShipPawn)
+	{
 		// No internal camera when docked
 		if (ShipPawn && ShipPawn->GetNavigationSystem()->IsDocked())
 		{
@@ -421,7 +434,13 @@ void AFlarePlayerController::SetExternalCamera(bool NewState,  bool SetFromPlaye
 		}
 
 		// Send the camera order to the ship
-		ShipPawn->GetStateManager()->SetExternalCamera(NewState);
+		ShipPawn->GetStateManager()->SetExternalCamera(NewState, DeactivateWeapons);
+
+		// Close main overlay if open outside menu
+		if (!MenuManager->IsMenuOpen())
+		{
+			MenuManager->CloseMainOverlay();
+		}
 	}
 }
 
@@ -433,11 +452,14 @@ void AFlarePlayerController::FlyShip(AFlareSpacecraft* Ship, bool PossessNow)
 	{
 		// Already flying this ship
 		// Fly the new ship
+	
 		if (PossessNow)
 		{
 			Possess(Ship);
 		}
 
+		SetExternalCamera(PlayerSetCameraMode);
+		SetExternalCameraPanning(PlayerSetCameraPanningMode);
 		return;
 	}
 
@@ -890,8 +912,10 @@ void AFlarePlayerController::SetupGamepad()
 	// Add gamepad mappings
 	AddGamepadAxisMapping(InputSettings, "GamepadMoveHorizontalInput", "Gamepad_LeftX", 1.0f);
 	AddGamepadAxisMapping(InputSettings, "GamepadMoveVerticalInput", "Gamepad_LeftY", -1.0f);
+
 	AddGamepadAxisMapping(InputSettings, "GamepadYawInput", "Gamepad_RightX", 1.0f);
 	AddGamepadAxisMapping(InputSettings, "GamepadPitchInput", "Gamepad_RightY", -1.0f);
+
 	AddGamepadActionMapping(InputSettings, "NextTarget", "Gamepad_DPad_Right");
 	AddGamepadActionMapping(InputSettings, "PreviousWeapon", "Gamepad_DPad_Down");
 	AddGamepadActionMapping(InputSettings, "PreviousTarget", "Gamepad_DPad_Left");
@@ -1870,6 +1894,11 @@ void AFlarePlayerController::SetupInputComponent()
 
 	// Main keys
 	InputComponent->BindAction("ToggleCamera", EInputEvent::IE_Released, this, &AFlarePlayerController::ToggleCamera);
+	InputComponent->BindAction("ToggleCameraPanning", EInputEvent::IE_Released, this, &AFlarePlayerController::ToggleCameraPanning);
+
+	InputComponent->BindAction("CameraPan", EInputEvent::IE_Pressed, this, &AFlarePlayerController::CameraPanOn);
+	InputComponent->BindAction("CameraPan", EInputEvent::IE_Released, this, &AFlarePlayerController::CameraPanOff);
+
 	InputComponent->BindAction("ToggleMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::ToggleMenu);
 	InputComponent->BindAction("ToggleOverlay", EInputEvent::IE_Released, this, &AFlarePlayerController::ToggleOverlay);
 	InputComponent->BindAction("EnterMenu", EInputEvent::IE_Pressed, this, &AFlarePlayerController::EnterMenuDown);
@@ -1881,9 +1910,11 @@ void AFlarePlayerController::SetupInputComponent()
 	InputComponent->BindAction("DisengagePilot", EInputEvent::IE_Released, this, &AFlarePlayerController::DisengagePilot);
 	InputComponent->BindAction("ToggleHUD", EInputEvent::IE_Released, this, &AFlarePlayerController::ToggleHUD);
 	InputComponent->BindAction("QuickSwitch", EInputEvent::IE_Released, this, &AFlarePlayerController::QuickSwitch);
+
 #if !UE_BUILD_SHIPPING
 	InputComponent->BindAction("TogglePerformance", EInputEvent::IE_Released, this, &AFlarePlayerController::TogglePerformance);
 #endif
+	InputComponent->BindAction("AntiCollisionToggle", EInputEvent::IE_Pressed, this, &AFlarePlayerController::AntiCollisionToggle);
 
 	// Menus
 	InputComponent->BindAction("ShipMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::ShipMenu);
@@ -1897,7 +1928,10 @@ void AFlarePlayerController::SetupInputComponent()
 	InputComponent->BindAction("QuestMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::QuestMenu);
 	InputComponent->BindAction("MainMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::MainMenu);
 	InputComponent->BindAction("SettingsMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::SettingsMenu);
+	InputComponent->BindAction("HelpMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::HelpMenu);
 	InputComponent->BindAction("TradeMenu", EInputEvent::IE_Released, this, &AFlarePlayerController::TradeMenu);
+
+	
 
 	// Hotkeys
 	InputComponent->BindAction("SpacecraftKey1", EInputEvent::IE_Released, this, &AFlarePlayerController::SpacecraftKey1);
@@ -1922,6 +1956,9 @@ void AFlarePlayerController::SetupInputComponent()
 	InputComponent->BindAxis("GamepadThrustInput", this, &AFlarePlayerController::GamepadThrustInput);
 
 	// Joystick
+	InputComponent->BindAxis("JoystickMoveHorizontalCameraInput", this, &AFlarePlayerController::JoystickMoveHorizontalCameraInput);
+	InputComponent->BindAxis("JoystickMoveVerticalCameraInput", this, &AFlarePlayerController::JoystickMoveVerticalCameraInput);
+
 	InputComponent->BindAxis("JoystickMoveHorizontalInput", this, &AFlarePlayerController::JoystickMoveHorizontalInput);
 	InputComponent->BindAxis("JoystickMoveVerticalInput", this, &AFlarePlayerController::JoystickMoveVerticalInput);
 	InputComponent->BindAxis("JoystickYawInput", this, &AFlarePlayerController::JoystickYawInput);
@@ -1954,6 +1991,36 @@ void AFlarePlayerController::ToggleCamera()
 	{
 		SetExternalCamera(!ShipPawn->GetStateManager()->IsExternalCamera(), true);
 		ClientPlaySound(GetSoundManager()->TickSound);
+	}
+}
+
+void AFlarePlayerController::ToggleCameraPanning()
+{
+	if (ShipPawn && !MenuManager->IsMenuOpen() && !IsTyping())
+	{
+		SetExternalCameraPanning(!ShipPawn->GetStateManager()->IsExternalCameraPanning());
+		ClientPlaySound(GetSoundManager()->TickSound);
+
+		if (ShipPawn->GetStateManager()->IsExternalCameraPanning())
+		{
+			ShipPawn->DeactivateWeapon();
+		}
+	}
+}
+
+void AFlarePlayerController::CameraPanOn()
+{
+	if (ShipPawn)
+	{
+		ShipPawn->GetStateManager()->SetPlayerCameraPan(true);
+	}
+}
+
+void AFlarePlayerController::CameraPanOff()
+{
+	if (ShipPawn)
+	{
+		ShipPawn->GetStateManager()->SetPlayerCameraPan(false);
 	}
 }
 
@@ -2074,8 +2141,8 @@ void AFlarePlayerController::SimulateConfirmed()
 		EFlareMenu::Type CurrentMenu = MenuManager->GetCurrentMenu();
 		if (CurrentMenu != EFlareMenu::MENU_GameOver)
 		{
-			MenuManager->Reload();
 			GetGame()->ActivateCurrentSector();
+			MenuManager->Reload();
 		}
 
 		// Notify date
@@ -2209,6 +2276,15 @@ void AFlarePlayerController::MainMenu()
 	{
 		FLOG("AFlarePlayerController::MainMenu");
 		MenuManager->OpenMenu(EFlareMenu::MENU_Main);
+	}
+}
+
+void AFlarePlayerController::HelpMenu()
+{
+	if (GetGame()->IsLoadedOrCreated() && !GetGame()->IsSkirmish() && !IsTyping() && !MenuManager->IsFading())
+	{
+		FLOG("AFlarePlayerController::HelpMenu");
+		MenuManager->ToggleMenu(EFlareMenu::MENU_Help);
 	}
 }
 
@@ -2349,9 +2425,13 @@ void AFlarePlayerController::ToggleCombat()
 	{
 		FLOG("AFlarePlayerController::ToggleCombat");
 		ShipPawn->GetWeaponsSystem()->ToggleWeaponActivation();
-		if (ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_BOMB || ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_MISSILE || ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_GUN)
+
+		if (ShipPawn->GetStateManager()->IsExternalCamera() && ShipPawn->GetStateManager()->IsExternalCameraPanning())
 		{
-			SetExternalCamera(false);
+			if (ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_BOMB || ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_MISSILE || ShipPawn->GetWeaponsSystem()->GetActiveWeaponType() == EFlareWeaponGroupType::WG_GUN)
+			{
+				SetExternalCamera(false, false, false);
+			}
 		}
 	}
 }
@@ -2401,6 +2481,31 @@ void AFlarePlayerController::DisengagePilot()
 	}
 }
 
+void AFlarePlayerController::AntiCollisionToggle()
+{
+	if (!IsInMenu() && !IsTyping())
+	{
+		UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+		MyGameSettings->UseAnticollision = !MyGameSettings->UseAnticollision;
+		if (MyGameSettings->UseAnticollision)
+		{
+			Notify(LOCTEXT("AntiCollisionEnabled", "Anticollision Enabled"),
+				LOCTEXT("AntiCollisionEnabledInfo", "Your ship is now using Anticollision mode. Your ship will attempt to avoid collisions with nearby objects."),
+				"anticollision-enabled",
+				EFlareNotification::NT_Info);
+		}
+		else
+		{
+			Notify(LOCTEXT("AntiCollisionDisabled", "Anticollision Disabled"),
+				LOCTEXT("AntiCollisionDisabledInfo", "Your ship is no longer using Anticollision mode."),
+				"anticollision-disabled",
+				EFlareNotification::NT_Info);
+
+		}
+	}
+}
+
+
 void AFlarePlayerController::ToggleHUD()
 {
 	if (!IsInMenu() && !IsTyping())
@@ -2445,7 +2550,7 @@ void AFlarePlayerController::MouseInputX(float Val)
 	{
 		GetNavHUD()->SetWheelCursorMove(FVector2D(Val, 0));
 	}
-	else if (ShipPawn && !RightMousePressed && !MyGameSettings->DisableMouse)
+	else if (ShipPawn && !ShipPawn->GetStateManager()->GetPlayerRightMousePressed() && !MyGameSettings->DisableMouse)
 	{
 		ShipPawn->YawInput(Val);
 	}
@@ -2469,7 +2574,7 @@ void AFlarePlayerController::MouseInputY(float Val)
 	{
 		GetNavHUD()->SetWheelCursorMove(FVector2D(0, -Val));
 	}
-	else if (ShipPawn && !RightMousePressed && !MyGameSettings->DisableMouse)
+	else if (ShipPawn && !ShipPawn->GetStateManager()->GetPlayerRightMousePressed() && !MyGameSettings->DisableMouse)
 	{
 		ShipPawn->PitchInput(Val);
 	}
@@ -2486,13 +2591,30 @@ void AFlarePlayerController::GamepadLeftStickX(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+		if (!MyGameSettings->GamepadDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
 		if (MyGameSettings->GamepadProfileLayout == EFlareGamepadLayout::GL_TurnWithLeftStick)
 		{
-			ShipPawn->GamepadYawInput(Val);
+			if (MyGameSettings->GamepadInvertYaw)
+			{
+				ShipPawn->GamepadYawInput(Val);
+			}
+			else
+			{
+				ShipPawn->GamepadYawInput(-Val);
+			}
 		}
 		else
 		{
@@ -2512,13 +2634,31 @@ void AFlarePlayerController::GamepadLeftStickY(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(0, Val));
+		if (!MyGameSettings->GamepadDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(0, Val));
+			}
+		}
 	}
+
 	else if (ShipPawn)
 	{
 		if (MyGameSettings->GamepadProfileLayout == EFlareGamepadLayout::GL_TurnWithLeftStick)
 		{
-			ShipPawn->GamepadPitchInput(-Val);
+			if (MyGameSettings->GamepadInvertPitch)
+			{
+				ShipPawn->GamepadPitchInput(Val);
+			}
+			else
+			{
+				ShipPawn->GamepadPitchInput(-Val);
+			}
 		}
 		else
 		{
@@ -2542,13 +2682,27 @@ void AFlarePlayerController::GamepadRightStickX(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+		if (!MyGameSettings->GamepadDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
 		if (MyGameSettings->GamepadProfileLayout == EFlareGamepadLayout::GL_TurnWithLeftStick)
 		{
 			ShipPawn->GamepadMoveHorizontalInput(Val);
+		}
+		else if(MyGameSettings->GamepadInvertYaw)
+		{
+			ShipPawn->GamepadYawInput(-Val);
 		}
 		else
 		{
@@ -2576,13 +2730,27 @@ void AFlarePlayerController::GamepadRightStickY(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+		if (!MyGameSettings->GamepadDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
 		if (MyGameSettings->GamepadProfileLayout == EFlareGamepadLayout::GL_TurnWithLeftStick)
 		{
 			ShipPawn->GamepadMoveVerticalInput(Val);
+		}
+		else if (MyGameSettings->GamepadInvertPitch)
+		{
+			ShipPawn->GamepadPitchInput(-Val);
 		}
 		else
 		{
@@ -2598,7 +2766,6 @@ void AFlarePlayerController::GamepadThrustInput(float Val)
 		ShipPawn->GamepadThrustInput(-Val);
 	}
 }
-
 
 void AFlarePlayerController::JoystickMoveHorizontalInput(float Val)
 {
@@ -2618,11 +2785,36 @@ void AFlarePlayerController::JoystickMoveHorizontalInput(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+		if (!MyGameSettings->JoystickDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
-		ShipPawn->JoystickMoveHorizontalInput(Val);
+		if (ShipPawn->GetStateManager()->IsExternalCamera() && ShipPawn->GetStateManager()->IsPlayerCameraPanHold())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+				ShipPawn->GetStateManager()->UpdateCameraControls(true);
+			}
+		}
+		else
+		{
+			ShipPawn->JoystickMoveHorizontalInput(Val);
+		}
 	}
 }
 
@@ -2648,11 +2840,81 @@ void AFlarePlayerController::JoystickMoveVerticalInput(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+		if (!MyGameSettings->JoystickDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+
+			MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+		}
 	}
 	else if (ShipPawn)
 	{
-		ShipPawn->JoystickMoveVerticalInput(Val);
+		if (ShipPawn->GetStateManager()->IsExternalCamera() && ShipPawn->GetStateManager()->IsPlayerCameraPanHold())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+			ShipPawn->GetStateManager()->UpdateCameraControls(true);
+		}
+		else
+		{
+			ShipPawn->JoystickMoveVerticalInput(Val);
+		}
+	}
+}
+
+void AFlarePlayerController::JoystickMoveHorizontalCameraInput(float Val)
+{
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	Val *= MyGameSettings->InputSensitivity;
+
+	JoystickHorizontalCameraInputVal.Add(Val);
+	Val = JoystickHorizontalCameraInputVal.Get();
+
+	if (ShipPawn && !MenuManager->IsMenuOpen() && !MenuManager->IsUIOpen())
+	{
+		if (ShipPawn->GetStateManager()->IsExternalCamera())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(-Val, 0));
+				ShipPawn->GetStateManager()->UpdateCameraControls(true);
+			}
+		}
+	}
+}
+
+void AFlarePlayerController::JoystickMoveVerticalCameraInput(float Val)
+{
+	UFlareGameUserSettings* MyGameSettings = Cast<UFlareGameUserSettings>(GEngine->GetGameUserSettings());
+	Val *= MyGameSettings->InputSensitivity;
+
+	JoystickVerticalCameraInputVal.Add(Val);
+	Val = JoystickVerticalCameraInputVal.Get();
+
+	if (ShipPawn && !MenuManager->IsMenuOpen() && !MenuManager->IsUIOpen())
+	{
+		if (ShipPawn->GetStateManager()->IsExternalCamera())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+				ShipPawn->GetStateManager()->UpdateCameraControls(true);
+			}
+		}
 	}
 }
 
@@ -2670,11 +2932,36 @@ void AFlarePlayerController::JoystickYawInput(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+		if (!MyGameSettings->JoystickDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(Val, 0));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
-		ShipPawn->JoystickYawInput(Val);
+		if (ShipPawn->GetStateManager()->IsExternalCamera() && ShipPawn->GetStateManager()->IsPlayerCameraPanHold())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(-Val, 0));
+				ShipPawn->GetStateManager()->UpdateCameraControls(true);
+			}
+		}
+		else
+		{
+			ShipPawn->JoystickYawInput(Val);
+		}
 	}
 }
 
@@ -2692,11 +2979,36 @@ void AFlarePlayerController::JoystickPitchInput(float Val)
 	}
 	else if (MenuManager->IsUIOpen())
 	{
-		MenuManager->JoystickCursorMove(FVector2D(0, Val));
+		if (!MyGameSettings->JoystickDisableCursor)
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(0, Val));
+			}
+		}
 	}
 	else if (ShipPawn)
 	{
-		ShipPawn->JoystickPitchInput(Val);
+		if (ShipPawn->GetStateManager()->IsExternalCamera() && ShipPawn->GetStateManager()->IsPlayerCameraPanHold())
+		{
+			if (FMath::Abs(Val) < MyGameSettings->MouseCursorDeadZone)
+			{
+				Val = 0;
+			}
+			else
+			{
+				MenuManager->JoystickCursorMove(FVector2D(0, -Val));
+				ShipPawn->GetStateManager()->UpdateCameraControls(true);
+			}
+		}
+		else
+		{
+			ShipPawn->JoystickPitchInput(Val);
+		}
 	}
 }
 
@@ -2761,15 +3073,18 @@ void AFlarePlayerController::RightMouseButtonPressed()
 		TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 		MouseMenu->SelectOption(0);
 	}
-	else
+	else if(ShipPawn)
 	{
-		RightMousePressed = true;
+		ShipPawn->RightMouseRelease();
 	}
 }
 
 void AFlarePlayerController::RightMouseButtonReleased()
 {
-	RightMousePressed = false;
+	if (ShipPawn)
+	{
+		ShipPawn->RightMouseRelease();
+	}
 }
 
 void AFlarePlayerController::WheelPressed()
@@ -2788,7 +3103,14 @@ void AFlarePlayerController::WheelPressed()
 
 void AFlarePlayerController::WheelReleased()
 {
-	CloseWheelMenu(true);
+	if (MenuManager->IsMenuOpen())
+	{
+		CloseWheelMenu(false);
+	}
+	else
+	{
+		CloseWheelMenu(true);
+	}
 }
 
 void AFlarePlayerController::CloseWheelMenu(bool EnableActionOnClose)
@@ -2810,59 +3132,154 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		return;
 	}
 
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	FLinearColor SetColor;
+	SetColor.A = 0;
+
 	// Setup mouse menu
 	MouseMenu->ClearWidgets();
-
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Cancel", "Cancel"),
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::CloseWheelMenu,false));
+	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::CloseWheelMenu,false),false,SetColor);
 
 	// Is a battle in progress ?
 	bool IsBattleInProgress = false;
 	bool IsDocked = ShipPawn->GetNavigationSystem()->IsDocked();
 	bool IsAutoDockingUnlocked = GetCompany()->IsTechnologyUnlocked("auto-docking");
+	AFlareSpacecraft* Target = ShipPawn->GetCurrentTarget().SpacecraftTarget;
+
 	if (GetPlayerShip()->GetCurrentSector())
 	{
 		IsBattleInProgress = GetPlayerShip()->GetCurrentSector()->IsPlayerBattleInProgress();
 	}
 
+	if (GetCurrentObjective() && !IsDocked)
+	{
+		if (GetCurrentObjective()->TargetSpacecrafts.Num() > 0)
+		{
+			for (int32 ShipIndex = 0; ShipIndex < GetCurrentObjective()->TargetSpacecrafts.Num(); ShipIndex++)
+			{
+				UFlareSimulatedSpacecraft* ObjectiveSpacecraft = GetCurrentObjective()->TargetSpacecrafts[ShipIndex];
+				if (ObjectiveSpacecraft->GetCurrentSector() == ShipPawn->GetParent()->GetCurrentSector() && Target != ObjectiveSpacecraft->GetActive())
+				{
+					SetColor = Theme.ObjectiveColor;
+
+					if (!IsBattleInProgress)
+					{
+						// Inspect
+						FText Text = FText::Format(LOCTEXT("InspectTargetFormat", "Details for {0}"), UFlareGameTools::DisplaySpacecraftName(ObjectiveSpacecraft));
+						MouseMenu->AddWidget(ObjectiveSpacecraft->IsStation() ? "Mouse_Inspect_Station" : "Mouse_Inspect_Ship", Text,
+							FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, ObjectiveSpacecraft->GetActive()), false, SetColor);
+
+					}
+				}
+			}
+		}
+
+		if (GetCurrentObjective()->TargetSectors.Num() > 0 && ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
+		{
+			for (int32 SectorIndex = 0; SectorIndex < GetCurrentObjective()->TargetSectors.Num(); SectorIndex++)
+			{
+
+				UFlareSimulatedSector* ObjectiveSector = GetCurrentObjective()->TargetSectors[SectorIndex];
+				if (ObjectiveSector != GetPlayerShip()->GetCurrentSector() && (!GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() || (GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel() && GetPlayerShip()->GetCurrentFleet()->GetCurrentTravel()->GetDestinationSector() != ObjectiveSector)))
+
+				{
+					FText NameText = FText();
+					FFlareSectorBattleState BattleState = ObjectiveSector->GetSectorBattleState(GetCompany());
+
+					if (BattleState.InBattle)
+					{
+						if (BattleState.InActiveFight)
+						{
+							NameText = FText::Format(LOCTEXT("ConfirmBattleMouseMenuFormat", "{0}\nBattle in progress."),
+								ObjectiveSector->GetSectorName());
+						}
+						else if (!BattleState.InFight && !BattleState.BattleWon)
+						{
+							NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nBattle Lost"),
+								ObjectiveSector->GetSectorName());
+						}
+					}
+					else if (BattleState.HasDanger)
+					{
+						{
+							NameText = FText::Format(LOCTEXT("ConfirmBattleLostMouseMenuFormat", "{0}\nDanger Present"),
+								ObjectiveSector->GetSectorName());
+						}
+					}
+					else
+					{
+						NameText = ObjectiveSector->GetSectorName();
+					}
+
+					SetColor = Theme.ObjectiveColor;
+
+					TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = GetGame()->GetOrbitalBodies()->OrbitalBodies;
+					for (int32 BodyIndex = 0; BodyIndex < OrbitalBodies.Num(); BodyIndex++)
+					{
+						FFlareSectorCelestialBodyDescription Body = OrbitalBodies[BodyIndex];
+						if (ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier == Body.CelestialBodyIdentifier)
+						{
+							MouseMenu->AddWidget("Orbit", NameText,
+								FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmTravelSelection, Body, ObjectiveSector), false, SetColor);
+							break;
+						}
+					}
+
+					UFlareSimulatedPlanetarium* Planetarium = GetGame()->GetGameWorld()->GetPlanerarium();
+					FFlareCelestialBody* CelestialBody = Planetarium->FindCelestialBody(ObjectiveSector->GetOrbitParameters()->CelestialBodyIdentifier);
+				}
+			}
+		}
+	}
+
+	SetColor.A = 0;
+
 	// Docked controls
 	if (IsDocked)
 	{
-		AFlareSpacecraft* Target = ShipPawn->GetNavigationSystem()->GetDockStation();
-
 		if (!IsBattleInProgress)
 		{
+			Target = ShipPawn->GetNavigationSystem()->GetDockStation();
+
 			// Buy ship / details
 			if (Target)
 			{
 				if (Target->GetParent()->IsShipyard())
 				{
 					MouseMenu->AddWidget("Mouse_Fly", LOCTEXT("Buy ship", "Buy ship"),
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft));
+					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, Target), false, SetColor);
 				}
 				else
 				{
 					FText Text = FText::Format(LOCTEXT("InspectDockedFormat", "Details for {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
 					MouseMenu->AddWidget(Target->GetParent()->IsStation() ? "Mouse_Inspect_Station" : "Mouse_Inspect_Ship", Text,
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft));
+					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, Target), false, SetColor);
 				}
 			}
 		}
 
 		// Undock
 		MouseMenu->AddWidget("Undock_Button", LOCTEXT("Undock", "Undock"),
-			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::UndockShip));
+			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::UndockShip), false, SetColor);
 	}
 
 	// Flying controls
 	else
 	{
 		// Targeting
-		AFlareSpacecraft* Target = ShipPawn->GetCurrentTarget().SpacecraftTarget;
-
 		if (Target)
 		{
 			FText Text;
+			
+			if (GetCurrentObjective() && GetCurrentObjective()->IsTarget(Target->GetParent()))
+			{
+				SetColor = Theme.ObjectiveColor;
+			}
+			else
+			{
+				SetColor.A = 0.f;
+			}
 
 			// Civilian controls
 			if (!IsBattleInProgress)
@@ -2870,11 +3287,11 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 				// Inspect
 				Text = FText::Format(LOCTEXT("InspectTargetFormat", "Details for {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
 				MouseMenu->AddWidget(Target->GetParent()->IsStation() ? "Mouse_Inspect_Station" : "Mouse_Inspect_Ship", Text,
-					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft));
+					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::InspectTargetSpacecraft, Target), false, SetColor);
 
 				// Look at
 				Text = FText::Format(LOCTEXT("LookAtTargetFormat", "Focus on {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
-				MouseMenu->AddWidget("Mouse_LookAt", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::LookAtTargetSpacecraft));
+				MouseMenu->AddWidget("Mouse_LookAt", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::LookAtTargetSpacecraft), false, SetColor);
 
 				// Dock
 				if (Target->GetDockingSystem()->HasCompatibleDock(GetShipPawn())
@@ -2882,18 +3299,19 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 					&& !Target->IsPlayerHostile())
 				{
 					Text = FText::Format(LOCTEXT("DockAtTargetFormat", "Dock at {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
-					MouseMenu->AddWidget("Mouse_DockAt", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::DockAtTargetSpacecraft));
+					MouseMenu->AddWidget("Mouse_DockAt", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::DockAtTargetSpacecraft), false, SetColor);
 				}
 			}
 
 			// Fly
-			if (Target->GetParent()->GetCompany() == GetCompany() && !Target->GetParent()->IsStation()
-				&& Target->GetParent()->GetCurrentFleet() == GetPlayerFleet())
+			if (Target->GetParent()->GetCompany() == GetCompany() && !Target->GetParent()->IsStation())
 			{
 				Text = FText::Format(LOCTEXT("FlyTargetFormat", "Fly {0}"), UFlareGameTools::DisplaySpacecraftName(Target->GetParent()));
-				MouseMenu->AddWidget("Mouse_Fly", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::FlyTargetSpacecraft));
+				MouseMenu->AddWidget("Mouse_Fly", Text, FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::FlyTargetSpacecraft), false, SetColor);
 			}
 		}
+
+		SetColor.A = 0;
 
 		// Fleet controls
 		if (ShipPawn->GetDescription()->IsDroneCarrier)
@@ -2903,12 +3321,12 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 				if (ShipPawn->GetWantUndockInternalShips())
 				{
 					MouseMenu->AddWidget("Mouse_Flee", LOCTEXT("RetrieveDrones", "Retrieve Drones"),
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::RetrieveDrones));
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::RetrieveDrones), false, SetColor);
 				}
 				else
 				{
 					MouseMenu->AddWidget("Mouse_MatchSpeed", LOCTEXT("LaunchDrones", "Launch Drones"),
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::LaunchDrones));
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::LaunchDrones), false, SetColor);
 				}
 			}
 		}
@@ -2916,7 +3334,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		if (ShipPawn->GetParent()->GetCurrentFleet()->GetMilitaryShipCount() > 0)
 		{
 			MouseMenu->AddWidget("Mouse_Align", LOCTEXT("Fleet", "Fleet"),
-			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowFleetMenu));
+			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowFleetMenu), false, SetColor);
 		}
 		else
 		{
@@ -2925,7 +3343,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 				if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
 				{
 					MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu), false, SetColor);
 				}
 				if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
 				{
@@ -2935,7 +3353,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 						RepairText, RefillText);
 
 					MouseMenu->AddWidget("Repair", Text,
-						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+						FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill), false, SetColor);
 				}
 			}
 		}
@@ -3006,7 +3424,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 			if (PartListData.Num() > 0)
 			{
 				MouseMenu->AddWidget("ShipUpgrade_Button", LOCTEXT("Upgrade", "Upgrade"),
-					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::UpgradeShip));
+					FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::UpgradeShip), false, SetColor);
 			}
 		}
 
@@ -3015,7 +3433,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 			&& (IsDocked || IsAutoDockingUnlocked))
 		{
 			MouseMenu->AddWidget("Trade_Button", LOCTEXT("Trade", "Trade"),
-				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::StartTrading));
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::StartTrading), false, SetColor);
 		}
 
 		UFlareQuestManager* QuestManager = GetGame()->GetQuestManager();
@@ -3025,7 +3443,7 @@ void AFlarePlayerController::WheelMenuShowMainMenu()
 		if (OngoingQuests.Num() > 0 || AvailableQuests.Num() > 0)
 		{
 			MouseMenu->AddWidget("ContractSmall", LOCTEXT("Contracts", "Contracts"),
-			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowContracts));
+			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowContracts), false, SetColor);
 		}
 	}
 
@@ -3037,42 +3455,45 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 	MouseMenu->ClearWidgets();
 
+	FLinearColor SetColor;
+	SetColor.A = 0;
+
 	// Setup mouse menu
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Back", "Back"),
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu));
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu),false,SetColor);
 
 	EFlareCombatTactic::Type CurrentTacticsForGroup = GetTacticManager()->GetCurrentTacticForShipGroup(GetTacticManager()->GetCurrentShipGroup());
 
 	MouseMenu->AddWidget("Mouse_ProtectMe", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::ProtectMe),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::ProtectMe),
-		CurrentTacticsForGroup == EFlareCombatTactic::ProtectMe);
+		CurrentTacticsForGroup == EFlareCombatTactic::ProtectMe, SetColor);
 
 	MouseMenu->AddWidget("Mouse_AttackAll", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::AttackMilitary),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackMilitary),
-		CurrentTacticsForGroup == EFlareCombatTactic::AttackMilitary);
+		CurrentTacticsForGroup == EFlareCombatTactic::AttackMilitary, SetColor);
 
 	MouseMenu->AddWidget("New", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::DestroyMilitary),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyMilitary),
-		CurrentTacticsForGroup == EFlareCombatTactic::DestroyMilitary);
+		CurrentTacticsForGroup == EFlareCombatTactic::DestroyMilitary, SetColor);
 
 	MouseMenu->AddWidget("Mouse_AttackStations", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::AttackStations),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackStations),
-		CurrentTacticsForGroup == EFlareCombatTactic::AttackStations);
+		CurrentTacticsForGroup == EFlareCombatTactic::AttackStations, SetColor);
 
 	MouseMenu->AddWidget("Mouse_AttackCivilians", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::AttackCivilians),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::AttackCivilians),
-		CurrentTacticsForGroup == EFlareCombatTactic::AttackCivilians);
+		CurrentTacticsForGroup == EFlareCombatTactic::AttackCivilians, SetColor);
 
 	MouseMenu->AddWidget("TargettingContextButton", UFlareGameTypes::GetCombatTacticDescription(EFlareCombatTactic::DestroyCivilians),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::SetTacticForCurrentGroup, EFlareCombatTactic::DestroyCivilians),
-		CurrentTacticsForGroup == EFlareCombatTactic::DestroyCivilians);
+		CurrentTacticsForGroup == EFlareCombatTactic::DestroyCivilians, SetColor);
 
 	if (!GetGame()->IsSkirmish())
 	{
 		if (ShipPawn->GetParent()->GetCurrentFleet()->CanTravel())
 		{
 			MouseMenu->AddWidget("Orbit", LOCTEXT("Travel", "Travel"),
-				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu), false, SetColor);
 		}
 
 		if (ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRepair() || ShipPawn->GetParent()->GetCurrentFleet()->FleetNeedsRefill())
@@ -3083,7 +3504,7 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 				RepairText, RefillText);
 
 			MouseMenu->AddWidget("Repair", Text,
-				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill));
+				FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuRepairAndRefill), false, SetColor);
 		}
 	}
 
@@ -3095,17 +3516,21 @@ void AFlarePlayerController::WheelMenuShowFleetMenu()
 void AFlarePlayerController::WheelMenuShowTravelMainMenu()
 {
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
+	FLinearColor SetColor;
+	SetColor.A = 0.f;
+
 	MouseMenu->ClearWidgets();
 
 	// Setup mouse menu
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Back", "Back"),
-	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu));
+	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu), false, SetColor);
 
 	TArray<FFlareSectorCelestialBodyDescription>& OrbitalBodies = GetGame()->GetOrbitalBodies()->OrbitalBodies;
 	for (int32 BodyIndex = 0; BodyIndex < OrbitalBodies.Num(); BodyIndex++)
 	{
 		FFlareSectorCelestialBodyDescription Body = OrbitalBodies[BodyIndex];
 		bool IsValidBody = false;
+		bool FoundObjectiveSector = false;
 
 		for (int32 SectorIndex = 0; SectorIndex < GetCompany()->GetKnownSectors().Num(); SectorIndex++)
 		{
@@ -3117,15 +3542,29 @@ void AFlarePlayerController::WheelMenuShowTravelMainMenu()
 
 			if (Sector->GetOrbitParameters()->CelestialBodyIdentifier == Body.CelestialBodyIdentifier)
 			{
+				if (GetCurrentObjective() && GetCurrentObjective()->IsTarget(Sector))
+				{
+					FoundObjectiveSector = true;
+				}
+
 				IsValidBody = true;
-				break;
 			}
 		}
 
 		if (IsValidBody)
 		{
+			if (FoundObjectiveSector)
+			{
+				const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+				SetColor = Theme.ObjectiveColor;
+			}
+			else
+			{
+				SetColor.A = 0.f;
+			}
+
 			MouseMenu->AddWidget("Travel", Body.CelestialBodyName,
-			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu, Body));
+			FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu, Body), false, SetColor);
 		}
 	}
 
@@ -3134,12 +3573,16 @@ void AFlarePlayerController::WheelMenuShowTravelMainMenu()
 
 void AFlarePlayerController::WheelMenuShowTravelOrbitalMenu(FFlareSectorCelestialBodyDescription OrbitalBody)
 {
+	const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+	FLinearColor SetColor;
+	SetColor.A = 0.f;
+
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 	MouseMenu->ClearWidgets();
 
 	// Setup mouse menu
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Back", "Back"),
-	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu));
+	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelMainMenu), false, SetColor);
 
 	for (int32 SectorIndex = 0; SectorIndex < GetCompany()->GetKnownSectors().Num(); SectorIndex++)
 	{
@@ -3182,8 +3625,17 @@ void AFlarePlayerController::WheelMenuShowTravelOrbitalMenu(FFlareSectorCelestia
 			NameText = Sector->GetSectorName();
 		}
 
+		if (GetCurrentObjective() && GetCurrentObjective()->IsTarget(Sector))
+		{
+			SetColor = Theme.ObjectiveColor;
+		}
+		else
+		{
+			SetColor.A = 0.f;
+		}
+
 		MouseMenu->AddWidget("Orbit", NameText,
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmTravelSelection, OrbitalBody, Sector));
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmTravelSelection, OrbitalBody, Sector), false, SetColor);
 	}
 
 	GetNavHUD()->SetWheelMenu(true, false);
@@ -3199,11 +3651,13 @@ void AFlarePlayerController::WheelMenuConfirmTravelSelection(FFlareSectorCelesti
 	}
 
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
+	FLinearColor SetColor;
+	SetColor.A = 0.f;
 	MouseMenu->ClearWidgets();
 
 	// Setup mouse menu
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Back", "Back"),
-	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu, OrbitalBody));
+	FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowTravelOrbitalMenu, OrbitalBody), false, SetColor);
 
 	if (ShipPawn->GetParent()->GetCurrentFleet()->GetUnableToTravelShips() < ShipPawn->GetParent()->GetCurrentFleet()->GetShips().Num())
 	{
@@ -3237,21 +3691,28 @@ void AFlarePlayerController::WheelMenuConfirmTravelSelection(FFlareSectorCelesti
 		FText NameText = FText::Format(LOCTEXT("ConfirmSectorTravelText", "{0}\n{1}"),
 		TitleText, ConfirmText);
 
+		
+		if (GetCurrentObjective() && GetCurrentObjective()->IsTarget(Sector))
+		{
+			const FFlareStyleCatalog& Theme = FFlareStyleSet::GetDefaultTheme();
+			SetColor = Theme.ObjectiveColor;
+		}
+		else
+		{
+			SetColor.A = 0.f;
+		}
+
 		MouseMenu->AddWidget("Orbit", NameText,
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmedTravel, Sector));
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuConfirmedTravel, Sector), false, SetColor);
 
 	}
 	GetNavHUD()->SetWheelMenu(true, false);
 }
 
-
 void AFlarePlayerController::WheelMenuConfirmedTravel(UFlareSimulatedSector * Sector)
 {
 	GetGame()->GetGameWorld()->StartTravel(ShipPawn->GetParent()->GetCurrentFleet(), Sector);
-	GetGame()->DeactivateSector();
-	GetGame()->ActivateCurrentSector();
 }
-
 
 void AFlarePlayerController::WheelMenuRepairAndRefill()
 {
@@ -3264,9 +3725,12 @@ void AFlarePlayerController::WheelMenuShowContracts()
 	TSharedPtr<SFlareMouseMenu> MouseMenu = GetNavHUD()->GetMouseMenu();
 	MouseMenu->ClearWidgets();
 
+	FLinearColor SetColor;
+	SetColor.A = 0;
+
 	// Setup mouse menu
 	MouseMenu->AddWidget("Mouse_Nothing", LOCTEXT("Back", "Back"),
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu));
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuShowMainMenu), false, SetColor);
 
 	UFlareQuestManager* QuestManager = MenuManager->GetGame()->GetQuestManager();
 	TArray<UFlareQuest*>& AvailableQuests = QuestManager->GetAvailableQuests();
@@ -3278,7 +3742,7 @@ void AFlarePlayerController::WheelMenuShowContracts()
 		FString IconName = GetQuestWheelIcon(Quest);
 
 		MouseMenu->AddWidget(IconName, Quest->GetQuestDescription(),
-		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuSelectQuest, Quest));
+		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuSelectQuest, Quest), false, SetColor);
 	}
 
 	TArray<UFlareQuest*>& OngoingQuests = QuestManager->GetOngoingQuests();
@@ -3290,7 +3754,7 @@ void AFlarePlayerController::WheelMenuShowContracts()
 
 		MouseMenu->AddWidget(IconName, Quest->GetQuestDescription(),
 		FFlareMouseMenuClicked::CreateUObject(this, &AFlarePlayerController::WheelMenuSelectQuest, Quest),
-		SameQuest);
+		SameQuest, SetColor);
 		if (SameQuest)
 		{
 			NewSelectedWidget = MouseMenu->GetSelectedWidget();
@@ -3298,7 +3762,6 @@ void AFlarePlayerController::WheelMenuShowContracts()
 	}
 	GetNavHUD()->SetWheelMenu(true,true, NewSelectedWidget);
 }
-
 
 FString AFlarePlayerController::GetQuestWheelIcon(UFlareQuest* Quest)
 {
@@ -3355,14 +3818,17 @@ void AFlarePlayerController::RetrieveDrones()
 	}
 }
 
-void AFlarePlayerController::InspectTargetSpacecraft()
+void AFlarePlayerController::InspectTargetSpacecraft(AFlareSpacecraft* TargetSpacecraft)
 {
 	if (ShipPawn)
 	{
-		AFlareSpacecraft* TargetSpacecraft = ShipPawn->GetCurrentTarget().SpacecraftTarget;
-		if (ShipPawn->GetNavigationSystem()->IsDocked())
+		if (!TargetSpacecraft)
 		{
-			TargetSpacecraft = ShipPawn->GetNavigationSystem()->GetDockStation();
+			TargetSpacecraft = ShipPawn->GetCurrentTarget().SpacecraftTarget;
+			if (ShipPawn->GetNavigationSystem()->IsDocked())
+			{
+				TargetSpacecraft = ShipPawn->GetNavigationSystem()->GetDockStation();
+			}
 		}
 
 		if (TargetSpacecraft)

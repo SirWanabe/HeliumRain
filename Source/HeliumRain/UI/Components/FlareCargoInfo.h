@@ -58,6 +58,8 @@ protected:
 	/** Get the quantity text */
 	FText GetResourceQuantity() const;
 
+	FText GetResourceMode() const;
+
 	/** Cargo item clicked */
 	FReply OnButtonClicked();
 
@@ -91,5 +93,5 @@ protected:
 	// Slate data
 	TSharedPtr<SFlareButton>                        DumpButton;
 	TSharedPtr<SFlareButton>                        PermissionButton;
-	TSharedPtr<STextBlock>							ResourceMode;
+//	TSharedPtr<STextBlock>							ResourceMode;
 };

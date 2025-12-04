@@ -408,6 +408,7 @@ TSharedRef<FJsonObject> UFlareSaveWriter::SaveSpacecraft(FFlareSpacecraftSave* D
 	JsonObject->SetStringField("Level", FormatInt32(Data->Level));
 	JsonObject->SetStringField("TradingReason", FormatInt32(Data->TradingReason));
 	JsonObject->SetBoolField("IsTrading", Data->IsTrading);
+	JsonObject->SetStringField("IsTradingWith", Data->IsTradingWith.ToString());
 	JsonObject->SetBoolField("IsIntercepted", Data->IsIntercepted);
 	SaveFloat(JsonObject,"RefillStock", Data->RefillStock);
 	SaveFloat(JsonObject,"RepairStock", Data->RepairStock);

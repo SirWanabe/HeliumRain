@@ -33,7 +33,8 @@ public:
 	virtual void PlayerTick(float DeltaTime) override;
 	
 	/** Activate or deactivate the exterbal camera */
-	void SetExternalCamera(bool NewState, bool SetFromPlayerInput = false);
+	void SetExternalCamera(bool NewState, bool SetFromPlayerInput = false, bool DeactivateWeapons = true);
+	void SetExternalCameraPanning(bool NewState);
 
 	/** Fly this ship */
 	void FlyShip(AFlareSpacecraft* Ship, bool PossessNow = true);
@@ -256,6 +257,13 @@ public:
 	/** Toggle the external view */
 	void ToggleCamera();
 
+	/* Toggle if external view pans camera or controls the ship**/
+	void ToggleCameraPanning();
+
+	void CameraPanOn();
+	void CameraPanOff();
+
+
 	/** Toggle the menus */
 	void ToggleMenu();
 
@@ -298,6 +306,7 @@ public:
 	void QuestMenu();
 	void MainMenu();
 	void SettingsMenu();
+	void HelpMenu();
 	void TradeMenu();
 
 	// Hotkeys
@@ -322,6 +331,8 @@ public:
 
 	/** Toggle the HUD's presence */
 	void ToggleHUD();
+
+	void AntiCollisionToggle();
 
 	/** Quick switch */
 	void QuickSwitch();
@@ -354,6 +365,9 @@ public:
 
 	/** Joystick lateral movement Y */
 	void JoystickMoveVerticalInput(float Val);
+
+	void JoystickMoveHorizontalCameraInput(float Val);
+	void JoystickMoveVerticalCameraInput(float Val);
 
 	/** Joystick angular movement X */
 	void JoystickYawInput(float Val);
@@ -400,7 +414,7 @@ public:
 	void CloseWheelMenu(bool EnableActionOnClose = true);
 
 	/** Inspect the target */
-	void InspectTargetSpacecraft();
+	void InspectTargetSpacecraft(AFlareSpacecraft* TargetSpacecraft = nullptr);
 
 	/** Fly the target */
 	void FlyTargetSpacecraft();
@@ -520,12 +534,15 @@ protected:
 	float                                    CombatZoomFOVRatio;
 
 	bool                                     WaitingForKey;
-	bool                                     RightMousePressed;
 	bool                                     HasCurrentObjective;
 	bool                                     IsBusy;
 	bool									 SimulatedConfirmed;
 	bool									 PlayerSetCameraMode;
+	bool									 PlayerSetCameraPanningMode;
 	float                                    LastSimulateTime;
+
+	FFlareMovingAverage<float>               JoystickHorizontalCameraInputVal;
+	FFlareMovingAverage<float>               JoystickVerticalCameraInputVal;
 
 	FFlareMovingAverage<float>               JoystickHorizontalInputVal;
 	FFlareMovingAverage<float>               JoystickVerticalInputVal;

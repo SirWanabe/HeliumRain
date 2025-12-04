@@ -37,7 +37,7 @@ public:
 	void Setup();
 
 	/** Enter this menu */
-	void Enter(UFlareCompany* Target);
+	void Enter(UFlareCompany* Target, UFlareSimulatedSpacecraft* TransactionSourceTarget);
 
 	/** Exit this menu */
 	void Exit();

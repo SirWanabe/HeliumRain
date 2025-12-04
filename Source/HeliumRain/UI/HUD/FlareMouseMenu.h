@@ -32,7 +32,7 @@ public:
 
 	/** Add a widget */
 	void AddWidget(FString Icon, FText Legend);
-	void AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault = false);
+	void AddWidget(FString Icon, FText Legend, FFlareMouseMenuClicked Action, bool SelectDefault = false, FLinearColor SetColor = FLinearColor());
 
 	void SetPendingMenu(FFlareMouseMenuClicked NewPendingMenu);
 
@@ -75,7 +75,7 @@ protected:
 	FVector2D GetWidgetSize(int32 Index) const;
 
 	/** Get a widget's color multiplier */
-	FSlateColor GetWidgetColor(int32 Index) const;
+	FSlateColor GetWidgetColor(int32 Index, FLinearColor SetColor) const;
 
 
 	/*----------------------------------------------------
@@ -83,7 +83,7 @@ protected:
 	----------------------------------------------------*/
 
 	/** Add a widget */
-	void AddWidgetInternal(FString Icon, FText Legend, int32 Index);
+	void AddWidgetInternal(FString Icon, FText Legend, FLinearColor SetColor, int32 Index);
 
 	/** Get the widget's direction */
 	FVector2D GetDirection(int32 Index) const;
